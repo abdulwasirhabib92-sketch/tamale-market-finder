@@ -1,0 +1,23 @@
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+*.env
+
+# Secrets and credentials
+*secret*
+*credentials*
+*api_keys*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.vercel/
+
+# OS files
+.DS_Store
+Thumbs.db
