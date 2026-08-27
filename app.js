@@ -483,14 +483,19 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
 // 4. APP INITIALIZATION & EVENT LISTENERS
 // ====================================================================
 document.addEventListener("DOMContentLoaded", () => {
-    try { initSupabase(); } catch(e) { console.error("initSupabase error:", e); }
-    try { initNavigation(); } catch(e) { console.error("initNavigation error:", e); }
-    try { initDomainTabs(); } catch(e) { console.error("initDomainTabs error:", e); }
-    try { initMap(); } catch(e) { console.error("initMap error:", e); }
-    try { renderSpotlightCarousel(); } catch(e) { console.error("renderSpotlightCarousel error:", e); }
-    try { renderShowcaseSections(); } catch(e) { console.error("renderShowcaseSections error:", e); }
-    try { searchListings(); } catch(e) { console.error("searchListings error:", e); }
-    try { updateUIForAuthUser(); } catch(e) { console.error("updateUIForAuthUser error:", e); }
+    var dbg = document.getElementById("resultsList");
+    function showErr(label, e) {
+        console.error(label + " error:", e);
+        if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">' + label + ' ERROR: ' + (e.message || e) + '</div>';
+    }
+    try { initSupabase(); } catch(e) { showErr("initSupabase", e); }
+    try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
+    try { initDomainTabs(); } catch(e) { showErr("initDomainTabs", e); }
+    try { initMap(); } catch(e) { showErr("initMap", e); }
+    try { renderSpotlightCarousel(); } catch(e) { showErr("renderSpotlightCarousel", e); }
+    try { renderShowcaseSections(); } catch(e) { showErr("renderShowcaseSections", e); }
+    try { searchListings(); } catch(e) { showErr("searchListings", e); }
+    try { updateUIForAuthUser(); } catch(e) { showErr("updateUIForAuthUser", e); }
 });
 
 function initSupabase() {
@@ -498,6 +503,8 @@ function initSupabase() {
         try {
             if (typeof window.supabase === 'undefined') {
                 console.error("Supabase JS library not loaded! CDN may have failed.");
+                var dbg = document.getElementById("resultsList");
+                if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">Supabase JS library not loaded!</div>';
                 return;
             }
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -505,6 +512,8 @@ function initSupabase() {
             setupAuthListener();
         } catch (err) {
             console.warn("Supabase init failed, falling back to Demo Mode:", err);
+            var dbg = document.getElementById("resultsList");
+            if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">Supabase init failed: ' + (err.message||err) + '</div>';
         }
     } else {
         console.log("Running in Full Demo Mode with pre-populated Tamale marketplace data.");
@@ -926,6 +935,7 @@ function renderMiniProductCard(p, shop) {
 async function searchListings() {
     console.log("searchListings called, DEMO_MODE:", DEMO_MODE, "supabase:", !!supabase);
     const resultsList = document.getElementById("resultsList");
+    if (resultsList) resultsList.innerHTML = '<div style="padding:10px;">Searching... (DEMO_MODE=' + DEMO_MODE + ', supabase=' + (!!supabase) + ')</div>';
     const query = document.getElementById("searchInput").value.toLowerCase().trim();
     const market = document.getElementById("marketFilter").value;
     const status = document.getElementById("statusFilter").value;
@@ -982,7 +992,7 @@ async function searchListings() {
             }
         } catch (err) {
             console.error("Error fetching listings:", err);
-            resultsList.innerHTML = `<div class="empty-state" style="text-align:center;padding:40px;"><p>⚠️ Could not load listings. Please try again.</p></div>`;
+            resultsList.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>⚠️ Could not load listings: ' + (err.message||err) + '</p></div>';
             clearMapMarkers();
             return;
         }
