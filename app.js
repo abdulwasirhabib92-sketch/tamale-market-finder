@@ -483,20 +483,25 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
 // 4. APP INITIALIZATION & EVENT LISTENERS
 // ====================================================================
 document.addEventListener("DOMContentLoaded", () => {
-    initSupabase();
-    initNavigation();
-    initDomainTabs();
-    initMap();
-    renderSpotlightCarousel();
-    renderShowcaseSections();
-    searchListings();
-    updateUIForAuthUser();
+    try { initSupabase(); } catch(e) { console.error("initSupabase error:", e); }
+    try { initNavigation(); } catch(e) { console.error("initNavigation error:", e); }
+    try { initDomainTabs(); } catch(e) { console.error("initDomainTabs error:", e); }
+    try { initMap(); } catch(e) { console.error("initMap error:", e); }
+    try { renderSpotlightCarousel(); } catch(e) { console.error("renderSpotlightCarousel error:", e); }
+    try { renderShowcaseSections(); } catch(e) { console.error("renderShowcaseSections error:", e); }
+    try { searchListings(); } catch(e) { console.error("searchListings error:", e); }
+    try { updateUIForAuthUser(); } catch(e) { console.error("updateUIForAuthUser error:", e); }
 });
 
 function initSupabase() {
     if (!DEMO_MODE) {
         try {
+            if (typeof window.supabase === 'undefined') {
+                console.error("Supabase JS library not loaded! CDN may have failed.");
+                return;
+            }
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log("Supabase client initialized successfully");
             setupAuthListener();
         } catch (err) {
             console.warn("Supabase init failed, falling back to Demo Mode:", err);
@@ -505,6 +510,11 @@ function initSupabase() {
         console.log("Running in Full Demo Mode with pre-populated Tamale marketplace data.");
     }
 }
+
+// Catch unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+    console.error("Unhandled promise rejection:", event.reason);
+});
 
 function setupAuthListener() {
     if (!supabase) return;
@@ -914,6 +924,7 @@ function renderMiniProductCard(p, shop) {
 // 6. MAIN SEARCH & FILTERING LOGIC
 // ====================================================================
 async function searchListings() {
+    console.log("searchListings called, DEMO_MODE:", DEMO_MODE, "supabase:", !!supabase);
     const resultsList = document.getElementById("resultsList");
     const query = document.getElementById("searchInput").value.toLowerCase().trim();
     const market = document.getElementById("marketFilter").value;
