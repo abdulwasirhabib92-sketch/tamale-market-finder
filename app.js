@@ -6,7 +6,7 @@
 // ====================================================================
 // 1. CONFIGURATION & CONSTANTS
 // ====================================================================
-const SUPABASE_URL = "https://djcajmglxkmhbipmweps.sbClient.co";
+const SUPABASE_URL = "https://djcajmglxkmhbipmweps.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqY2FqbWdseGttaGJpcG13ZXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTE3NDcsImV4cCI6MjA5NjQyNzc0N30.ccaT6pQW8Dbqy1LC97p2hH0Q7CuYtWJwnoDgrOdwAX4";
 
 const DEMO_MODE = SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL");
@@ -57,6 +57,17 @@ function escapeHtml(str) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+}
+
+// Escape for use inside HTML attributes (prevents XSS via attribute injection)
+function escapeAttr(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 }
 
 // Rate Limiting Storage
@@ -514,8 +525,8 @@ document.addEventListener("DOMContentLoaded", () => {
     try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
     try { initDomainTabs(); } catch(e) { showErr("initDomainTabs", e); }
     try { initMap(); } catch(e) { showErr("initMap", e); }
-    try { renderSpotlightCarousel(); } catch(e) { showErr("renderSpotlightCarousel", e); }
-    try { renderShowcaseSections(); } catch(e) { showErr("renderShowcaseSections", e); }
+    try { renderSpotlightCarousel().catch(e => showErr("renderSpotlightCarousel", e)); } catch(e) { showErr("renderSpotlightCarousel", e); }
+    try { renderShowcaseSections().catch(e => showErr("renderShowcaseSections", e)); } catch(e) { showErr("renderShowcaseSections", e); }
     try { searchListings(); } catch(e) { showErr("searchListings", e); }
     try { updateUIForAuthUser(); } catch(e) { showErr("updateUIForAuthUser", e); }
 });
@@ -883,9 +894,23 @@ function debounceSearch() {
 // ====================================================================
 // 5. RENDERING HOME SHOWCASE & SPOTLIGHT
 // ====================================================================
-function renderSpotlightCarousel() {
+async function renderSpotlightCarousel() {
     const carousel = document.getElementById("spotlightCarousel");
-    const spotlightShops = demoStore.shops.filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
+    let spotlightShops = [];
+
+    if (!DEMO_MODE && sbClient) {
+        try {
+            const { data, error } = await sbClient.from('shops').select('*').eq('is_active', true).order('rating_avg', { ascending: false }).limit(3);
+            if (error) throw error;
+            spotlightShops = (data || []).filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
+            if (spotlightShops.length === 0 && data) spotlightShops = data.slice(0, 2);
+        } catch (err) {
+            console.error("Spotlight fetch error, using demo:", err);
+            spotlightShops = demoStore.shops.filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
+        }
+    } else {
+        spotlightShops = demoStore.shops.filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
+    }
 
     if (spotlightShops.length === 0) {
         carousel.innerHTML = `<div class="spotlight-card"><p style="font-size:12px;">🌟 Local merchants: Book a spotlight campaign in your dashboard to feature here!</p></div>`;
@@ -895,7 +920,7 @@ function renderSpotlightCarousel() {
     carousel.innerHTML = spotlightShops.map(s => `
         <div class="spotlight-card" onclick="showShopDetailModal('${escapeJs(s.id)}')">
             <div class="spotlight-card-top">
-                <img src="${s.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e'}" class="spotlight-img" alt="${escapeHtml(s.shop_name)}" />
+                <img src="${escapeAttr(s.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e')}" class="spotlight-img" alt="${escapeHtml(s.shop_name)}" />
                 <div>
                     <h4 class="spotlight-title">${escapeHtml(s.shop_name)}</h4>
                     <span class="spotlight-area">📍 ${escapeHtml(s.market_area)} • 🇬🇭 ${escapeHtml(s.digital_address || 'Tamale')}</span>
@@ -903,29 +928,58 @@ function renderSpotlightCarousel() {
             </div>
             <p class="spotlight-desc">${escapeHtml(s.description)}</p>
             <div class="spotlight-action">
-                <span>⭐ ${s.rating_avg} (${s.rating_count})</span>
+                <span>⭐ ${s.rating_avg || 0} (${s.rating_count || 0})</span>
                 <button class="spotlight-btn">Visit Stall ➔</button>
             </div>
         </div>
     `).join("");
 }
 
-function renderShowcaseSections() {
-    // 1. Popular Near You Carousel
+async function renderShowcaseSections() {
     const popularContainer = document.getElementById("popularNearCarousel");
-    const popularProducts = [...demoStore.products].sort((a, b) => b.rating_avg - a.rating_avg).slice(0, 5);
+    const newContainer = document.getElementById("newArrivalsCarousel");
+    let products = [];
+    let shops = [];
 
+    if (!DEMO_MODE && sbClient) {
+        try {
+            const { data: shopData, error: shopErr } = await sbClient.from('shops').select('*').eq('is_active', true);
+            if (shopErr) throw shopErr;
+            shops = shopData || [];
+            const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('in_stock', true);
+            if (prodErr) throw prodErr;
+            products = (prodData || []).map(p => {
+                const shop = shops.find(s => s.id === p.shop_id) || {};
+                return {
+                    ...p, item_type: "product",
+                    shop_name: shop.shop_name, market_area: shop.market_area,
+                    digital_address: shop.digital_address, whatsapp_number: shop.whatsapp_number,
+                    phone: shop.phone, latitude: shop.latitude, longitude: shop.longitude,
+                    verification_tier: shop.verification_tier, is_verified: shop.is_verified,
+                    ad_tier: shop.ad_tier
+                };
+            });
+        } catch (err) {
+            console.error("Showcase fetch error, using demo:", err);
+            products = [...demoStore.products];
+            shops = demoStore.shops;
+        }
+    } else {
+        products = [...demoStore.products];
+        shops = demoStore.shops;
+    }
+
+    // 1. Popular Near You Carousel
+    const popularProducts = [...products].sort((a, b) => (b.rating_avg || 0) - (a.rating_avg || 0)).slice(0, 5);
     popularContainer.innerHTML = popularProducts.map(p => {
-        const shop = demoStore.shops.find(s => s.id === p.shop_id) || {};
+        const shop = shops.find(s => s.id === p.shop_id) || {};
         return renderMiniProductCard(p, shop);
     }).join("");
 
     // 2. New Arrivals Carousel
-    const newContainer = document.getElementById("newArrivalsCarousel");
-    const newProducts = [...demoStore.products].reverse().slice(0, 5);
-
+    const newProducts = [...products].reverse().slice(0, 5);
     newContainer.innerHTML = newProducts.map(p => {
-        const shop = demoStore.shops.find(s => s.id === p.shop_id) || {};
+        const shop = shops.find(s => s.id === p.shop_id) || {};
         return renderMiniProductCard(p, shop);
     }).join("");
 }
@@ -935,8 +989,8 @@ function renderMiniProductCard(p, shop) {
     return `
         <div class="card ${isOut ? 'card-out-of-stock' : ''}" style="min-width: 200px; max-width: 220px; flex-shrink: 0;">
             <div class="card-img-container" style="height: 110px;">
-                <img src="${p.image_url}" class="card-img" alt="${escapeHtml(p.name)}" />
-                ${p.badge_tag ? `<span class="badge-tag ${p.badge_tag}" style="position:absolute; top:6px; left:6px;">${p.badge_tag.toUpperCase()}</span>` : ''}
+                <img src="${escapeAttr(p.image_url)}" class="card-img" alt="${escapeHtml(p.name)}" />
+                ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; top:6px; left:6px;">${p.badge_tag.toUpperCase()}</span>` : ''}
             </div>
             <h4 class="card-title" style="font-size: 13px; line-height: 1.2;">${escapeHtml(p.name)}</h4>
             <div class="price-row">
@@ -1099,11 +1153,11 @@ function renderProductCard(p) {
             </div>
 
             <div class="card-img-container">
-                <img src="${p.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e'}" class="card-img" alt="${escapeHtml(p.name)}" />
+                <img src="${escapeAttr(p.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e')}" class="card-img" alt="${escapeHtml(p.name)}" />
                 <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavoriteShop('${escapeJs(p.shop_id)}', event)" title="Bookmark Shop">
                     ${isFav ? '❤️' : '🤍'}
                 </button>
-                ${p.badge_tag ? `<span class="badge-tag ${p.badge_tag}" style="position:absolute; bottom:8px; left:8px;">${p.badge_tag.toUpperCase()}</span>` : ''}
+                ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; bottom:8px; left:8px;">${p.badge_tag.toUpperCase()}</span>` : ''}
             </div>
 
             <h3 class="card-title">${escapeHtml(p.name)}</h3>
@@ -1167,7 +1221,7 @@ function renderHotelCard(h) {
                 <span class="verification-badge trusted">⭐ Top Choice</span>
             </div>
             <div class="card-img-container" style="height: 140px; margin-top: 6px;">
-                <img src="${h.cover_image_url}" class="card-img" alt="${escapeHtml(h.business_name)}" />
+                <img src="${escapeAttr(h.cover_image_url)}" class="card-img" alt="${escapeHtml(h.business_name)}" />
             </div>
             <h3 class="card-title">${escapeHtml(h.business_name)}</h3>
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">📍 ${escapeHtml(h.address)} • 🇬🇭 ${escapeHtml(h.digital_address)}</div>
@@ -1196,7 +1250,7 @@ function renderEateryCard(e) {
                 <span class="verification-badge verified">🔵 Verified Spot</span>
             </div>
             <div class="card-img-container" style="height: 130px; margin-top: 6px;">
-                <img src="${e.cover_image_url}" class="card-img" alt="${escapeHtml(e.business_name)}" />
+                <img src="${escapeAttr(e.cover_image_url)}" class="card-img" alt="${escapeHtml(e.business_name)}" />
             </div>
             <h3 class="card-title">${escapeHtml(e.business_name)}</h3>
             <p style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">${escapeHtml(e.description)}</p>
@@ -1298,13 +1352,20 @@ async function openOrderModal(productId, shopId) {
             product = prod;
             const { data: shopData } = await sbClient.from('shops').select('*').eq('id', shopId).single();
             shop = shopData || {};
-        } catch (err) { console.error("Error loading order data:", err); }
-    } else {
+        } catch (err) {
+            console.error("Supabase fetch error in openOrderModal, trying demo store:", err);
+        }
+    }
+    // Fallback to demo store if Supabase fetch failed
+    if (!product) {
         product = demoStore.products.find(p => p.id === productId);
         shop = demoStore.shops.find(s => s.id === shopId) || {};
     }
 
-    if (!product) return;
+    if (!product) {
+        showToast("Could not load product details. Please try again.", "error");
+        return;
+    }
     activeOrderProduct = { product, shop, qty: 1 };
 
     const modalBody = document.getElementById("orderModalBody");
@@ -1312,7 +1373,7 @@ async function openOrderModal(productId, shopId) {
 
     modalBody.innerHTML = `
         <div style="display:flex; gap:12px; margin-bottom:16px; align-items:center; background:#f8fafc; padding:10px; border-radius:8px;">
-            <img src="${product.image_url}" style="width:60px; height:60px; object-fit:cover; border-radius:6px;" />
+            <img src="${escapeAttr(product.image_url)}" style="width:60px; height:60px; object-fit:cover; border-radius:6px;" />
             <div>
                 <h4 style="font-size:15px; font-weight:700; line-height:1.2;">${escapeHtml(product.name)}</h4>
                 <div style="font-size:12px; color:var(--text-muted);">🏪 ${escapeHtml(shop.shop_name)} • 📍 ${escapeHtml(shop.market_area)}</div>
@@ -1577,13 +1638,11 @@ async function renderTraderOrders() {
 }
 
 async function changeOrderStatus(orderId, newStatus) {
+    // Update demo store if present
     const order = demoStore.orders.find(o => o.id === orderId);
-    if (!order) return;
+    if (order) order.status = newStatus;
 
-    const oldStatus = order.status;
-    order.status = newStatus;
-
-    // Sync to Supabase if available
+    // Sync to Supabase
     if (!DEMO_MODE && sbClient) {
         try {
             await sbClient.from('orders').update({ status: newStatus }).eq('id', orderId);
@@ -1615,14 +1674,27 @@ async function renderBuyerOrders() {
     const container1 = document.getElementById("buyerOrdersList");
     const container2 = document.getElementById("accountOrdersList");
 
+    let orders = [];
+    if (!DEMO_MODE && sbClient) {
+        try {
+            const buyerId = currentUser ? currentUser.id : null;
+            if (buyerId) {
+                const { data, error } = await sbClient.from('orders').select('*').eq('buyer_id', buyerId).order('created_date', { ascending: false });
+                if (error) throw error;
+                orders = data || [];
+            }
+        } catch (err) { console.error("Error loading buyer orders:", err); }
+    }
+    if (orders.length === 0) orders = demoStore.orders;
+
     const render = (el) => {
         if (!el) return;
-        if (demoStore.orders.length === 0) {
+        if (orders.length === 0) {
             el.innerHTML = `<div class="empty-state"><p>📦 No express order reservations placed yet.</p></div>`;
             return;
         }
 
-        el.innerHTML = demoStore.orders.map(o => `
+        el.innerHTML = orders.map(o => `
             <div class="order-card">
                 <div class="order-card-header">
                     <span class="order-num">${escapeHtml(o.order_number)}</span>
@@ -1721,24 +1793,34 @@ async function renderTraderReviews() {
     const listEl = document.getElementById("traderReviewsList");
     if (!listEl) return;
 
-    if (demoStore.reviews.length === 0) {
+    let reviews = [];
+    if (!DEMO_MODE && sbClient && userShop) {
+        try {
+            const { data, error } = await sbClient.from('reviews').select('*').eq('shop_id', userShop.id).order('created_date', { ascending: false });
+            if (error) throw error;
+            reviews = data || [];
+        } catch (err) { console.error("Error loading reviews:", err); }
+    }
+    if (reviews.length === 0) reviews = demoStore.reviews;
+
+    if (reviews.length === 0) {
         listEl.innerHTML = `<p class="form-hint">No customer reviews yet.</p>`;
         return;
     }
 
-    listEl.innerHTML = demoStore.reviews.map(r => `
+    listEl.innerHTML = reviews.map(r => `
         <div class="card" style="margin-bottom:10px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <strong>${r.buyer_name} <span class="verification-badge verified">✓ Verified Buyer</span></strong>
-                <span class="star-rating">⭐ ${r.rating}.0</span>
+                <strong>${escapeHtml(r.buyer_name)} <span class="verification-badge verified">✓ Verified Buyer</span></strong>
+                <span class="star-rating">⭐ ${r.rating || 5}.0</span>
             </div>
-            <p style="font-size:13px; margin:6px 0;">"${r.comment}"</p>
+            <p style="font-size:13px; margin:6px 0;">"${escapeHtml(r.comment)}"</p>
             ${r.trader_reply ? `
                 <div style="background:#f1f5f9; padding:8px; border-radius:6px; font-size:12px; margin-top:6px;">
-                    <strong>Your Reply:</strong> ${r.trader_reply}
+                    <strong>Your Reply:</strong> ${escapeHtml(r.trader_reply)}
                 </div>
             ` : `
-                <button class="btn-secondary btn-sm" style="margin-top:6px;" onclick="openReplyModal('${r.id}')">💬 Reply to Review</button>
+                <button class="btn-secondary btn-sm" style="margin-top:6px;" onclick="openReplyModal('${escapeJs(r.id)}')">💬 Reply to Review</button>
             `}
         </div>
     `).join("");
@@ -1827,16 +1909,26 @@ async function renderAdminPanel() {
     const reportsList = document.getElementById("adminReportsList");
     if (!reportsList) return;
 
-    if (demoStore.reports.length === 0) {
+    let reports = [];
+    if (!DEMO_MODE && sbClient) {
+        try {
+            const { data, error } = await sbClient.from('reports').select('*').order('created_date', { ascending: false });
+            if (error) throw error;
+            reports = data || [];
+        } catch (err) { console.error("Error loading reports:", err); }
+    }
+    if (reports.length === 0) reports = demoStore.reports;
+
+    if (reports.length === 0) {
         reportsList.innerHTML = `<p class="form-hint">No pending reports in queue.</p>`;
         return;
     }
 
-    reportsList.innerHTML = demoStore.reports.map(r => `
+    reportsList.innerHTML = reports.map(r => `
         <div class="report-queue-card">
             <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700;">
-                <span>🚩 TYPE: ${r.reported_type.toUpperCase()} • CATEGORY: ${r.reason_category}</span>
-                <span>STATUS: ${r.status.toUpperCase()}</span>
+                <span>🚩 TYPE: ${escapeHtml(r.reported_type || '').toUpperCase()} • CATEGORY: ${escapeHtml(r.reason_category || '')}</span>
+                <span>STATUS: ${escapeHtml(r.status || '').toUpperCase()}</span>
             </div>
             <p style="font-size:13px; margin:8px 0;">${escapeHtml(r.description)}</p>
             <div style="display:flex; gap:6px;">
@@ -1948,20 +2040,30 @@ async function handleAdBookingSubmit(e) {
     showToast("Ad campaign application submitted! Admin approval pending.", "success");
 }
 
-function renderTraderAds() {
+async function renderTraderAds() {
     const container = document.getElementById("traderAdPlacementsList");
     if (!container) return;
 
-    if (demoStore.ad_placements.length === 0) {
+    let ads = [];
+    if (!DEMO_MODE && sbClient && userShop) {
+        try {
+            const { data, error } = await sbClient.from('ad_placements').select('*').eq('shop_id', userShop.id).order('created_date', { ascending: false });
+            if (error) throw error;
+            ads = data || [];
+        } catch (err) { console.error("Error loading ads:", err); }
+    }
+    if (ads.length === 0) ads = demoStore.ad_placements;
+
+    if (ads.length === 0) {
         container.innerHTML = `<p class="form-hint">No active spotlight campaigns.</p>`;
         return;
     }
 
-    container.innerHTML = demoStore.ad_placements.map(a => `
+    container.innerHTML = ads.map(a => `
         <div class="card" style="margin-bottom:8px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <strong>📢 ${a.ad_tier.toUpperCase()}</strong>
-                <span class="order-status-badge status-${a.status}">${a.status}</span>
+                <strong>📢 ${escapeHtml(a.ad_tier || '').toUpperCase()}</strong>
+                <span class="order-status-badge status-${escapeHtml(a.status || '')}">${escapeHtml(a.status || '')}</span>
             </div>
             <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
                 Ref: ${escapeHtml(a.payment_reference || 'N/A')} • Fee: GHS ${a.fee_paid_ghs}
@@ -1973,15 +2075,24 @@ function renderTraderAds() {
 // ====================================================================
 // 14. SHOP DETAIL MODAL & FAVORITES
 // ====================================================================
-function showShopDetailModal(shopId) {
-    const shop = demoStore.shops.find(s => s.id === shopId) || {};
-    const shopProducts = demoStore.products.filter(p => p.shop_id === shopId);
+async function showShopDetailModal(shopId) {
+    let shop = demoStore.shops.find(s => s.id === shopId) || {};
+    let shopProducts = demoStore.products.filter(p => p.shop_id === shopId);
+
+    if (!DEMO_MODE && sbClient) {
+        try {
+            const { data: shopData } = await sbClient.from('shops').select('*').eq('id', shopId).single();
+            if (shopData) shop = shopData;
+            const { data: prodData } = await sbClient.from('products').select('*').eq('shop_id', shopId).eq('in_stock', true);
+            if (prodData) shopProducts = prodData;
+        } catch (err) { console.error("Error loading shop detail:", err); }
+    }
     const shopReviews = demoStore.reviews.filter(r => r.shop_id === shopId);
 
     const modalBody = document.getElementById("modalBody");
     modalBody.innerHTML = `
         <div class="shop-modal-header" style="margin-bottom:16px;">
-            <img src="${shop.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e'}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; margin-bottom:12px;" />
+            <img src="${escapeAttr(shop.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e')}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; margin-bottom:12px;" />
             <h2 style="font-size:22px; font-weight:800;">${escapeHtml(shop.shop_name)}</h2>
             <div style="font-size:13px; color:var(--text-muted);">📍 ${escapeHtml(shop.address || shop.market_area)} • 🇬🇭 ${escapeHtml(shop.digital_address || 'NT-092-0621')}</div>
             <div class="star-rating" style="margin-top:6px;">⭐ ${shop.rating_avg || 4.8} (${shop.rating_count || 12} customer reviews)</div>
