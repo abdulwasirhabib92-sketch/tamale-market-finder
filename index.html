@@ -2,11 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://*.tile.openstreetmap.org https://unpkg.com data: blob: https:; connect-src 'self' https: wss:; font-src 'self' https: data:;">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-    <title>Tamale Market Finder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tamale Market Finder — Local Shops, E-Commerce & Ghana Post GPS Map</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Leaflet for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,226 +12,982 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
     <!-- Header -->
     <header class="header">
         <div class="header-inner">
-            <h1 class="logo">🛒 Tamale Market Finder</h1>
-            <nav class="nav">
-                <button class="nav-btn active" data-page="home">Find Products</button>
-                <button class="nav-btn" data-page="trader">Trader Portal</button>
-            </nav>
+            <div class="logo-group" id="logoGroup" style="cursor: pointer;">
+                <span class="logo-icon">🛒</span>
+                <div class="logo-text">
+                    <h1 class="logo-title">Tamale Market Finder</h1>
+                    <span class="logo-tagline">Central • Aboabo • Lamashegu • Kukuo • Old Market</span>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <button class="menu-btn" id="menuToggle" aria-label="Toggle Navigation Menu">
+                    <span class="avatar-circle" id="headerAvatar">👤</span>
+                    <span class="menu-label" id="navUserName">Account</span>
+                    <span class="hamburger-icon">☰</span>
+                </button>
+            </div>
         </div>
     </header>
 
-    <!-- HOME PAGE: Customer search + map -->
-    <div id="page-home" class="page active">
-        <div class="search-section">
-            <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="Search for a product... (e.g., yam, fabric, phone charger)" />
-                <select id="categoryFilter">
-                    <option value="">All Categories</option>
-                    <option value="Grains & Cereals">🌾 Grains & Cereals</option>
-                    <option value="Meat & Livestock">🥩 Meat & Livestock</option>
-                    <option value="Textiles & Smocks">🧵 Textiles & Smocks</option>
-                    <option value="Electronics & Phones">📱 Electronics & Phones</option>
-                    <option value="Hardware & Building">🔨 Hardware & Building</option>
-                    <option value="Fresh Produce">🍎 Fresh Produce</option>
-                    <option value="Pharmacy & Health">💊 Pharmacy & Health</option>
-                    <option value="Cooked Food">🍳 Cooked Food</option>
-                    <option value="Crafts & Artifacts">🎨 Crafts & Artifacts</option>
-                    <option value="Cosmetics & Toiletries">🧴 Cosmetics & Toiletries</option>
-                    <option value="Tools & Equipment">🛠️ Tools & Equipment</option>
-                    <option value="General Goods">📦 General Goods</option>
-                </select>
-                <button id="searchBtn" class="btn-primary">Search</button>
+    <!-- Slide-Over Drawer Menu & Backdrop -->
+    <div id="drawerBackdrop" class="drawer-backdrop"></div>
+    <aside id="menuDrawer" class="menu-drawer">
+        <div class="drawer-header">
+            <div class="user-profile-summary">
+                <div class="user-avatar-large" id="drawerAvatar">👤</div>
+                <div class="user-info">
+                    <h3 id="drawerName">Guest User</h3>
+                    <span class="role-badge shopper" id="drawerRoleBadge">Shopper</span>
+                    <p class="user-email" id="drawerEmail">Sign in to save shops, order & manage listings</p>
+                </div>
             </div>
-            <div class="market-filter">
-                <label>Market Area:</label>
-                <select id="marketFilter">
-                    <option value="">All Markets</option>
-                    <option value="Central Market">Tamale Central Market</option>
-                    <option value="Aboabo Market">Aboabo Market</option>
-                    <option value="Old Market">Old Market</option>
-                    <option value="Lamashegu">Lamashegu</option>
-                    <option value="Kukuo">Kukuo</option>
-                    <option value="Other">Other Areas</option>
-                </select>
+            <button class="drawer-close" id="closeDrawer" aria-label="Close menu">&times;</button>
+        </div>
+
+        <nav class="drawer-nav">
+            <a href="#" class="drawer-item active" data-nav="home">
+                <span class="drawer-icon">🔍</span> Explore Markets
+            </a>
+            <a href="#" class="drawer-item" data-nav="map-mobile">
+                <span class="drawer-icon">🗺️</span> Interactive Map
+            </a>
+            <a href="#" class="drawer-item" data-nav="favorites">
+                <span class="drawer-icon">❤️</span> Saved Shops
+                <span class="badge-count" id="favCountBadge">0</span>
+            </a>
+            <a href="#" class="drawer-item" data-nav="my-orders">
+                <span class="drawer-icon">🛍️</span> My Orders
+                <span class="badge-count" id="ordersCountBadge" style="display:none;">0</span>
+            </a>
+            <a href="#" class="drawer-item" data-nav="account-trader">
+                <span class="drawer-icon">🏪</span> Trader Dashboard
+                <span class="trader-indicator" id="traderBadgeText">Become a Trader</span>
+            </a>
+            <a href="#" class="drawer-item" data-nav="account-admin" id="adminDrawerItem" style="display:none;">
+                <span class="drawer-icon">🛡️</span> Admin Moderation
+            </a>
+            <a href="#" class="drawer-item" data-nav="account-settings">
+                <span class="drawer-icon">⚙️</span> Account Settings
+            </a>
+            <hr class="drawer-divider">
+            <button class="drawer-auth-btn" id="drawerAuthActionBtn">
+                <span class="drawer-icon">🔑</span> Sign In / Register
+            </button>
+        </nav>
+
+        <div class="drawer-footer">
+            <p>🇬🇭 Tamale Market Finder v2.0</p>
+            <p style="font-size: 11px; margin-top: 2px;">Integrated with Ghana Post GPS API</p>
+        </div>
+    </aside>
+
+    <!-- MAIN APP PAGES -->
+
+    <!-- PAGE 1: EXPLORE / HOME VIEW -->
+    <main id="page-home" class="page active">
+        <!-- Spotlight Ads Header Banner Carousel -->
+        <section class="spotlight-section" id="spotlightSection">
+            <div class="spotlight-header">
+                <span class="spotlight-badge">🔥 Spotlight Featured</span>
+                <span class="spotlight-subtitle">Top Verified Merchants & Sponsored Listings in Tamale</span>
+            </div>
+            <div class="spotlight-carousel" id="spotlightCarousel">
+                <!-- Dynamically populated spotlight items -->
+            </div>
+        </section>
+
+        <!-- Domain Switching Tabs (Products, Services, Hotels, Eateries, Companies) -->
+        <div class="domain-tabs-wrapper">
+            <div class="domain-tabs" id="domainTabs">
+                <button class="domain-tab active" data-domain="product">📦 Products</button>
+                <button class="domain-tab" data-domain="service">🛠️ Services</button>
+                <button class="domain-tab" data-domain="hotel">🏨 Hotels & Lodging</button>
+                <button class="domain-tab" data-domain="eatery">🍲 Eateries & Food</button>
+                <button class="domain-tab" data-domain="company">🏢 Companies & Hubs</button>
             </div>
         </div>
 
-        <div class="results-container">
+        <!-- Search & Filter Controls -->
+        <section class="search-section">
+            <div class="search-bar">
+                <div class="search-input-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Search products, services, hotels, or Ghana Post address (e.g. yam, smock, NT-092)..." autocomplete="off" />
+                    <button type="button" id="clearSearchBtn" class="clear-btn" style="display:none;">&times;</button>
+                </div>
+                <button id="searchBtn" class="btn-primary search-submit-btn">Search</button>
+            </div>
+
+            <!-- Horizontal Category Carousel Pills -->
+            <div class="category-carousel-wrapper">
+                <div class="category-pills" id="categoryPills">
+                    <!-- Populated dynamically based on selected domain -->
+                </div>
+            </div>
+
+            <!-- Secondary Filters: Market Area & Open Status -->
+            <div class="secondary-filters">
+                <div class="filter-group">
+                    <label for="marketFilter">📍 Market Area:</label>
+                    <select id="marketFilter">
+                        <option value="">All Areas in Tamale</option>
+                        <option value="Central Market">Tamale Central Market</option>
+                        <option value="Aboabo Market">Aboabo Market</option>
+                        <option value="Old Market">Old Market</option>
+                        <option value="Lamashegu">Lamashegu Market</option>
+                        <option value="Kukuo">Kukuo Market</option>
+                        <option value="Other">Other Surrounding Areas</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="statusFilter">🕐 Open / Stock Filter:</label>
+                    <select id="statusFilter">
+                        <option value="">All Listings</option>
+                        <option value="open">Open Now Only</option>
+                        <option value="in_stock">In Stock Only</option>
+                        <option value="verified">Verified Traders Only</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- E-Commerce Showcase Sections (Popular Near You & New Arrivals) -->
+        <div class="showcase-sections" id="showcaseSections">
+            <section class="showcase-group">
+                <div class="section-title-row">
+                    <h3>📍 Popular Near You</h3>
+                    <span class="section-subtitle">Ranked by GPS proximity & Bayesian customer rating</span>
+                </div>
+                <div class="showcase-carousel" id="popularNearCarousel">
+                    <!-- Cards rendered by JS -->
+                </div>
+            </section>
+
+            <section class="showcase-group">
+                <div class="section-title-row">
+                    <h3>✨ New Arrivals</h3>
+                    <span class="section-subtitle">Recently added stalls & fresh inventory in Tamale</span>
+                </div>
+                <div class="showcase-carousel" id="newArrivalsCarousel">
+                    <!-- Cards rendered by JS -->
+                </div>
+            </section>
+        </div>
+
+        <!-- Main Results & Map Split Container -->
+        <div class="results-container" id="resultsContainer">
+            <div class="results-header-bar">
+                <h3 id="resultsTitle">All Marketplace Listings</h3>
+                <span class="results-count" id="resultsCount">0 items found</span>
+            </div>
+
             <div class="results-list" id="resultsList">
                 <div class="empty-state">
-                    <p>🔍 Search for a product to find shops near you in Tamale</p>
+                    <div class="spinner"></div>
+                    <p>Loading market listings...</p>
                 </div>
             </div>
-            <div class="map-container">
+
+            <div class="map-container" id="mapContainer">
                 <div id="map"></div>
+                <div class="map-overlay-info" id="mapOverlayInfo">Tap a marker to view stall details</div>
+            </div>
+        </div>
+
+        <!-- Floating Mobile View Switcher Pill -->
+        <button id="mobileViewToggle" class="floating-view-toggle">
+            <span id="viewToggleIcon">🗺️</span> <span id="viewToggleText">View Map</span>
+        </button>
+    </main>
+
+    <!-- PAGE 2: SAVED SHOPS / FAVORITES -->
+    <main id="page-favorites" class="page">
+        <div class="page-header">
+            <h2>❤️ Saved Shops & Bookmarks</h2>
+            <p>Quick access to your favorite market stalls and traders in Tamale</p>
+        </div>
+        <div id="favoritesList" class="results-grid">
+            <div class="empty-state">
+                <p>❤️ You haven't bookmarked any shops yet. Click the heart icon on shop cards to save them here.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- PAGE 3: BUYER ORDERS HISTORY -->
+    <main id="page-orders" class="page">
+        <div class="page-header">
+            <h2>🛍️ My Order Reservations</h2>
+            <p>Track your express reservations & pickup status with Tamale traders</p>
+        </div>
+        <div id="buyerOrdersList" class="orders-list">
+            <div class="empty-state">
+                <p>📦 You have no order reservations yet. Select a product and tap 'Order Now' to reserve items!</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- PAGE 4: USER ACCOUNT & SETTINGS / TRADER DASHBOARD / ADMIN -->
+    <main id="page-account" class="page">
+        <div class="account-container">
+            <!-- Account View Sub-Navigation Tabs -->
+            <div class="account-tabs">
+                <button class="acc-tab-btn active" data-acctab="profile">⚙️ Profile & Settings</button>
+                <button class="acc-tab-btn" data-acctab="orders">🛍️ My Orders</button>
+                <button class="acc-tab-btn" data-acctab="trader">🏪 Trader Dashboard</button>
+                <button class="acc-tab-btn" data-acctab="admin" id="adminTabBtn">🛡️ Admin Moderation</button>
+            </div>
+
+            <!-- SUB-TAB 1: USER PROFILE & SETTINGS -->
+            <div id="acctab-profile" class="acc-tab-content active">
+                <div class="card settings-card">
+                    <h3>My Account Profile</h3>
+                    <p class="card-subtitle">Manage your personal contact details and account preferences</p>
+                    
+                    <form id="profileForm">
+                        <div class="form-group">
+                            <label for="profName">Full Name</label>
+                            <input type="text" id="profName" placeholder="e.g. Wasir Habib" required />
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="profEmail">Email Address</label>
+                                <input type="email" id="profEmail" disabled readonly style="background: #f1f5f9; cursor: not-allowed;" />
+                                <small class="form-hint">Email cannot be changed directly</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="profPhone">Phone Number</label>
+                                <input type="tel" id="profPhone" placeholder="e.g. 0244123456" />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="profPreferredMarket">Preferred Market Area</label>
+                            <select id="profPreferredMarket">
+                                <option value="">Select primary market</option>
+                                <option value="Central Market">Tamale Central Market</option>
+                                <option value="Aboabo Market">Aboabo Market</option>
+                                <option value="Lamashegu">Lamashegu</option>
+                                <option value="Kukuo">Kukuo</option>
+                                <option value="Old Market">Old Market</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group account-type-selector">
+                            <label>Account Role</label>
+                            <div class="radio-cards">
+                                <label class="radio-card">
+                                    <input type="radio" name="accountRole" value="shopper" id="roleShopper" checked />
+                                    <div class="radio-content">
+                                        <strong>🛒 Shopper</strong>
+                                        <span>Browse markets, reserve items, save shops, leave reviews</span>
+                                    </div>
+                                </label>
+                                <label class="radio-card">
+                                    <input type="radio" name="accountRole" value="trader" id="roleTrader" />
+                                    <div class="radio-content">
+                                        <strong>🏪 Market Trader</strong>
+                                        <span>List your stall, manage stock inventory, receive orders & book ads</span>
+                                    </div>
+                                </label>
+                                <label class="radio-card">
+                                    <input type="radio" name="accountRole" value="admin" id="roleAdmin" />
+                                    <div class="radio-content">
+                                        <strong>🛡️ Platform Admin</strong>
+                                        <span>Moderate reported listings, manage verification & approve ads</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary" id="saveProfileBtn">Save Profile Changes</button>
+                    </form>
+                </div>
+
+                <!-- Password Change Card -->
+                <div class="card settings-card">
+                    <h3>Security & Password</h3>
+                    <p class="card-subtitle">Update your account password</p>
+                    <form id="changePasswordForm">
+                        <div class="form-group">
+                            <label for="newPasswordInput">New Password</label>
+                            <input type="password" id="newPasswordInput" placeholder="Min 6 characters" minlength="6" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmPasswordInput">Confirm New Password</label>
+                            <input type="password" id="confirmPasswordInput" placeholder="Re-enter password" required />
+                        </div>
+                        <button type="submit" class="btn-secondary" id="updatePasswordBtn">Update Password</button>
+                    </form>
+                </div>
+
+                <!-- Sign Out -->
+                <div class="card settings-card" style="border-color: #fee2e2;">
+                    <h3>Sign Out</h3>
+                    <p class="card-subtitle">Log out of your Tamale Market Finder account on this device</p>
+                    <button id="accountSignOutBtn" class="btn-danger">Sign Out of Account</button>
+                </div>
+            </div>
+
+            <!-- SUB-TAB 2: BUYER ORDERS TAB IN ACCOUNT VIEW -->
+            <div id="acctab-orders" class="acc-tab-content">
+                <div class="card settings-card">
+                    <h3>My Orders & Reservations</h3>
+                    <p class="card-subtitle">View active reservations, pickup notes, and leave reviews for completed orders</p>
+                    <div id="accountOrdersList" class="orders-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-TAB 3: TRADER DASHBOARD -->
+            <div id="acctab-trader" class="acc-tab-content">
+                <!-- Trader Prompt if Shopper -->
+                <div id="trader-upgrade-prompt" class="card settings-card text-center" style="display: none;">
+                    <div class="upgrade-icon">🏪</div>
+                    <h3>Become a Registered Trader</h3>
+                    <p>Unlock the Trader Dashboard to list your shop stall, manage product inventory with inline stock counters, process incoming buyer orders, and advertise your business in Tamale.</p>
+                    <button class="btn-primary btn-large" id="enableTraderRoleBtn" style="margin-top: 15px;">
+                        Enable Trader Role Now
+                    </button>
+                </div>
+
+                <!-- Active Trader Dashboard -->
+                <div id="trader-dashboard-content">
+                    <div class="trader-dash-header card">
+                        <div class="trader-dash-info">
+                            <h2 id="traderShopNameHeader">My Market Stall</h2>
+                            <div class="trader-badges-row">
+                                <span class="badge-verification" id="traderVerBadge">⚪ Unverified</span>
+                                <span class="badge-ad" id="traderAdBadge">Free Plan</span>
+                                <span class="trader-rating-score" id="traderRatingHeader">⭐ 0.0 (0 reviews)</span>
+                            </div>
+                        </div>
+                        <div class="trader-dash-subtabs">
+                            <button class="trader-subtab-btn active" data-tradersub="shop">📦 Shop & Products</button>
+                            <button class="trader-subtab-btn" data-tradersub="orders">📑 Incoming Orders <span class="badge-count-inline" id="traderOrdersBadge">0</span></button>
+                            <button class="trader-subtab-btn" data-tradersub="reviews">💬 Reviews <span class="badge-count-inline" id="traderReviewsBadge">0</span></button>
+                            <button class="trader-subtab-btn" data-tradersub="ads">📢 Advertising</button>
+                        </div>
+                    </div>
+
+                    <!-- TRADER SUB-TAB 1: SHOP & PRODUCTS -->
+                    <div id="trader-sub-shop" class="trader-subtab-content active">
+                        <!-- Shop Management Card -->
+                        <div class="card settings-card">
+                            <div class="card-header-flex">
+                                <h3 id="shopFormTitle">Market Stall Details</h3>
+                                <span class="status-badge" id="shopStatusBadge">Not Configured</span>
+                            </div>
+                            <form id="shopForm">
+                                <div class="form-group">
+                                    <label for="shopName">Shop / Stall Name *</label>
+                                    <input type="text" id="shopName" placeholder="e.g. Alhassan Grain Store & Produce" required />
+                                </div>
+
+                                <div class="form-row-2">
+                                    <div class="form-group">
+                                        <label for="shopCategory">Primary Category *</label>
+                                        <select id="shopCategory" required>
+                                            <option value="">Select Category</option>
+                                            <option value="Grains & Cereals">🌾 Grains & Cereals</option>
+                                            <option value="Meat & Livestock">🥩 Meat & Livestock</option>
+                                            <option value="Textiles & Smocks">🧵 Textiles & Smocks</option>
+                                            <option value="Electronics & Phones">📱 Electronics & Phones</option>
+                                            <option value="Hardware & Building">🔨 Hardware & Building</option>
+                                            <option value="Fresh Produce">🍎 Fresh Produce</option>
+                                            <option value="Pharmacy & Health">💊 Pharmacy & Health</option>
+                                            <option value="Cooked Food">🍳 Cooked Food</option>
+                                            <option value="Crafts & Artifacts">🎨 Crafts & Artifacts</option>
+                                            <option value="General Goods">📦 General Goods</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="shopMarketArea">Market Location *</label>
+                                        <select id="shopMarketArea" required>
+                                            <option value="">Select Market Area</option>
+                                            <option value="Central Market">Tamale Central Market</option>
+                                            <option value="Aboabo Market">Aboabo Market</option>
+                                            <option value="Lamashegu">Lamashegu Market</option>
+                                            <option value="Kukuo">Kukuo Market</option>
+                                            <option value="Old Market">Old Market</option>
+                                            <option value="Other">Other Area</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Ghana Post GPS Digital Address Integration -->
+                                <div class="card gps-integration-card">
+                                    <div class="gps-card-title">
+                                        <span>🇬🇭 Ghana Post GPS Digital Address</span>
+                                        <span class="gps-badge-tag">Official Location</span>
+                                    </div>
+                                    <p class="form-hint">Enter your stall's digital address (e.g. <strong>NT-092-0621</strong>) or click the GPS button to auto-detect coordinates.</p>
+                                    
+                                    <div class="form-group">
+                                        <label for="shopDigitalAddress">Digital Address Code</label>
+                                        <div class="input-with-btn">
+                                            <input type="text" id="shopDigitalAddress" placeholder="e.g. NT-092-0621" uppercase />
+                                            <button type="button" class="btn-secondary" id="lookupDigitalAddressBtn">🔍 Lookup Address</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="gps-action-row">
+                                        <button type="button" class="btn-gps" id="getLocationBtn">
+                                            <span>📍 Use My Device GPS & Auto-Fill Digital Address</span>
+                                        </button>
+                                        <span class="location-status-text" id="locationStatus">GPS Pin: Not Set</span>
+                                    </div>
+
+                                    <div class="form-row-2" style="margin-top: 10px;">
+                                        <div class="form-group">
+                                            <label for="shopLat">Latitude</label>
+                                            <input type="number" step="any" id="shopLat" placeholder="9.4075" readonly />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="shopLng">Longitude</label>
+                                            <input type="number" step="any" id="shopLng" placeholder="-0.8357" readonly />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="shopAddress">Physical Directions / Stall Number</label>
+                                    <input type="text" id="shopAddress" placeholder="e.g. Shed B-45, Near Aboabo Main Mosque Gate" />
+                                </div>
+
+                                <div class="form-row-2">
+                                    <div class="form-group">
+                                        <label for="shopPhone">Phone Number</label>
+                                        <input type="tel" id="shopPhone" placeholder="0244123456" />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="shopWhatsapp">WhatsApp Contact Number *</label>
+                                        <input type="tel" id="shopWhatsapp" placeholder="e.g. 233244123456" required />
+                                        <small class="form-hint">Include country code without + (e.g. 233244123456)</small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="shopHours">Opening Hours</label>
+                                    <input type="text" id="shopHours" placeholder="e.g. Mon-Sat: 7:00 AM - 6:00 PM" />
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="shopDescription">Stall Description & Specialization</label>
+                                    <textarea id="shopDescription" rows="3" placeholder="Describe the items you sell, wholesale/retail deals, and landmarks..."></textarea>
+                                </div>
+
+                                <button type="submit" class="btn-primary" id="saveShopBtn">Save Market Stall Details</button>
+                            </form>
+                        </div>
+
+                        <!-- Product Inventory Management with Temu-style Inline Stock Control -->
+                        <div class="card settings-card" id="products-card">
+                            <div class="card-header-flex">
+                                <div>
+                                    <h3>Inventory & Stock Control</h3>
+                                    <p class="card-subtitle">Manage product prices, urgency badges, and quick stock count adjustments</p>
+                                </div>
+                                <button class="btn-primary" id="addProductBtn">+ Add New Product</button>
+                            </div>
+
+                            <div class="inventory-table-wrapper">
+                                <div id="productsList" class="products-table-list">
+                                    <p class="form-hint">Please save your stall details first before adding inventory items.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TRADER SUB-TAB 2: INCOMING ORDERS -->
+                    <div id="trader-sub-orders" class="trader-subtab-content">
+                        <div class="card settings-card">
+                            <div class="card-header-flex">
+                                <h3>Incoming Buyer Orders & Reservations</h3>
+                                <div class="order-filter-btns">
+                                    <button class="order-subfilter-btn active" data-orderfilter="all">All</button>
+                                    <button class="order-subfilter-btn" data-orderfilter="placed">Pending ⏳</button>
+                                    <button class="order-subfilter-btn" data-orderfilter="accepted">Accepted 👍</button>
+                                    <button class="order-subfilter-btn" data-orderfilter="ready">Ready 📦</button>
+                                    <button class="order-subfilter-btn" data-orderfilter="completed">Completed ✅</button>
+                                </div>
+                            </div>
+                            <div id="traderOrdersList" class="orders-list">
+                                <!-- Rendered by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TRADER SUB-TAB 3: CUSTOMER REVIEWS -->
+                    <div id="trader-sub-reviews" class="trader-subtab-content">
+                        <div class="card settings-card">
+                            <h3>Customer Ratings & Reviews</h3>
+                            <p class="card-subtitle">View reviews left by verified buyers and reply to customer feedback</p>
+                            <div id="traderReviewsList" class="reviews-list">
+                                <!-- Rendered by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TRADER SUB-TAB 4: ADVERTISING / SPOTLIGHT BOOKING -->
+                    <div id="trader-sub-ads" class="trader-subtab-content">
+                        <div class="card settings-card">
+                            <h3>📢 Business Spotlight & Ad Manager</h3>
+                            <p class="card-subtitle">Boost your stall to the top of search results and home banner carousel</p>
+                            
+                            <!-- Ad Pricing Cards Grid -->
+                            <div class="ad-pricing-grid">
+                                <div class="ad-tier-card">
+                                    <div class="ad-tier-header">🔥 Basic Spotlight</div>
+                                    <div class="ad-tier-price">GHS 25 <span>/ 7 Days</span></div>
+                                    <ul class="ad-tier-features">
+                                        <li>✓ Home page banner carousel placement</li>
+                                        <li>✓ "🔥 Spotlight" badge on product cards</li>
+                                        <li>✓ 1.5x Search Ranking Boost</li>
+                                    </ul>
+                                    <button class="btn-secondary btn-block" onclick="openAdBookingModal('basic_spotlight')">Book Basic Spotlight</button>
+                                </div>
+
+                                <div class="ad-tier-card featured-tier">
+                                    <div class="ad-popular-tag">MOST POPULAR</div>
+                                    <div class="ad-tier-header">✨ Category Featured</div>
+                                    <div class="ad-tier-price">GHS 40 <span>/ 7 Days</span></div>
+                                    <ul class="ad-tier-features">
+                                        <li>✓ Fixed Top #1-#3 position in category</li>
+                                        <li>✓ Highlighted gold border card</li>
+                                        <li>✓ 2.0x Search Ranking Boost</li>
+                                    </ul>
+                                    <button class="btn-primary btn-block" onclick="openAdBookingModal('category_featured')">Book Category Featured</button>
+                                </div>
+
+                                <div class="ad-tier-card premium-tier">
+                                    <div class="ad-tier-header">⭐ Premium Top Placement</div>
+                                    <div class="ad-tier-price">GHS 70 <span>/ 7 Days</span></div>
+                                    <ul class="ad-tier-features">
+                                        <li>✓ Priority #1 overall search ranking</li>
+                                        <li>✓ Exclusive Gold Pin on Leaflet Map</li>
+                                        <li>✓ 3.0x Search Ranking Boost</li>
+                                    </ul>
+                                    <button class="btn-secondary btn-block" onclick="openAdBookingModal('premium_top')">Book Premium Top</button>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 25px;">
+                                <h4>My Active & Pending Ad Campaigns</h4>
+                                <div id="traderAdPlacementsList" class="ad-campaigns-list">
+                                    <!-- Rendered by JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-TAB 4: ADMIN MODERATION PANEL -->
+            <div id="acctab-admin" class="acc-tab-content">
+                <div class="card settings-card">
+                    <div class="card-header-flex">
+                        <div>
+                            <h3>🛡️ Platform Anti-Fraud & Moderation Panel</h3>
+                            <p class="card-subtitle">Review flagged reports, manage merchant verification tiers, run AI scam scans & approve ad bookings</p>
+                        </div>
+                        <button class="btn-secondary" id="runAiScanBtn">🤖 Run AI Security Scan</button>
+                    </div>
+
+                    <div class="admin-subtabs">
+                        <button class="admin-subtab-btn active" data-adminsub="reports">🚩 Pending Reports Queue</button>
+                        <button class="admin-subtab-btn" data-adminsub="users">👥 User & Verification Tiers</button>
+                        <button class="admin-subtab-btn" data-adminsub="ads">📢 Ad Approvals Queue</button>
+                    </div>
+
+                    <div id="admin-sub-reports" class="admin-tab-content active">
+                        <div id="adminReportsList" class="reports-queue-list">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+
+                    <div id="admin-sub-users" class="admin-tab-content">
+                        <div id="adminUsersList" class="users-management-list">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+
+                    <div id="admin-sub-ads" class="admin-tab-content">
+                        <div id="adminAdsList" class="ads-approvals-list">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DIALOGS -->
+
+    <!-- AUTHENTICATION MODAL -->
+    <div id="authModal" class="modal">
+        <div class="modal-backdrop" id="authModalBackdrop"></div>
+        <div class="modal-content card">
+            <button class="modal-close" id="closeAuthModal">&times;</button>
+            <div class="auth-header">
+                <h2>Welcome to Tamale Market Finder</h2>
+                <p id="authSubtitle">Sign in or create an account to reserve items and connect with local traders</p>
+            </div>
+
+            <!-- Auth Tabs Switcher -->
+            <div class="auth-tabs">
+                <button class="auth-tab-btn active" data-authtab="login">Sign In</button>
+                <button class="auth-tab-btn" data-authtab="register">Register</button>
+                <button class="auth-tab-btn" data-authtab="forgot">Forgot Password</button>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <form id="loginForm" class="auth-form active">
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="your.email@example.com" required />
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required />
+                </div>
+                <button type="submit" class="btn-primary btn-block" id="loginBtn">Sign In</button>
+            </form>
+
+            <!-- REGISTER FORM -->
+            <form id="registerForm" class="auth-form">
+                <div class="form-group">
+                    <label for="regName">Full Name *</label>
+                    <input type="text" id="regName" placeholder="e.g. Wasir Habib" required />
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">Email Address *</label>
+                    <input type="email" id="regEmail" placeholder="your.email@example.com" required />
+                </div>
+                <div class="form-group">
+                    <label for="regPhone">Phone Number (Ghana) *</label>
+                    <input type="tel" id="regPhone" placeholder="e.g. 0244123456" required />
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Password *</label>
+                    <input type="password" id="regPassword" placeholder="Min 6 characters" minlength="6" required />
+                </div>
+                <div class="form-group">
+                    <label for="regRole">I want to join as:</label>
+                    <select id="regRole" required>
+                        <option value="shopper">🛒 Shopper (Browse, Reserve & Save Shops)</option>
+                        <option value="trader">🏪 Market Trader (List Stall & Products)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary btn-block" id="registerBtn">Create Free Account</button>
+            </form>
+
+            <!-- FORGOT PASSWORD FORM -->
+            <form id="forgotForm" class="auth-form">
+                <p class="form-hint" style="margin-bottom: 12px;">Enter your account email to receive a password reset link.</p>
+                <div class="form-group">
+                    <label for="forgotEmail">Email Address</label>
+                    <input type="email" id="forgotEmail" placeholder="your.email@example.com" required />
+                </div>
+                <button type="submit" class="btn-primary btn-block" id="forgotBtn">Send Reset Link</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- IN-APP EXPRESS ORDER / RESERVATION MODAL -->
+    <div id="orderModal" class="modal">
+        <div class="modal-backdrop" onclick="closeModal('orderModal')"></div>
+        <div class="modal-content card drawer-modal">
+            <button class="modal-close" onclick="closeModal('orderModal')">&times;</button>
+            <div class="modal-header">
+                <h2>🛒 Express Item Reservation</h2>
+                <p class="modal-subtitle">Reserve stock directly with the stall trader. No upfront online payment required!</p>
+            </div>
+            <div class="modal-body" id="orderModalBody">
+                <!-- Dynamically rendered order form -->
             </div>
         </div>
     </div>
 
-    <!-- TRADER PORTAL PAGE -->
-    <div id="page-trader" class="page">
-        <!-- Login/Register -->
-        <div id="trader-auth" class="trader-auth">
-            <div class="auth-card">
-                <h2>Trader Portal</h2>
-                <p>Create an account or sign in to manage your shop</p>
-                <div class="tabs">
-                    <button class="tab-btn active" data-tab="login">Sign In</button>
-                    <button class="tab-btn" data-tab="register">Register</button>
-                </div>
-                <div id="tab-login" class="tab-content active">
-                    <input type="email" id="loginEmail" placeholder="Email" />
-                    <input type="password" id="loginPassword" placeholder="Password" />
-                    <button class="btn-primary" id="loginBtn">Sign In</button>
-                </div>
-                <div id="tab-register" class="tab-content">
-                    <input type="text" id="regName" placeholder="Your Name" />
-                    <input type="email" id="regEmail" placeholder="Email" />
-                    <input type="password" id="regPassword" placeholder="Password" />
-                    <button class="btn-primary" id="registerBtn">Create Account</button>
-                </div>
-                <p class="auth-note">Free to join. No fees.</p>
-            </div>
-        </div>
-
-        <!-- Trader Dashboard (shown after login) -->
-        <div id="trader-dashboard" class="trader-dashboard" style="display:none;">
-            <div class="dashboard-header">
-                <h2>My Shop</h2>
-                <button class="btn-secondary" id="logoutBtn">Sign Out</button>
-            </div>
-
-            <!-- Shop Setup -->
-            <div class="card" id="shop-setup-card">
-                <h3>Shop Details</h3>
-                <form id="shopForm">
-                    <div class="form-row">
-                        <input type="text" id="shopName" placeholder="Shop name *" required />
-                    </div>
-                    <div class="form-row">
-                        <select id="shopCategory" required>
-                            <option value="">Select category *</option>
-                            <option value="Grains & Cereals">🌾 Grains & Cereals</option>
-                            <option value="Meat & Livestock">🥩 Meat & Livestock</option>
-                            <option value="Textiles & Smocks">🧵 Textiles & Smocks</option>
-                            <option value="Electronics & Phones">📱 Electronics & Phones</option>
-                            <option value="Hardware & Building">🔨 Hardware & Building</option>
-                            <option value="Fresh Produce">🍎 Fresh Produce</option>
-                            <option value="Pharmacy & Health">💊 Pharmacy & Health</option>
-                            <option value="Cooked Food">🍳 Cooked Food</option>
-                            <option value="Crafts & Artifacts">🎨 Crafts & Artifacts</option>
-                            <option value="Cosmetics & Toiletries">🧴 Cosmetics & Toiletries</option>
-                            <option value="Tools & Equipment">🛠️ Tools & Equipment</option>
-                            <option value="General Goods">📦 General Goods</option>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <select id="shopMarketArea">
-                            <option value="">Select market area</option>
-                            <option value="Central Market">Tamale Central Market</option>
-                            <option value="Aboabo Market">Aboabo Market</option>
-                            <option value="Old Market">Old Market</option>
-                            <option value="Lamashegu">Lamashegu</option>
-                            <option value="Kukuo">Kukuo</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <input type="text" id="shopAddress" placeholder="Address / Landmark (e.g., near Aboabo junction)" />
-                    </div>
-                    <div class="form-row">
-                        <input type="text" id="shopPhone" placeholder="Phone number" />
-                    </div>
-                    <div class="form-row">
-                        <input type="text" id="shopHours" placeholder="Opening hours (e.g., 8am–6pm daily)" />
-                    </div>
-                    <div class="form-row">
-                        <textarea id="shopDescription" placeholder="Short description of your shop"></textarea>
-                    </div>
-                    <div class="form-row location-row">
-                        <button type="button" class="btn-secondary" id="getLocationBtn">📍 Use My Location</button>
-                        <span id="locationStatus" class="location-status"></span>
-                    </div>
-                    <div class="form-row">
-                        <input type="hidden" id="shopLat" />
-                        <input type="hidden" id="shopLng" />
-                    </div>
-                    <button type="submit" class="btn-primary">Save Shop</button>
-                </form>
-            </div>
-
-            <!-- Products Section -->
-            <div class="card" id="products-card" style="display:none;">
-                <div class="products-header">
-                    <h3>My Products</h3>
-                    <button class="btn-secondary" id="addProductBtn">+ Add Product</button>
-                </div>
-                <div id="productsList" class="products-list"></div>
-            </div>
-
-            <!-- Add Product Form (modal-like) -->
-            <div class="card" id="product-form-card" style="display:none;">
-                <h3 id="productFormTitle">Add Product</h3>
-                <form id="productForm">
-                    <input type="hidden" id="productId" />
-                    <div class="form-row">
-                        <input type="text" id="productName" placeholder="Product name *" required />
-                    </div>
-                    <div class="form-row">
-                        <select id="productCategory">
-                            <option value="">Category (optional)</option>
-                            <option value="Grains & Cereals">🌾 Grains & Cereals</option>
-                            <option value="Meat & Livestock">🥩 Meat & Livestock</option>
-                            <option value="Textiles & Smocks">🧵 Textiles & Smocks</option>
-                            <option value="Electronics & Phones">📱 Electronics & Phones</option>
-                            <option value="Hardware & Building">🔨 Hardware & Building</option>
-                            <option value="Fresh Produce">🍎 Fresh Produce</option>
-                            <option value="Pharmacy & Health">💊 Pharmacy & Health</option>
-                            <option value="Cooked Food">🍳 Cooked Food</option>
-                            <option value="Crafts & Artifacts">🎨 Crafts & Artifacts</option>
-                            <option value="Cosmetics & Toiletries">🧴 Cosmetics & Toiletries</option>
-                            <option value="Tools & Equipment">🛠️ Tools & Equipment</option>
-                            <option value="General Goods">📦 General Goods</option>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <input type="number" id="productPrice" placeholder="Price (GHS)" step="0.01" />
-                    </div>
-                    <div class="form-row">
-                        <textarea id="productDescription" placeholder="Product description"></textarea>
-                    </div>
-                    <div class="form-row">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="productInStock" checked /> In Stock
-                        </label>
-                    </div>
-                    <div class="form-row">
-                        <input type="file" id="productImage" accept="image/*" />
-                    </div>
-                    <div class="form-buttons">
-                        <button type="submit" class="btn-primary">Save Product</button>
-                        <button type="button" class="btn-secondary" id="cancelProductBtn">Cancel</button>
-                    </div>
-                </form>
+    <!-- SHOP DETAIL MODAL -->
+    <div id="shopModal" class="modal">
+        <div class="modal-backdrop" id="shopModalBackdrop"></div>
+        <div class="modal-content card modal-large">
+            <button class="modal-close" id="closeShopModal">&times;</button>
+            <div id="modalBody">
+                <!-- Rendered dynamically -->
             </div>
         </div>
     </div>
 
-    <!-- Shop Detail Modal -->
-    <div id="shopModal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <button class="modal-close" id="closeModal">✕</button>
-            <div id="modalBody"></div>
+    <!-- PRODUCT ADD/EDIT MODAL -->
+    <div id="productModal" class="modal">
+        <div class="modal-backdrop" id="productModalBackdrop"></div>
+        <div class="modal-content card">
+            <button class="modal-close" id="closeProductModal">&times;</button>
+            <h3 id="productFormTitle">Add Inventory Item</h3>
+            
+            <form id="productForm">
+                <input type="hidden" id="productId" />
+                
+                <div class="form-group">
+                    <label for="productName">Product Title *</label>
+                    <input type="text" id="productName" placeholder="e.g. White Maize (100kg Bag)" required />
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="productCategory">Category *</label>
+                        <input type="text" id="productCategory" placeholder="e.g. Grains & Cereals" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="productPrice">Regular Price (GHS) *</label>
+                        <input type="number" step="0.01" id="productPrice" placeholder="e.g. 350.00" required />
+                    </div>
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="productDiscountPrice">Discounted Price (GHS)</label>
+                        <input type="number" step="0.01" id="productDiscountPrice" placeholder="Optional sale price e.g. 310.00" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="productBadgeTag">Urgency Badge Tag</label>
+                        <select id="productBadgeTag">
+                            <option value="">None</option>
+                            <option value="deal">🔥 DEAL</option>
+                            <option value="hot">⚡ HOT</option>
+                            <option value="new">✨ NEW</option>
+                            <option value="clearance">🏷️ CLEARANCE</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="productStockQuantity">Stock Quantity Count *</label>
+                        <input type="number" id="productStockQuantity" value="10" min="0" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="productLowStockThreshold">Low Stock Alert Threshold</label>
+                        <input type="number" id="productLowStockThreshold" value="3" min="1" required />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="productDescription">Product Description</label>
+                    <textarea id="productDescription" rows="2" placeholder="Quality description, unit sizes, or wholesale bulk deals..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="productImage">Image URL</label>
+                    <input type="url" id="productImage" placeholder="https://example.com/image.jpg" />
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="productInStock" checked />
+                        <span>Item is actively in stock</span>
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" id="cancelProductBtn">Cancel</button>
+                    <button type="submit" class="btn-primary" id="saveProductBtn">Save Product Item</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <footer class="footer">
-        <p>Tamale Market Finder — Connecting buyers and traders in Northern Ghana</p>
-    </footer>
+    <!-- REVIEW SUBMISSION MODAL -->
+    <div id="reviewModal" class="modal">
+        <div class="modal-backdrop" onclick="closeModal('reviewModal')"></div>
+        <div class="modal-content card">
+            <button class="modal-close" onclick="closeModal('reviewModal')">&times;</button>
+            <h3>⭐ Leave a Verified Review</h3>
+            <p class="card-subtitle">Share your experience with this Tamale trader to help other shoppers.</p>
+            <form id="reviewForm" onsubmit="handleReviewSubmit(event)">
+                <input type="hidden" id="reviewOrderId" />
+                <input type="hidden" id="reviewShopId" />
+                
+                <div class="form-group text-center">
+                    <label>Tap Stars to Rate:</label>
+                    <div class="star-rating-input" id="starRatingInput">
+                        <span data-star="1" onclick="selectStarRating(1)">★</span>
+                        <span data-star="2" onclick="selectStarRating(2)">★</span>
+                        <span data-star="3" onclick="selectStarRating(3)">★</span>
+                        <span data-star="4" onclick="selectStarRating(4)">★</span>
+                        <span data-star="5" onclick="selectStarRating(5)">★</span>
+                    </div>
+                    <input type="hidden" id="selectedStarValue" value="5" />
+                </div>
 
+                <div class="form-group">
+                    <label for="reviewComment">Your Review Comment</label>
+                    <textarea id="reviewComment" rows="3" placeholder="Tell us about the product quality, trader service, and pickup experience..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn-primary btn-block">Submit Verified Review</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TRADER REVIEW REPLY MODAL -->
+    <div id="replyReviewModal" class="modal">
+        <div class="modal-backdrop" onclick="closeModal('replyReviewModal')"></div>
+        <div class="modal-content card">
+            <button class="modal-close" onclick="closeModal('replyReviewModal')">&times;</button>
+            <h3>💬 Reply to Customer Review</h3>
+            <p class="card-subtitle" id="replyReviewCustomerName">Customer Review</p>
+            <form id="replyReviewForm" onsubmit="handleReviewReplySubmit(event)">
+                <input type="hidden" id="replyReviewId" />
+                <div class="form-group">
+                    <label for="traderReplyText">Your Reply</label>
+                    <textarea id="traderReplyText" rows="3" placeholder="Thank the customer or address their feedback respectfully..." required></textarea>
+                </div>
+                <button type="submit" class="btn-primary btn-block">Post Trader Reply</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ANTI-FRAUD / REPORT LISTING MODAL -->
+    <div id="reportModal" class="modal">
+        <div class="modal-backdrop" onclick="closeModal('reportModal')"></div>
+        <div class="modal-content card">
+            <button class="modal-close" onclick="closeModal('reportModal')">&times;</button>
+            <h3>🚩 Report Suspicious Listing or Trader</h3>
+            <p class="card-subtitle">Help keep Tamale Market Finder safe & scam-free.</p>
+            <form id="reportForm" onsubmit="handleReportSubmit(event)">
+                <input type="hidden" id="reportTargetType" />
+                <input type="hidden" id="reportTargetId" />
+
+                <div class="form-group">
+                    <label for="reportReasonCategory">Reason Category *</label>
+                    <select id="reportReasonCategory" required>
+                        <option value="scam_attempt">🚨 Suspected Fraud / Scam Attempt</option>
+                        <option value="fake_listing">❌ Fake Listing / Misleading Photo</option>
+                        <option value="prohibited_content">⛔ Prohibited or Illegal Goods</option>
+                        <option value="abusive_content">🗣️ Inappropriate or Abusive Language</option>
+                        <option value="other">⚠️ Other Integrity Concern</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="reportDescription">Description & Details *</label>
+                    <textarea id="reportDescription" rows="3" placeholder="Provide specific details about why this listing or user violates community guidelines..." required></textarea>
+                </div>
+
+                <div class="form-hint" style="margin-bottom: 12px; color: #b45309;">
+                    ℹ️ Note: To prevent spam, reporting is rate-limited to 3 reports per hour.
+                </div>
+
+                <button type="submit" class="btn-danger btn-block">Submit Report to Moderation</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- AD BOOKING MODAL -->
+    <div id="adModal" class="modal">
+        <div class="modal-backdrop" onclick="closeModal('adModal')"></div>
+        <div class="modal-content card">
+            <button class="modal-close" onclick="closeModal('adModal')">&times;</button>
+            <h3>📢 Book Business Spotlight Campaign</h3>
+            <p class="card-subtitle">Select tier, duration, and submit payment reference</p>
+            <form id="adBookingForm" onsubmit="handleAdBookingSubmit(event)">
+                <div class="form-group">
+                    <label for="adTierSelect">Select Ad Tier *</label>
+                    <select id="adTierSelect" required onchange="updateAdFeeDisplay()">
+                        <option value="basic_spotlight">🔥 Basic Spotlight (GHS 25 / 7 Days)</option>
+                        <option value="category_featured">✨ Category Featured (GHS 40 / 7 Days)</option>
+                        <option value="premium_top">⭐ Premium Top Placement (GHS 70 / 7 Days)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="adDuration">Duration</label>
+                    <select id="adDuration" onchange="updateAdFeeDisplay()">
+                        <option value="7">1 Week (7 Days)</option>
+                        <option value="14">2 Weeks (14 Days)</option>
+                        <option value="30">1 Month (30 Days)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="adTargetCategory">Target Category Focus</label>
+                    <input type="text" id="adTargetCategory" placeholder="e.g. Grains & Cereals" />
+                </div>
+
+                <div class="card" style="background: #f8fafc; padding: 12px; margin-bottom: 15px;">
+                    <div style="font-size: 13px; font-weight: 600; color: #1e293b;">Calculated Fee: <span id="adCalculatedFee" style="color: #059669; font-size: 16px;">GHS 25.00</span></div>
+                    <p style="font-size: 11px; color: #64748b; margin-top: 4px;">Pay via MoMo to <strong>0244-123-456 (Tamale Market Finder)</strong> and enter reference below.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="adMomoRef">MoMo Payment Reference Code *</label>
+                    <input type="text" id="adMomoRef" placeholder="e.g. MOMO-9823471" required />
+                </div>
+
+                <button type="submit" class="btn-primary btn-block">Submit Campaign Application</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PASSWORD RESET MODAL -->
+    <div id="passwordResetModal" class="modal">
+        <div class="modal-content card">
+            <h3>Reset Account Password</h3>
+            <p class="card-subtitle">Set a new secure password for your account</p>
+            <form id="resetPasswordForm">
+                <div class="form-group">
+                    <label for="recoveryPasswordInput">New Password</label>
+                    <input type="password" id="recoveryPasswordInput" placeholder="Min 6 characters" minlength="6" required />
+                </div>
+                <button type="submit" class="btn-primary btn-block">Save New Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MOBILE FIXED BOTTOM NAVIGATION BAR -->
+    <nav class="bottom-nav">
+        <a href="#" class="bottom-nav-item active" data-nav="home">
+            <span class="bottom-nav-icon">🔍</span>
+            <span class="bottom-nav-label">Explore</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-nav="map-mobile">
+            <span class="bottom-nav-icon">🗺️</span>
+            <span class="bottom-nav-label">Map</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-nav="favorites">
+            <span class="bottom-nav-icon">❤️</span>
+            <span class="bottom-nav-label">Saved</span>
+            <span class="bottom-nav-badge" id="favDotBadge" style="display:none;"></span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-nav="my-orders">
+            <span class="bottom-nav-icon">🛍️</span>
+            <span class="bottom-nav-label">Orders</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-nav="account">
+            <span class="bottom-nav-icon">👤</span>
+            <span class="bottom-nav-label">Account</span>
+        </a>
+    </nav>
+
+    <!-- App Logic Script -->
     <script src="app.js"></script>
 </body>
 </html>
