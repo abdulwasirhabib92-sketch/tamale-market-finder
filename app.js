@@ -1,10 +1,3 @@
-// === IMMEDIATE DEBUG MARKER ===
-document.title = "TMF_DEBUG: JS_LOADED";
-if (typeof window.supabase !== 'undefined') {
-    document.title += "_SB_FOUND";
-} else {
-    document.title += "_SB_MISSING";
-}
 /* ====================================================================
    TAMALE MARKET FINDER (TMF) - PHASE 2 JAVASCRIPT ENGINE
    Target: Vanilla JS (ES6+), Leaflet.js, Supabase JS v2, Ghana Post GPS
@@ -13,12 +6,12 @@ if (typeof window.supabase !== 'undefined') {
 // ====================================================================
 // 1. CONFIGURATION & CONSTANTS
 // ====================================================================
-const SUPABASE_URL = "https://djcajmglxkmhbipmweps.supabase.co";
+const SUPABASE_URL = "https://djcajmglxkmhbipmweps.sbClient.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqY2FqbWdseGttaGJpcG13ZXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTE3NDcsImV4cCI6MjA5NjQyNzc0N30.ccaT6pQW8Dbqy1LC97p2hH0Q7CuYtWJwnoDgrOdwAX4";
 
 const DEMO_MODE = SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL");
 
-let supabase = null;
+let sbClient = null;
 
 // Global Application State
 let currentUser = null;
@@ -43,6 +36,28 @@ let userLocation = { latitude: 9.4075, longitude: -0.8357 }; // Tamale Central d
 let mobileViewMode = "list"; // list | map
 let leafletMap = null;
 let mapMarkers = [];
+
+// Escape for inline JS strings (onclick handlers)
+function escapeJs(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r");
+}
+
+// HTML Escape function to prevent XSS
+function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
 // Rate Limiting Storage
 let gpsRequestCount = 0;
@@ -493,7 +508,7 @@ document.addEventListener("DOMContentLoaded", () => {
     var dbg = document.getElementById("resultsList");
     function showErr(label, e) {
         console.error(label + " error:", e);
-        if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">' + label + ' ERROR: ' + (e.message || e) + '</div>';
+        if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">' + escapeHtml(label + ' ERROR: ' + (e.message || e)) + '</div>';
     }
     try { initSupabase(); } catch(e) { showErr("initSupabase", e); }
     try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
@@ -514,13 +529,13 @@ function initSupabase() {
                 if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">Supabase JS library not loaded!</div>';
                 return;
             }
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             console.log("Supabase client initialized successfully");
             setupAuthListener();
         } catch (err) {
             console.warn("Supabase init failed, falling back to Demo Mode:", err);
             var dbg = document.getElementById("resultsList");
-            if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">Supabase init failed: ' + (err.message||err) + '</div>';
+            if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">Supabase init failed: ' + escapeHtml(err.message||err) + '</div>';
         }
     } else {
         console.log("Running in Full Demo Mode with pre-populated Tamale marketplace data.");
@@ -533,8 +548,8 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 function setupAuthListener() {
-    if (!supabase) return;
-    supabase.auth.onAuthStateChange((event, session) => {
+    if (!sbClient) return;
+    sbClient.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
             currentUser = session.user;
             loadUserProfile(session.user.id);
@@ -549,9 +564,9 @@ function setupAuthListener() {
 }
 
 async function loadUserProfile(userId) {
-    if (!supabase || !userId) return;
+    if (!sbClient || !userId) return;
     try {
-        const { data, error } = await supabase
+        const { data, error } = await sbClient
             .from('user_profiles')
             .select('*')
             .eq('id', userId)
@@ -573,7 +588,7 @@ async function loadUserProfile(userId) {
                 account_type: currentUser.user_metadata?.role || "shopper",
                 verification_tier: "unverified"
             };
-            await supabase.from('user_profiles').insert({
+            await sbClient.from('user_profiles').insert({
                 id: userId,
                 full_name: userProfile.full_name,
                 phone: userProfile.phone,
@@ -590,9 +605,9 @@ async function loadUserProfile(userId) {
 }
 
 async function loadUserShop(userId) {
-    if (!supabase || !userId) return;
+    if (!sbClient || !userId) return;
     try {
-        const { data, error } = await supabase
+        const { data, error } = await sbClient
             .from('shops')
             .select('*')
             .eq('created_by', userId)
@@ -605,9 +620,9 @@ async function loadUserShop(userId) {
 }
 
 async function loadUserFavorites(userId) {
-    if (!supabase || !userId) return;
+    if (!sbClient || !userId) return;
     try {
-        const { data, error } = await supabase
+        const { data, error } = await sbClient
             .from('favorites')
             .select('shop_id')
             .eq('user_id', userId);
@@ -621,10 +636,14 @@ async function loadUserFavorites(userId) {
 
 function initNavigation() {
     // Menu Drawer Toggle
-    document.getElementById("menuToggle").addEventListener("click", toggleDrawer);
-    document.getElementById("logoGroup").addEventListener("click", () => navigateToPage("home"));
-    document.getElementById("closeDrawer").addEventListener("click", closeDrawer);
-    document.getElementById("drawerBackdrop").addEventListener("click", closeDrawer);
+    const mToggle = document.getElementById("menuToggle");
+    if (mToggle) mToggle.addEventListener("click", toggleDrawer);
+    const logoGrp = document.getElementById("logoGroup");
+    if (logoGrp) logoGrp.addEventListener("click", () => navigateToPage("home"));
+    const cDrawer = document.getElementById("closeDrawer");
+    if (cDrawer) cDrawer.addEventListener("click", closeDrawer);
+    const dBackdrop = document.getElementById("drawerBackdrop");
+    if (dBackdrop) dBackdrop.addEventListener("click", closeDrawer);
 
     // Drawer auth/sign-out button
     const drawerAuthBtn = document.getElementById("drawerAuthActionBtn");
@@ -665,10 +684,10 @@ function initNavigation() {
     const forgotForm = document.getElementById('forgotForm');
     if (forgotForm) forgotForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!supabase) { showToast("Demo mode", "error"); return; }
+        if (!sbClient) { showToast("Demo mode", "error"); return; }
         const email = document.getElementById('forgotEmail').value.trim();
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
+            const { error } = await sbClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
             if (error) throw error;
             showToast("Reset link sent! Check your email.", "success");
             closeModal('authModal');
@@ -699,12 +718,12 @@ function initNavigation() {
     const changePwdForm = document.getElementById('changePasswordForm');
     if (changePwdForm) changePwdForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!supabase || !currentUser) { showToast("Sign in first", "error"); return; }
+        if (!sbClient || !currentUser) { showToast("Sign in first", "error"); return; }
         const newPwd = document.getElementById('newPasswordInput').value;
         const confirmPwd = document.getElementById('confirmPasswordInput').value;
         if (newPwd !== confirmPwd) { showToast("Passwords do not match", "error"); return; }
         try {
-            const { error } = await supabase.auth.updateUser({ password: newPwd });
+            const { error } = await sbClient.auth.updateUser({ password: newPwd });
             if (error) throw error;
             showToast("Password updated successfully!", "success");
             changePwdForm.reset();
@@ -742,7 +761,8 @@ function initNavigation() {
     });
 
     // Mobile View Switcher Pill
-    document.getElementById("mobileViewToggle").addEventListener("click", toggleMobileViewMode);
+    const mvToggle = document.getElementById("mobileViewToggle");
+    if (mvToggle) mvToggle.addEventListener("click", toggleMobileViewMode);
 
     // Account Sub-Tabs
     document.querySelectorAll(".acc-tab-btn").forEach(btn => {
@@ -763,36 +783,31 @@ function initNavigation() {
     const searchInput = document.getElementById("searchInput");
     const clearBtn = document.getElementById("clearSearchBtn");
 
+    if (!searchInput) return;
     searchInput.addEventListener("input", () => {
         clearBtn.style.display = searchInput.value.length > 0 ? "block" : "none";
         debounceSearch();
     });
 
+    if (!clearBtn) return;
     clearBtn.addEventListener("click", () => {
         searchInput.value = "";
         clearBtn.style.display = "none";
         searchListings();
     });
 
-    document.getElementById("searchBtn").addEventListener("click", searchListings);
+    const searchBtn = document.getElementById("searchBtn");
+    if (searchBtn) searchBtn.addEventListener("click", searchListings);
 
-    document.getElementById("marketFilter").addEventListener("change", searchListings);
-    document.getElementById("statusFilter").addEventListener("change", searchListings);
+    const marketFilter = document.getElementById("marketFilter");
+    if (marketFilter) marketFilter.addEventListener("change", searchListings);
+    const statusFilter = document.getElementById("statusFilter");
+    if (statusFilter) statusFilter.addEventListener("change", searchListings);
 
-    // GPS & Form Actions
-    document.getElementById("getLocationBtn").addEventListener("click", handleGetDeviceLocation);
-    document.getElementById("lookupDigitalAddressBtn").addEventListener("click", lookupDigitalAddress);
+    // AI Security Scan button (was in duplicate section)
+    const aiScanBtn = document.getElementById("runAiScanBtn");
+    if (aiScanBtn) aiScanBtn.addEventListener("click", runAISecurityScan);
 
-    // Forms
-    document.getElementById("profileForm").addEventListener("submit", handleProfileSave);
-    document.getElementById("shopForm").addEventListener("submit", handleSaveShop);
-    document.getElementById("productForm").addEventListener("submit", handleSaveProduct);
-    document.getElementById("loginForm").addEventListener("submit", handleLogin);
-    document.getElementById("registerForm").addEventListener("submit", handleRegister);
-    document.getElementById("enableTraderRoleBtn").addEventListener("click", enableTraderRole);
-    document.getElementById("runAiScanBtn").addEventListener("click", runAISecurityScan);
-    document.getElementById("accountSignOutBtn").addEventListener("click", handleSignOut);
-    document.getElementById("drawerAuthActionBtn").addEventListener("click", () => openModal("authModal"));
 }
 
 function elBtnTab(btn, btnSelector, contentSelector, dataAttr) {
@@ -848,7 +863,7 @@ function renderCategoryPillsForDomain(domain) {
 
     pillsContainer.innerHTML = categories.map((cat, idx) => {
         const catVal = idx === 0 ? "" : cat;
-        return `<button class="pill ${idx === 0 ? 'active' : ''}" data-category="${catVal}" onclick="selectCategoryPill(this, '${catVal}')">${cat}</button>`;
+        return `<button class="pill ${idx === 0 ? 'active' : ''}" data-category="${catVal}" onclick="selectCategoryPill(this, '${escapeJs(catVal)}')">${cat}</button>`;
     }).join("");
 }
 
@@ -878,15 +893,15 @@ function renderSpotlightCarousel() {
     }
 
     carousel.innerHTML = spotlightShops.map(s => `
-        <div class="spotlight-card" onclick="showShopDetailModal('${s.id}')">
+        <div class="spotlight-card" onclick="showShopDetailModal('${escapeJs(s.id)}')">
             <div class="spotlight-card-top">
-                <img src="${s.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e'}" class="spotlight-img" alt="${s.shop_name}" />
+                <img src="${s.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e'}" class="spotlight-img" alt="${escapeHtml(s.shop_name)}" />
                 <div>
-                    <h4 class="spotlight-title">${s.shop_name}</h4>
-                    <span class="spotlight-area">📍 ${s.market_area} • 🇬🇭 ${s.digital_address || 'Tamale'}</span>
+                    <h4 class="spotlight-title">${escapeHtml(s.shop_name)}</h4>
+                    <span class="spotlight-area">📍 ${escapeHtml(s.market_area)} • 🇬🇭 ${escapeHtml(s.digital_address || 'Tamale')}</span>
                 </div>
             </div>
-            <p class="spotlight-desc">${s.description}</p>
+            <p class="spotlight-desc">${escapeHtml(s.description)}</p>
             <div class="spotlight-action">
                 <span>⭐ ${s.rating_avg} (${s.rating_count})</span>
                 <button class="spotlight-btn">Visit Stall ➔</button>
@@ -920,16 +935,16 @@ function renderMiniProductCard(p, shop) {
     return `
         <div class="card ${isOut ? 'card-out-of-stock' : ''}" style="min-width: 200px; max-width: 220px; flex-shrink: 0;">
             <div class="card-img-container" style="height: 110px;">
-                <img src="${p.image_url}" class="card-img" alt="${p.name}" />
+                <img src="${p.image_url}" class="card-img" alt="${escapeHtml(p.name)}" />
                 ${p.badge_tag ? `<span class="badge-tag ${p.badge_tag}" style="position:absolute; top:6px; left:6px;">${p.badge_tag.toUpperCase()}</span>` : ''}
             </div>
-            <h4 class="card-title" style="font-size: 13px; line-height: 1.2;">${p.name}</h4>
+            <h4 class="card-title" style="font-size: 13px; line-height: 1.2;">${escapeHtml(p.name)}</h4>
             <div class="price-row">
                 <span class="price-amount ${p.discount_price ? 'discount-price' : ''}">GHS ${(p.discount_price || p.price).toFixed(2)}</span>
                 ${p.discount_price ? `<span class="original-price">GHS ${p.price.toFixed(2)}</span>` : ''}
             </div>
-            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">🏪 ${shop.shop_name || 'Tamale Trader'}</div>
-            <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} onclick="openOrderModal('${p.id}', '${p.shop_id}')">
+            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">🏪 ${escapeHtml(shop.shop_name || 'Tamale Trader')}</div>
+            <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} onclick="openOrderModal('${escapeJs(p.id)}', '${escapeJs(p.shop_id)}')">
                 ${isOut ? 'Out of Stock' : '🛒 Order Now'}
             </button>
         </div>
@@ -940,16 +955,16 @@ function renderMiniProductCard(p, shop) {
 // 6. MAIN SEARCH & FILTERING LOGIC
 // ====================================================================
 async function searchListings() {
-    console.log("searchListings called, DEMO_MODE:", DEMO_MODE, "supabase:", !!supabase);
+    console.log("searchListings called, DEMO_MODE:", DEMO_MODE, "sbClient:", !!sbClient);
     const resultsList = document.getElementById("resultsList");
-    if (resultsList) resultsList.innerHTML = '<div style="padding:10px;">Searching... (DEMO_MODE=' + DEMO_MODE + ', supabase=' + (!!supabase) + ')</div>';
+    if (resultsList) resultsList.innerHTML = '<div style="padding:10px;">Searching... (DEMO_MODE=' + DEMO_MODE + ', sbClient=' + (!!sbClient) + ')</div>';
     const query = document.getElementById("searchInput").value.toLowerCase().trim();
     const market = document.getElementById("marketFilter").value;
     const status = document.getElementById("statusFilter").value;
 
     let items = [];
 
-    if (DEMO_MODE || !supabase) {
+    if (DEMO_MODE || !sbClient) {
         // Demo mode fallback
         if (currentDomain === "product") {
             items = demoStore.products.map(p => {
@@ -972,9 +987,9 @@ async function searchListings() {
         // Fetch from Supabase
         try {
             if (currentDomain === "product") {
-                const { data: shops, error: shopErr } = await supabase.from('shops').select('*').eq('is_active', true);
+                const { data: shops, error: shopErr } = await sbClient.from('shops').select('*').eq('is_active', true);
                 if (shopErr) throw shopErr;
-                const { data: products, error: prodErr } = await supabase.from('products').select('*');
+                const { data: products, error: prodErr } = await sbClient.from('products').select('*');
                 if (prodErr) throw prodErr;
                 items = products.map(p => {
                     const shop = shops.find(s => s.id === p.shop_id) || {};
@@ -988,18 +1003,18 @@ async function searchListings() {
                     };
                 });
             } else if (currentDomain === "service") {
-                const { data: services, error: srvErr } = await supabase.from('service_listings').select('*,shops(*)').eq('is_available', true);
+                const { data: services, error: srvErr } = await sbClient.from('service_listings').select('*,shops(*)').eq('is_available', true);
                 if (srvErr) throw srvErr;
                 items = (services || []).map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: s.service_area || "Tamale Metro" }));
             } else if (currentDomain === "hotel" || currentDomain === "eatery" || currentDomain === "company") {
                 const typeMap = { hotel: "hotel", eatery: "restaurant", company: "company" };
-                const { data: businesses, error: bizErr } = await supabase.from('business_listings').select('*').eq('business_type', typeMap[currentDomain]);
+                const { data: businesses, error: bizErr } = await sbClient.from('business_listings').select('*').eq('business_type', typeMap[currentDomain]);
                 if (bizErr) throw bizErr;
                 items = (businesses || []).map(b => ({ ...b, item_type: currentDomain, shop_name: b.business_name, market_area: b.address }));
             }
         } catch (err) {
             console.error("Error fetching listings:", err);
-            resultsList.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>⚠️ Could not load listings: ' + (err.message||err) + '</p></div>';
+            resultsList.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>⚠️ Could not load listings: ' + escapeHtml(err.message||err) + '</p></div>';
             clearMapMarkers();
             return;
         }
@@ -1084,20 +1099,20 @@ function renderProductCard(p) {
             </div>
 
             <div class="card-img-container">
-                <img src="${p.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e'}" class="card-img" alt="${p.name}" />
-                <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavoriteShop('${p.shop_id}', event)" title="Bookmark Shop">
+                <img src="${p.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e'}" class="card-img" alt="${escapeHtml(p.name)}" />
+                <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavoriteShop('${escapeJs(p.shop_id)}', event)" title="Bookmark Shop">
                     ${isFav ? '❤️' : '🤍'}
                 </button>
                 ${p.badge_tag ? `<span class="badge-tag ${p.badge_tag}" style="position:absolute; bottom:8px; left:8px;">${p.badge_tag.toUpperCase()}</span>` : ''}
             </div>
 
-            <h3 class="card-title">${p.name}</h3>
-            <div class="card-subtitle-shop" onclick="showShopDetailModal('${p.shop_id}')" style="cursor:pointer;">
-                <span>🏪 <strong>${p.shop_name}</strong></span>
-                <span>• 📍 ${p.market_area}</span>
+            <h3 class="card-title">${escapeHtml(p.name)}</h3>
+            <div class="card-subtitle-shop" onclick="showShopDetailModal('${escapeJs(p.shop_id)}')" style="cursor:pointer;">
+                <span>🏪 <strong>${escapeHtml(p.shop_name)}</strong></span>
+                <span>• 📍 ${escapeHtml(p.market_area)}</span>
             </div>
 
-            ${p.digital_address ? `<div style="font-size:11px; color:#0369A1; font-weight:600; margin-bottom:6px;">🇬🇭 ${p.digital_address}</div>` : ''}
+            ${p.digital_address ? `<div style="font-size:11px; color:#0369A1; font-weight:600; margin-bottom:6px;">🇬🇭 ${escapeHtml(p.digital_address)}</div>` : ''}
 
             <div class="price-row">
                 <span class="price-amount ${p.discount_price ? 'discount-price' : ''}">GHS ${(p.discount_price || p.price).toFixed(2)}</span>
@@ -1109,11 +1124,11 @@ function renderProductCard(p) {
             </div>
 
             <div class="card-actions-row">
-                <button class="btn-whatsapp btn-sm" onclick="openWhatsApp('${p.whatsapp_number}', '${p.name}', '${p.shop_name}')">💬 WhatsApp</button>
-                <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} onclick="openOrderModal('${p.id}', '${p.shop_id}')">
+                <button class="btn-whatsapp btn-sm" onclick="openWhatsApp('${escapeJs(p.whatsapp_number)}', '${escapeJs(p.name)}', '${escapeJs(p.shop_name)}')">💬 WhatsApp</button>
+                <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} onclick="openOrderModal('${escapeJs(p.id)}', '${escapeJs(p.shop_id)}')">
                     ${isOut ? 'Out of Stock' : '🛒 Order Now'}
                 </button>
-                <button class="btn-report" onclick="openReportModal('product', '${p.id}', '${p.name}')" title="Report listing">🚩</button>
+                <button class="btn-report" onclick="openReportModal('product', '${escapeJs(p.id)}', '${escapeJs(p.name)}')" title="Report listing">🚩</button>
             </div>
         </div>
     `;
@@ -1126,8 +1141,8 @@ function renderServiceCard(s) {
                 <span class="stock-badge in-stock">🛠️ Service</span>
                 <span class="verification-badge verified">🔵 Verified Provider</span>
             </div>
-            <h3 class="card-title" style="margin-top:8px;">${s.title}</h3>
-            <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${s.description}</p>
+            <h3 class="card-title" style="margin-top:8px;">${escapeHtml(s.title)}</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${escapeHtml(s.description)}</p>
             
             <div style="font-size:12px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">
                 💰 Rates: GHS ${s.price_min} - GHS ${s.price_max} (${s.price_type.replace('_', ' ')})
@@ -1137,8 +1152,8 @@ function renderServiceCard(s) {
             </div>
 
             <div class="card-actions-row">
-                <button class="btn-whatsapp btn-sm btn-block" onclick="openWhatsApp('233244123456', '${s.title}', 'Service Inquiry')">💬 Book / Inquire Service</button>
-                <button class="btn-report" onclick="openReportModal('service', '${s.id}', '${s.title}')">🚩</button>
+                <button class="btn-whatsapp btn-sm btn-block" onclick="openWhatsApp('233244123456', '${escapeJs(s.title)}', 'Service Inquiry')">💬 Book / Inquire Service</button>
+                <button class="btn-report" onclick="openReportModal('service', '${escapeJs(s.id)}', '${escapeJs(s.title)}')">🚩</button>
             </div>
         </div>
     `;
@@ -1152,10 +1167,10 @@ function renderHotelCard(h) {
                 <span class="verification-badge trusted">⭐ Top Choice</span>
             </div>
             <div class="card-img-container" style="height: 140px; margin-top: 6px;">
-                <img src="${h.cover_image_url}" class="card-img" alt="${h.business_name}" />
+                <img src="${h.cover_image_url}" class="card-img" alt="${escapeHtml(h.business_name)}" />
             </div>
-            <h3 class="card-title">${h.business_name}</h3>
-            <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">📍 ${h.address} • 🇬🇭 ${h.digital_address}</div>
+            <h3 class="card-title">${escapeHtml(h.business_name)}</h3>
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">📍 ${escapeHtml(h.address)} • 🇬🇭 ${escapeHtml(h.digital_address)}</div>
             
             <div class="amenities-row">
                 ${(h.amenities || []).map(a => `<span class="amenity-badge">${a}</span>`).join("")}
@@ -1167,7 +1182,7 @@ function renderHotelCard(h) {
             </div>
 
             <div class="card-actions-row" style="margin-top:10px;">
-                <button class="btn-primary btn-sm btn-block" onclick="openWhatsApp('${h.whatsapp_number}', 'Room Booking', '${h.business_name}')">📞 Call / Reserve Room</button>
+                <button class="btn-primary btn-sm btn-block" onclick="openWhatsApp('${escapeJs(h.whatsapp_number)}', 'Room Booking', '${escapeJs(h.business_name)}')">📞 Call / Reserve Room</button>
             </div>
         </div>
     `;
@@ -1181,14 +1196,14 @@ function renderEateryCard(e) {
                 <span class="verification-badge verified">🔵 Verified Spot</span>
             </div>
             <div class="card-img-container" style="height: 130px; margin-top: 6px;">
-                <img src="${e.cover_image_url}" class="card-img" alt="${e.business_name}" />
+                <img src="${e.cover_image_url}" class="card-img" alt="${escapeHtml(e.business_name)}" />
             </div>
-            <h3 class="card-title">${e.business_name}</h3>
-            <p style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">${e.description}</p>
-            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">📍 ${e.address} • 🕐 ${e.opening_hours}</div>
+            <h3 class="card-title">${escapeHtml(e.business_name)}</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">${escapeHtml(e.description)}</p>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">📍 ${escapeHtml(e.address)} • 🕐 ${escapeHtml(e.opening_hours)}</div>
             
             <div class="card-actions-row">
-                <button class="btn-whatsapp btn-sm btn-block" onclick="openWhatsApp('${e.whatsapp_number}', 'Food Order', '${e.business_name}')">💬 Order Food / Reserve Table</button>
+                <button class="btn-whatsapp btn-sm btn-block" onclick="openWhatsApp('${escapeJs(e.whatsapp_number)}', 'Food Order', '${escapeJs(e.business_name)}')">💬 Order Food / Reserve Table</button>
             </div>
         </div>
     `;
@@ -1201,12 +1216,12 @@ function renderCompanyCard(c) {
                 <span class="stock-badge in-stock">🏢 Company / Hub</span>
                 <span class="verification-badge trusted">⭐ Registered Agency</span>
             </div>
-            <h3 class="card-title" style="margin-top:8px;">${c.business_name}</h3>
-            <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${c.description}</p>
-            <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">📍 ${c.address} • 🇬🇭 ${c.digital_address}</div>
+            <h3 class="card-title" style="margin-top:8px;">${escapeHtml(c.business_name)}</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${escapeHtml(c.description)}</p>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">📍 ${escapeHtml(c.address)} • 🇬🇭 ${escapeHtml(c.digital_address)}</div>
             
             <div class="card-actions-row">
-                <button class="btn-secondary btn-sm btn-block" onclick="openWhatsApp('${c.whatsapp_number}', 'B2B Inquiry', '${c.business_name}')">✉️ Contact Business Office</button>
+                <button class="btn-secondary btn-sm btn-block" onclick="openWhatsApp('${escapeJs(c.whatsapp_number)}', 'B2B Inquiry', '${escapeJs(c.business_name)}')">✉️ Contact Business Office</button>
             </div>
         </div>
     `;
@@ -1251,10 +1266,10 @@ function updateMapMarkers(items) {
 
         const popupContent = `
             <div style="font-family: sans-serif; padding: 4px; max-width: 200px;">
-                <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight:700;">${item.shop_name || item.name}</h4>
-                <p style="margin: 0 0 4px 0; font-size: 11px; color: #64748b;">📍 ${item.market_area || 'Tamale'}</p>
-                ${item.digital_address ? `<p style="margin:0 0 6px 0; font-size:11px; color:#0369A1; font-weight:bold;">🇬🇭 ${item.digital_address}</p>` : ''}
-                <button onclick="showShopDetailModal('${item.shop_id || item.id}')" style="width:100%; background:#0A5C36; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">View Stall ➔</button>
+                <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight:700;">${escapeHtml(item.shop_name || item.name)}</h4>
+                <p style="margin: 0 0 4px 0; font-size: 11px; color: #64748b;">📍 ${escapeHtml(item.market_area || 'Tamale')}</p>
+                ${item.digital_address ? `<p style="margin:0 0 6px 0; font-size:11px; color:#0369A1; font-weight:bold;">🇬🇭 ${escapeHtml(item.digital_address)}</p>` : ''}
+                <button onclick="showShopDetailModal('${escapeJs(item.shop_id || item.id)}')" style="width:100%; background:#0A5C36; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">View Stall ➔</button>
             </div>
         `;
 
@@ -1277,11 +1292,11 @@ async function openOrderModal(productId, shopId) {
     let product = null;
     let shop = {};
 
-    if (!DEMO_MODE && supabase) {
+    if (!DEMO_MODE && sbClient) {
         try {
-            const { data: prod } = await supabase.from('products').select('*').eq('id', productId).single();
+            const { data: prod } = await sbClient.from('products').select('*').eq('id', productId).single();
             product = prod;
-            const { data: shopData } = await supabase.from('shops').select('*').eq('id', shopId).single();
+            const { data: shopData } = await sbClient.from('shops').select('*').eq('id', shopId).single();
             shop = shopData || {};
         } catch (err) { console.error("Error loading order data:", err); }
     } else {
@@ -1299,8 +1314,8 @@ async function openOrderModal(productId, shopId) {
         <div style="display:flex; gap:12px; margin-bottom:16px; align-items:center; background:#f8fafc; padding:10px; border-radius:8px;">
             <img src="${product.image_url}" style="width:60px; height:60px; object-fit:cover; border-radius:6px;" />
             <div>
-                <h4 style="font-size:15px; font-weight:700; line-height:1.2;">${product.name}</h4>
-                <div style="font-size:12px; color:var(--text-muted);">🏪 ${shop.shop_name} • 📍 ${shop.market_area}</div>
+                <h4 style="font-size:15px; font-weight:700; line-height:1.2;">${escapeHtml(product.name)}</h4>
+                <div style="font-size:12px; color:var(--text-muted);">🏪 ${escapeHtml(shop.shop_name)} • 📍 ${escapeHtml(shop.market_area)}</div>
                 <div style="font-size:14px; font-weight:800; color:var(--primary-dark); margin-top:2px;">GHS ${unitPrice.toFixed(2)} / unit</div>
             </div>
         </div>
@@ -1390,7 +1405,7 @@ function toggleDeliveryAddressField(show) {
     document.getElementById("deliveryAddressGroup").style.display = show ? "block" : "none";
 }
 
-function handleOrderSubmit(e) {
+async function handleOrderSubmit(e) {
     e.preventDefault();
     if (!activeOrderProduct) return;
 
@@ -1426,6 +1441,28 @@ function handleOrderSubmit(e) {
 
     demoStore.orders.unshift(newOrder);
 
+    // Save to Supabase if available
+    if (!DEMO_MODE && sbClient) {
+        try {
+            await sbClient.from('orders').insert({
+                order_number: orderNumber,
+                buyer_id: newOrder.buyer_id,
+                shop_id: newOrder.shop_id,
+                product_id: newOrder.product_id,
+                product_name: newOrder.product_name,
+                unit_price: newOrder.unit_price,
+                quantity: newOrder.quantity,
+                total_amount: newOrder.total_amount,
+                delivery_type: newOrder.delivery_type,
+                delivery_address: newOrder.delivery_address,
+                buyer_name: newOrder.buyer_name,
+                buyer_phone: newOrder.buyer_phone,
+                buyer_notes: newOrder.buyer_notes,
+                status: "placed"
+            });
+        } catch (err) { console.error("Error saving order to Supabase:", err); }
+    }
+
     closeModal("orderModal");
     showToast(`Order ${orderNumber} placed successfully! Trader notified.`, "success");
     navigateToPage("my-orders");
@@ -1445,6 +1482,16 @@ async function updateProductStockInline(productId, delta) {
     product.stock_quantity = newCount;
     product.in_stock = newCount > 0;
 
+    // Sync to Supabase if available
+    if (!DEMO_MODE && sbClient) {
+        try {
+            await sbClient.from('products').update({
+                stock_quantity: newCount,
+                in_stock: newCount > 0
+            }).eq('id', productId);
+        } catch (err) { console.error("Error updating stock in Supabase:", err); }
+    }
+
     renderTraderProductsList();
     searchListings(); // Refresh main grid
     showToast(`Stock for ${product.name} updated to ${newCount}`, "success");
@@ -1455,13 +1502,13 @@ async function renderTraderProductsList() {
     if (!listEl) return;
 
     let myProducts = [];
-    if (!DEMO_MODE && supabase && userShop) {
+    if (!DEMO_MODE && sbClient && userShop) {
         try {
-            const { data, error } = await supabase.from('products').select('*').eq('shop_id', userShop.id);
+            const { data, error } = await sbClient.from('products').select('*').eq('shop_id', userShop.id);
             if (error) throw error;
             myProducts = data || [];
         } catch (err) { console.error("Error loading products:", err); }
-    } else if (DEMO_MODE || !supabase) {
+    } else if (DEMO_MODE || !sbClient) {
         myProducts = demoStore.products.filter(p => p.shop_id === "shop-1" || (userShop && p.shop_id === userShop.id));
     }
 
@@ -1473,13 +1520,13 @@ async function renderTraderProductsList() {
     listEl.innerHTML = myProducts.map(p => `
         <div class="inventory-item-row">
             <div class="inventory-item-info">
-                <div class="inventory-item-title">${p.name}</div>
+                <div class="inventory-item-title">${escapeHtml(p.name)}</div>
                 <div class="inventory-item-meta">GHS ${(p.discount_price || p.price).toFixed(2)} • ${p.category}</div>
             </div>
             <div class="inline-stock-control">
-                <button class="stock-btn" onclick="updateProductStockInline('${p.id}', -1)">-</button>
+                <button class="stock-btn" onclick="updateProductStockInline('${escapeJs(p.id)}', -1)">-</button>
                 <span class="stock-count-num">${p.stock_quantity}</span>
-                <button class="stock-btn" onclick="updateProductStockInline('${p.id}', 1)">+</button>
+                <button class="stock-btn" onclick="updateProductStockInline('${escapeJs(p.id)}', 1)">+</button>
             </div>
         </div>
     `).join("");
@@ -1490,15 +1537,15 @@ async function renderTraderOrders() {
     if (!container) return;
 
     let shopOrders = [];
-    if (!DEMO_MODE && supabase && userShop) {
+    if (!DEMO_MODE && sbClient && userShop) {
         try {
-            const { data, error } = await supabase.from('orders').select('*').eq('shop_id', userShop.id).order('created_date', { ascending: false });
+            const { data, error } = await sbClient.from('orders').select('*').eq('shop_id', userShop.id).order('created_date', { ascending: false });
             if (error) throw error;
             shopOrders = data || [];
         } catch (err) { console.error("Error loading orders:", err); }
     } else {
         shopOrders = demoStore.orders;
-    } incoming
+    }
 
     if (shopOrders.length === 0) {
         container.innerHTML = `<p class="form-hint">No buyer orders received yet.</p>`;
@@ -1508,33 +1555,40 @@ async function renderTraderOrders() {
     container.innerHTML = shopOrders.map(o => `
         <div class="order-card">
             <div class="order-card-header">
-                <span class="order-num">${o.order_number}</span>
+                <span class="order-num">${escapeHtml(o.order_number)}</span>
                 <span class="order-status-badge status-${o.status}">${o.status.toUpperCase()}</span>
             </div>
             <div class="order-card-body">
-                <div><strong>Item:</strong> ${o.product_name} (x${o.quantity})</div>
-                <div><strong>Buyer:</strong> ${o.buyer_name} (${o.buyer_phone})</div>
+                <div><strong>Item:</strong> ${escapeHtml(o.product_name)} (x${o.quantity})</div>
+                <div><strong>Buyer:</strong> ${escapeHtml(o.buyer_name)} (${escapeHtml(o.buyer_phone)})</div>
                 <div><strong>Total:</strong> GHS ${o.total_amount.toFixed(2)} • <strong>Type:</strong> ${o.delivery_type}</div>
-                ${o.buyer_notes ? `<div><em>Note: "${o.buyer_notes}"</em></div>` : ''}
+                ${o.buyer_notes ? `<div><em>Note: "${escapeHtml(o.buyer_notes)}"</em></div>` : ''}
             </div>
             <div class="order-card-actions">
                 ${o.status === 'placed' ? `
-                    <button class="btn-primary btn-sm" onclick="changeOrderStatus('${o.id}', 'accepted')">Accept Order 👍</button>
-                    <button class="btn-danger btn-sm" onclick="changeOrderStatus('${o.id}', 'rejected')">Reject</button>
+                    <button class="btn-primary btn-sm" onclick="changeOrderStatus('${escapeJs(o.id)}', 'accepted')">Accept Order 👍</button>
+                    <button class="btn-danger btn-sm" onclick="changeOrderStatus('${escapeJs(o.id)}', 'rejected')">Reject</button>
                 ` : ''}
-                ${o.status === 'accepted' ? `<button class="btn-primary btn-sm" onclick="changeOrderStatus('${o.id}', 'ready')">Mark Ready 📦</button>` : ''}
-                ${o.status === 'ready' ? `<button class="btn-primary btn-sm" onclick="changeOrderStatus('${o.id}', 'completed')">Complete Order ✅</button>` : ''}
+                ${o.status === 'accepted' ? `<button class="btn-primary btn-sm" onclick="changeOrderStatus('${escapeJs(o.id)}', 'ready')">Mark Ready 📦</button>` : ''}
+                ${o.status === 'ready' ? `<button class="btn-primary btn-sm" onclick="changeOrderStatus('${escapeJs(o.id)}', 'completed')">Complete Order ✅</button>` : ''}
             </div>
         </div>
     `).join("");
 }
 
-function changeOrderStatus(orderId, newStatus) {
+async function changeOrderStatus(orderId, newStatus) {
     const order = demoStore.orders.find(o => o.id === orderId);
     if (!order) return;
 
     const oldStatus = order.status;
     order.status = newStatus;
+
+    // Sync to Supabase if available
+    if (!DEMO_MODE && sbClient) {
+        try {
+            await sbClient.from('orders').update({ status: newStatus }).eq('id', orderId);
+        } catch (err) { console.error("Error updating order status in Supabase:", err); }
+    }
 
     // Stock Management Trigger Logic
     if (newStatus === "accepted" && oldStatus === "placed") {
@@ -1571,17 +1625,17 @@ async function renderBuyerOrders() {
         el.innerHTML = demoStore.orders.map(o => `
             <div class="order-card">
                 <div class="order-card-header">
-                    <span class="order-num">${o.order_number}</span>
+                    <span class="order-num">${escapeHtml(o.order_number)}</span>
                     <span class="order-status-badge status-${o.status}">${o.status.toUpperCase()}</span>
                 </div>
                 <div class="order-card-body">
-                    <div><strong>Item:</strong> ${o.product_name} (x${o.quantity})</div>
+                    <div><strong>Item:</strong> ${escapeHtml(o.product_name)} (x${o.quantity})</div>
                     <div><strong>Total:</strong> GHS ${o.total_amount.toFixed(2)}</div>
                     <div><strong>Fulfillment:</strong> ${o.delivery_type === 'pickup' ? 'Stall Pickup' : 'Local Delivery'}</div>
                 </div>
                 <div class="order-card-actions">
                     ${o.status === 'completed' ? `
-                        <button class="btn-primary btn-sm" onclick="openReviewModal('${o.id}', '${o.shop_id}', '${o.product_id}')">⭐ Leave Verified Review</button>
+                        <button class="btn-primary btn-sm" onclick="openReviewModal('${escapeJs(o.id)}', '${escapeJs(o.shop_id)}', '${escapeJs(o.product_id)}')">⭐ Leave Verified Review</button>
                     ` : ''}
                 </div>
             </div>
@@ -1613,7 +1667,7 @@ function selectStarRating(val) {
     });
 }
 
-function handleReviewSubmit(e) {
+async function handleReviewSubmit(e) {
     e.preventDefault();
     if (!activeReviewData) return;
 
@@ -1633,6 +1687,21 @@ function handleReviewSubmit(e) {
     };
 
     demoStore.reviews.push(newReview);
+
+    // Save to Supabase if available
+    if (!DEMO_MODE && sbClient) {
+        try {
+            await sbClient.from('reviews').insert({
+                order_id: newReview.order_id,
+                buyer_id: newReview.buyer_id,
+                buyer_name: newReview.buyer_name,
+                shop_id: newReview.shop_id,
+                product_id: newReview.product_id,
+                rating: newReview.rating,
+                comment: newReview.comment
+            });
+        } catch (err) { console.error("Error saving review to Supabase:", err); }
+    }
 
     // Auto recalculate shop rating
     const shopReviews = demoStore.reviews.filter(r => r.shop_id === activeReviewData.shopId);
@@ -1706,7 +1775,7 @@ function openReportModal(targetType, targetId, targetTitle) {
     openModal("reportModal");
 }
 
-function handleReportSubmit(e) {
+async function handleReportSubmit(e) {
     e.preventDefault();
 
     // Client-side rate limit: max 3 reports per hour
@@ -1736,6 +1805,20 @@ function handleReportSubmit(e) {
     demoStore.reports.push(newReport);
     reportRateLimit.push(now);
 
+    // Save to Supabase if available
+    if (!DEMO_MODE && sbClient) {
+        try {
+            await sbClient.from('reports').insert({
+                reporter_id: newReport.reporter_id,
+                reported_type: newReport.reported_type,
+                target_id: newReport.target_id,
+                reason_category: newReport.reason_category,
+                description: newReport.description,
+                status: "pending"
+            });
+        } catch (err) { console.error("Error saving report to Supabase:", err); }
+    }
+
     closeModal("reportModal");
     showToast("Report submitted to moderation. Thank you for keeping TMF safe!", "success");
 }
@@ -1755,10 +1838,10 @@ async function renderAdminPanel() {
                 <span>🚩 TYPE: ${r.reported_type.toUpperCase()} • CATEGORY: ${r.reason_category}</span>
                 <span>STATUS: ${r.status.toUpperCase()}</span>
             </div>
-            <p style="font-size:13px; margin:8px 0;">${r.description}</p>
+            <p style="font-size:13px; margin:8px 0;">${escapeHtml(r.description)}</p>
             <div style="display:flex; gap:6px;">
-                <button class="btn-secondary btn-sm" onclick="dismissReport('${r.id}')">Approve & Dismiss</button>
-                <button class="btn-danger btn-sm" onclick="takeModerationAction('${r.id}')">Hide Item / Suspend</button>
+                <button class="btn-secondary btn-sm" onclick="dismissReport('${escapeJs(r.id)}')">Approve & Dismiss</button>
+                <button class="btn-danger btn-sm" onclick="takeModerationAction('${escapeJs(r.id)}')">Hide Item / Suspend</button>
             </div>
         </div>
     `).join("");
@@ -1829,7 +1912,7 @@ function updateAdFeeDisplay() {
     document.getElementById("adCalculatedFee").textContent = `GHS ${total.toFixed(2)}`;
 }
 
-function handleAdBookingSubmit(e) {
+async function handleAdBookingSubmit(e) {
     e.preventDefault();
     const tier = document.getElementById("adTierSelect").value;
     const momoRef = document.getElementById("adMomoRef").value;
@@ -1845,6 +1928,21 @@ function handleAdBookingSubmit(e) {
     };
 
     demoStore.ad_placements.push(newAd);
+
+    // Save to Supabase if available
+    if (!DEMO_MODE && sbClient) {
+        try {
+            await sbClient.from('ad_placements').insert({
+                trader_id: newAd.trader_id,
+                shop_id: newAd.shop_id,
+                ad_tier: newAd.ad_tier,
+                fee_paid_ghs: newAd.fee_paid_ghs,
+                payment_reference: newAd.payment_reference,
+                status: "pending"
+            });
+        } catch (err) { console.error("Error saving ad to Supabase:", err); }
+    }
+
     closeModal("adModal");
     renderTraderAds();
     showToast("Ad campaign application submitted! Admin approval pending.", "success");
@@ -1866,7 +1964,7 @@ function renderTraderAds() {
                 <span class="order-status-badge status-${a.status}">${a.status}</span>
             </div>
             <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
-                Ref: ${a.payment_reference || 'N/A'} • Fee: GHS ${a.fee_paid_ghs}
+                Ref: ${escapeHtml(a.payment_reference || 'N/A')} • Fee: GHS ${a.fee_paid_ghs}
             </div>
         </div>
     `).join("");
@@ -1884,8 +1982,8 @@ function showShopDetailModal(shopId) {
     modalBody.innerHTML = `
         <div class="shop-modal-header" style="margin-bottom:16px;">
             <img src="${shop.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e'}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; margin-bottom:12px;" />
-            <h2 style="font-size:22px; font-weight:800;">${shop.shop_name}</h2>
-            <div style="font-size:13px; color:var(--text-muted);">📍 ${shop.address || shop.market_area} • 🇬🇭 ${shop.digital_address || 'NT-092-0621'}</div>
+            <h2 style="font-size:22px; font-weight:800;">${escapeHtml(shop.shop_name)}</h2>
+            <div style="font-size:13px; color:var(--text-muted);">📍 ${escapeHtml(shop.address || shop.market_area)} • 🇬🇭 ${escapeHtml(shop.digital_address || 'NT-092-0621')}</div>
             <div class="star-rating" style="margin-top:6px;">⭐ ${shop.rating_avg || 4.8} (${shop.rating_count || 12} customer reviews)</div>
         </div>
 
@@ -1899,10 +1997,10 @@ function showShopDetailModal(shopId) {
             ${shopReviews.length === 0 ? `<p class="form-hint">No customer reviews yet for this stall.</p>` : shopReviews.map(r => `
                 <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:8px; font-size:13px;">
                     <div style="display:flex; justify-content:space-between;">
-                        <strong>${r.buyer_name}</strong>
+                        <strong>${escapeHtml(r.buyer_name)}</strong>
                         <span class="star-rating">⭐ ${r.rating}.0</span>
                     </div>
-                    <p style="margin:4px 0;">"${r.comment}"</p>
+                    <p style="margin:4px 0;">"${escapeHtml(r.comment)}"</p>
                 </div>
             `).join("")}
         </div>
@@ -2033,9 +2131,9 @@ async function enableTraderRole() {
     userProfile.account_type = "trader";
     const traderRadio = document.getElementById("roleTrader");
     if (traderRadio) traderRadio.checked = true;
-    if (!DEMO_MODE && supabase && currentUser) {
+    if (!DEMO_MODE && sbClient && currentUser) {
         try {
-            await supabase.from('user_profiles').update({ account_type: "trader" }).eq('id', currentUser.id);
+            await sbClient.from('user_profiles').update({ account_type: "trader" }).eq('id', currentUser.id);
         } catch (err) { console.error("Error updating role:", err); }
     }
     updateUIForAuthUser();
@@ -2128,13 +2226,13 @@ function showToast(msg, type = "success") {
 
 async function handleLogin(e) {
     e.preventDefault();
-    if (!supabase) { showToast("Demo mode - auth not available", "error"); return; }
+    if (!sbClient) { showToast("Demo mode - auth not available", "error"); return; }
     const email = document.getElementById("loginEmail").value.trim();
     const password = document.getElementById("loginPassword").value;
     const btn = document.getElementById("loginBtn");
     btn.textContent = "Signing in..."; btn.disabled = true;
     try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
         closeModal("authModal");
         showToast("Signed in successfully!", "success");
@@ -2147,7 +2245,7 @@ async function handleLogin(e) {
 
 async function handleRegister(e) {
     e.preventDefault();
-    if (!supabase) { showToast("Demo mode - auth not available", "error"); return; }
+    if (!sbClient) { showToast("Demo mode - auth not available", "error"); return; }
     const fullName = document.getElementById("regName").value.trim();
     const email = document.getElementById("regEmail").value.trim();
     const phone = document.getElementById("regPhone").value.trim();
@@ -2156,14 +2254,14 @@ async function handleRegister(e) {
     const btn = document.getElementById("registerBtn");
     btn.textContent = "Creating account..."; btn.disabled = true;
     try {
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await sbClient.auth.signUp({
             email, password,
             options: { data: { full_name: fullName, phone: phone, role: role } }
         });
         if (error) throw error;
         // Create user_profile
         if (data.user) {
-            await supabase.from('user_profiles').insert({
+            await sbClient.from('user_profiles').insert({
                 id: data.user.id, full_name: fullName, phone: phone, account_type: role
             });
         }
@@ -2178,13 +2276,13 @@ async function handleRegister(e) {
 
 async function handleProfileSave(e) {
     e.preventDefault();
-    if (!supabase || !currentUser) { showToast("Sign in first", "error"); return; }
+    if (!sbClient || !currentUser) { showToast("Sign in first", "error"); return; }
     const fullName = document.getElementById("profName").value.trim();
     const phone = document.getElementById("profPhone").value.trim();
     const preferredMarket = document.getElementById("profPreferredMarket").value;
     const role = document.querySelector('input[name="accountRole"]:checked')?.value || "shopper";
     try {
-        const { error } = await supabase.from('user_profiles').upsert({
+        const { error } = await sbClient.from('user_profiles').upsert({
             id: currentUser.id, full_name: fullName, phone: phone,
             preferred_market: preferredMarket, account_type: role,
             updated_at: new Date().toISOString()
@@ -2203,7 +2301,7 @@ async function handleProfileSave(e) {
 
 async function handleSaveShop(e) {
     e.preventDefault();
-    if (!supabase || !currentUser) { showToast("Sign in first", "error"); return; }
+    if (!sbClient || !currentUser) { showToast("Sign in first", "error"); return; }
     const shopData = {
         created_by: currentUser.id,
         owner_name: userProfile.full_name,
@@ -2223,10 +2321,10 @@ async function handleSaveShop(e) {
     };
     try {
         if (userShop) {
-            const { error } = await supabase.from('shops').update(shopData).eq('id', userShop.id);
+            const { error } = await sbClient.from('shops').update(shopData).eq('id', userShop.id);
             if (error) throw error;
         } else {
-            const { data, error } = await supabase.from('shops').insert(shopData).select().single();
+            const { data, error } = await sbClient.from('shops').insert(shopData).select().single();
             if (error) throw error;
             userShop = data;
         }
@@ -2238,7 +2336,7 @@ async function handleSaveShop(e) {
 
 async function handleSaveProduct(e) {
     e.preventDefault();
-    if (!supabase || !currentUser) { showToast("Sign in first", "error"); return; }
+    if (!sbClient || !currentUser) { showToast("Sign in first", "error"); return; }
     if (!userShop) { showToast("Create your shop stall first", "error"); return; }
     const productId = document.getElementById("productId").value;
     const productData = {
@@ -2257,10 +2355,10 @@ async function handleSaveProduct(e) {
     };
     try {
         if (productId) {
-            const { error } = await supabase.from('products').update(productData).eq('id', productId);
+            const { error } = await sbClient.from('products').update(productData).eq('id', productId);
             if (error) throw error;
         } else {
-            const { error } = await supabase.from('products').insert(productData);
+            const { error } = await sbClient.from('products').insert(productData);
             if (error) throw error;
         }
         closeModal("productModal");
@@ -2272,8 +2370,8 @@ async function handleSaveProduct(e) {
 }
 
 async function handleSignOut() {
-    if (supabase) {
-        await supabase.auth.signOut();
+    if (sbClient) {
+        await sbClient.auth.signOut();
     }
     currentUser = null;
     userProfile = { full_name: "Guest User", account_type: "shopper", verification_tier: "unverified" };
@@ -2293,10 +2391,10 @@ async function renderFavoritesPage() {
     }
 
     let favShops = [];
-    if (!DEMO_MODE && supabase) {
+    if (!DEMO_MODE && sbClient) {
         try {
             const favIds = Array.from(userFavorites);
-            const { data, error } = await supabase.from('shops').select('*').in('id', favIds);
+            const { data, error } = await sbClient.from('shops').select('*').in('id', favIds);
             if (error) throw error;
             favShops = data || [];
         } catch (err) {
@@ -2307,9 +2405,9 @@ async function renderFavoritesPage() {
     }
 
     list.innerHTML = favShops.map(s => `
-        <div class="card" onclick="showShopDetailModal('${s.id}')">
-            <h3 class="card-title">${s.shop_name}</h3>
-            <p style="font-size:12px; color:var(--text-muted);">📍 ${s.market_area} • 🇬🇭 ${s.digital_address || ''}</p>
+        <div class="card" onclick="showShopDetailModal('${escapeJs(s.id)}')">
+            <h3 class="card-title">${escapeHtml(s.shop_name)}</h3>
+            <p style="font-size:12px; color:var(--text-muted);">📍 ${escapeHtml(s.market_area)} • 🇬🇭 ${escapeHtml(s.digital_address || '')}</p>
         </div>
     `).join("");
 }

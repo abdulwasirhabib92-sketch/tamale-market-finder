@@ -8,8 +8,16 @@
     <!-- Leaflet for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Fallback if Leaflet CDN fails
+        if (typeof L === 'undefined') { console.warn('Leaflet CDN failed - map features disabled'); }
+    </script>
     <!-- Supabase JS client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Fallback if Supabase CDN fails - app will run in demo mode
+        if (typeof window.supabase === 'undefined') { console.warn('Supabase CDN failed - running in demo mode'); }
+    </script>
 </head>
 <body>
     <!-- Toast Notifications Container -->
