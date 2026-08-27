@@ -2,8 +2,8 @@
 <html><head><title>JS Test</title></head>
 <body>
 <div id="test">No JS</div>
+<script src="app.js?v=20260827b"></script>
 <script>
-document.getElementById("test").textContent = "JS WORKS!";
-document.title = "JS_EXECUTED";
+document.getElementById("test").textContent = "Inline JS works. app.js title: " + document.title;
 </script>
 </body></html>
