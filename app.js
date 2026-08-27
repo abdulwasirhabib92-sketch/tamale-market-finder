@@ -2,10 +2,34 @@
 // Tamale Market Finder — Main Application
 // ============================================
 
-// --- Supabase Configuration ---
-// Replace these with your Supabase project credentials
-const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // e.g., https://xxxxx.supabase.co
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+// --- XSS Sanitization ---
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// --- Secure Supabase Configuration ---
+let SUPABASE_URL = '';
+let SUPABASE_ANON_KEY = '';
+
+async function loadConfig() {
+    try {
+        const res = await fetch('/api/config');
+        if (!res.ok) return false;
+        const data = await res.json();
+        SUPABASE_URL = data.SUPABASE_URL || data.VITE_SUPABASE_URL || '';
+        SUPABASE_ANON_KEY = data.SUPABASE_ANON_KEY || data.VITE_SUPABASE_ANON_KEY || '';
+        return !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+    } catch (e) {
+        console.error('Config fetch failed:', e);
+        return false;
+    }
+}
 
 let supabase = null;
 let map = null;
@@ -15,9 +39,14 @@ let currentShop = null;
 let editingProductId = null;
 
 // --- Initialize Supabase ---
-function initSupabase() {
-    if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-        console.warn('Supabase not configured. Add your credentials to app.js');
+async function initSupabase() {
+    const configured = await loadConfig();
+    if (!configured) {
+        console.warn('Supabase not configured. Running in demo mode.');
+        return null;
+    }
+    if (!window.supabase) {
+        console.error('Supabase JS library not loaded');
         return null;
     }
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -125,14 +154,14 @@ function displayResults(shops) {
         card.onclick = () => showShopDetail(shop);
         
         const productTags = shop.products.slice(0, 5).map(p => 
-            `<span>${p.name}${p.price ? ' — GH¢' + p.price : ''}</span>`
+            `<span>${escapeHtml(p.name)}${p.price ? ' — GH¢' + escapeHtml(String(p.price)) : ''}</span>`
         ).join('');
         
         card.innerHTML = `
-            <h4>${shop.shop_name}</h4>
+            <h4>${escapeHtml(shop.shop_name)}</h4>
             <div class="shop-meta">
-                <span>📍 ${shop.market_area || 'Tamale'}</span>
-                ${shop.opening_hours ? `<span>🕐 ${shop.opening_hours}</span>` : ''}
+                <span>📍 ${escapeHtml(shop.market_area || 'Tamale')}</span>
+                ${shop.opening_hours ? `<span>🕐 ${escapeHtml(shop.opening_hours)}</span>` : ''}
             </div>
             <div class="shop-products">${productTags}</div>
         `;
@@ -142,7 +171,7 @@ function displayResults(shops) {
         if (shop.latitude && shop.longitude) {
             const marker = L.marker([shop.latitude, shop.longitude])
                 .addTo(map)
-                .bindPopup(`<strong>${shop.shop_name}</strong><br>${shop.market_area || 'Tamale'}`);
+                .bindPopup(`<strong>${escapeHtml(shop.shop_name)}</strong><br>${escapeHtml(shop.market_area || 'Tamale')}`);
             marker.on('click', () => showShopDetail(shop));
             markers.push(marker);
         }
@@ -167,28 +196,28 @@ function showShopDetail(shop) {
     
     const productsHTML = shop.products.map(p => `
         <div class="modal-product">
-            ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}">` : ''}
+            ${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}">` : ''}
             <div class="info">
-                <h5>${p.name}</h5>
-                ${p.price ? `<div class="price">GH¢${p.price}</div>` : ''}
-                ${p.description ? `<div style="font-size:13px;color:#666">${p.description}</div>` : ''}
+                <h5>${escapeHtml(p.name)}</h5>
+                ${p.price ? `<div class="price">GH¢${escapeHtml(String(p.price))}</div>` : ''}
+                ${p.description ? `<div style="font-size:13px;color:#666">${escapeHtml(p.description)}</div>` : ''}
             </div>
         </div>
     `).join('');
     
     const directionsLink = shop.latitude && shop.longitude ?
-        `<a href="https://www.openstreetmap.org/directions?from=&to=${shop.latitude}%2C${shop.longitude}" target="_blank" class="directions-btn">📍 Get Directions</a>` : '';
+        `<a href="https://www.openstreetmap.org/directions?from=&to=${parseFloat(shop.latitude)}%2C${parseFloat(shop.longitude)}" target="_blank" rel="noopener" class="directions-btn">📍 Get Directions</a>` : '';
     
     body.innerHTML = `
         <div class="modal-shop-header">
-            <h2>${shop.shop_name}</h2>
-            <span class="shop-category">${shop.category || 'General'}</span>
+            <h2>${escapeHtml(shop.shop_name)}</h2>
+            <span class="shop-category">${escapeHtml(shop.category || 'General')}</span>
         </div>
-        ${shop.description ? `<p style="margin-bottom:12px;color:#666">${shop.description}</p>` : ''}
+        ${shop.description ? `<p style="margin-bottom:12px;color:#666">${escapeHtml(shop.description)}</p>` : ''}
         <div style="font-size:14px;color:#666;margin-bottom:8px;">
-            📍 ${shop.address || shop.market_area || 'Tamale'}<br>
-            🕐 ${shop.opening_hours || 'Hours not specified'}<br>
-            📞 ${shop.phone || 'No phone provided'}
+            📍 ${escapeHtml(shop.address || shop.market_area || 'Tamale')}<br>
+            🕐 ${escapeHtml(shop.opening_hours || 'Hours not specified')}<br>
+            📞 ${escapeHtml(shop.phone || 'No phone provided')}
         </div>
         ${directionsLink}
         <div class="modal-products">
