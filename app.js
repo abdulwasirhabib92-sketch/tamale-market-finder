@@ -6,8 +6,8 @@
 // ====================================================================
 // 1. CONFIGURATION & CONSTANTS
 // ====================================================================
-const SUPABASE_URL = "https://YOUR_SUPABASE_PROJECT_URL.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const SUPABASE_URL = "https://djcajmglxkmhbipmweps.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqY2FqbWdseGttaGJpcG13ZXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTE3NDcsImV4cCI6MjA5NjQyNzc0N30.ccaT6pQW8Dbqy1LC97p2hH0Q7CuYtWJwnoDgrOdwAX4";
 
 const DEMO_MODE = SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL");
 
@@ -515,9 +515,82 @@ function setupAuthListener() {
         } else {
             currentUser = null;
             userProfile = { full_name: "Guest User", account_type: "shopper", verification_tier: "unverified" };
+            userFavorites = new Set();
+            userShop = null;
             updateUIForGuestUser();
         }
     });
+}
+
+async function loadUserProfile(userId) {
+    if (!supabase || !userId) return;
+    try {
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+        if (error && error.code !== 'PGRST116') throw error;
+        if (data) {
+            userProfile = {
+                full_name: data.full_name || currentUser.email || "User",
+                phone: data.phone || "",
+                account_type: data.account_type || "shopper",
+                verification_tier: data.verification_tier || "unverified",
+                preferred_market: data.preferred_market || ""
+            };
+        } else {
+            // Create profile if it doesn't exist
+            userProfile = {
+                full_name: currentUser.user_metadata?.full_name || currentUser.email || "User",
+                phone: currentUser.user_metadata?.phone || "",
+                account_type: currentUser.user_metadata?.role || "shopper",
+                verification_tier: "unverified"
+            };
+            await supabase.from('user_profiles').insert({
+                id: userId,
+                full_name: userProfile.full_name,
+                phone: userProfile.phone,
+                account_type: userProfile.account_type
+            });
+        }
+        await loadUserShop(userId);
+        await loadUserFavorites(userId);
+        updateUIForAuthUser();
+    } catch (err) {
+        console.error("Error loading profile:", err);
+        showToast("Could not load profile data", "error");
+    }
+}
+
+async function loadUserShop(userId) {
+    if (!supabase || !userId) return;
+    try {
+        const { data, error } = await supabase
+            .from('shops')
+            .select('*')
+            .eq('created_by', userId)
+            .single();
+        if (error && error.code !== 'PGRST116') throw error;
+        userShop = data || null;
+    } catch (err) {
+        console.error("Error loading shop:", err);
+    }
+}
+
+async function loadUserFavorites(userId) {
+    if (!supabase || !userId) return;
+    try {
+        const { data, error } = await supabase
+            .from('favorites')
+            .select('shop_id')
+            .eq('user_id', userId);
+        if (error) throw error;
+        userFavorites = new Set(data.map(f => f.shop_id));
+        updateFavoritesBadge();
+    } catch (err) {
+        console.error("Error loading favorites:", err);
+    }
 }
 
 function initNavigation() {
@@ -526,6 +599,111 @@ function initNavigation() {
     document.getElementById("logoGroup").addEventListener("click", () => navigateToPage("home"));
     document.getElementById("closeDrawer").addEventListener("click", closeDrawer);
     document.getElementById("drawerBackdrop").addEventListener("click", closeDrawer);
+
+    // Drawer auth/sign-out button
+    const drawerAuthBtn = document.getElementById("drawerAuthActionBtn");
+    if (drawerAuthBtn) drawerAuthBtn.addEventListener("click", () => {
+        if (currentUser) {
+            handleSignOut();
+            closeDrawer();
+        } else {
+            closeDrawer();
+            openModal("authModal");
+        }
+    });
+
+    // Auth Modal Tabs
+    document.querySelectorAll('.auth-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.auth-tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            const tab = btn.dataset.authtab;
+            if (tab === 'login') document.getElementById('loginForm').classList.add('active');
+            else if (tab === 'register') document.getElementById('registerForm').classList.add('active');
+            else if (tab === 'forgot') document.getElementById('forgotForm').classList.add('active');
+        });
+    });
+
+    // Close auth modal
+    const closeAuth = document.getElementById('closeAuthModal');
+    if (closeAuth) closeAuth.addEventListener('click', () => closeModal('authModal'));
+    const authBackdrop = document.getElementById('authModalBackdrop');
+    if (authBackdrop) authBackdrop.addEventListener('click', () => closeModal('authModal'));
+
+    // Auth form submissions
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) loginForm.addEventListener('submit', handleLogin);
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) registerForm.addEventListener('submit', handleRegister);
+    const forgotForm = document.getElementById('forgotForm');
+    if (forgotForm) forgotForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!supabase) { showToast("Demo mode", "error"); return; }
+        const email = document.getElementById('forgotEmail').value.trim();
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
+            if (error) throw error;
+            showToast("Reset link sent! Check your email.", "success");
+            closeModal('authModal');
+        } catch (err) { showToast(err.message || "Could not send reset link", "error"); }
+    });
+
+    // Profile form
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) profileForm.addEventListener('submit', handleProfileSave);
+
+    // Shop form
+    const shopForm = document.getElementById('shopForm');
+    if (shopForm) shopForm.addEventListener('submit', handleSaveShop);
+
+    // Product form
+    const productForm = document.getElementById('productForm');
+    if (productForm) productForm.addEventListener('submit', handleSaveProduct);
+
+    // Close product modal
+    const closeProduct = document.getElementById('closeProductModal');
+    if (closeProduct) closeProduct.addEventListener('click', () => closeModal('productModal'));
+    const productBackdrop = document.getElementById('productModalBackdrop');
+    if (productBackdrop) productBackdrop.addEventListener('click', () => closeModal('productModal'));
+    const cancelProduct = document.getElementById('cancelProductBtn');
+    if (cancelProduct) cancelProduct.addEventListener('click', () => closeModal('productModal'));
+
+    // Password change
+    const changePwdForm = document.getElementById('changePasswordForm');
+    if (changePwdForm) changePwdForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!supabase || !currentUser) { showToast("Sign in first", "error"); return; }
+        const newPwd = document.getElementById('newPasswordInput').value;
+        const confirmPwd = document.getElementById('confirmPasswordInput').value;
+        if (newPwd !== confirmPwd) { showToast("Passwords do not match", "error"); return; }
+        try {
+            const { error } = await supabase.auth.updateUser({ password: newPwd });
+            if (error) throw error;
+            showToast("Password updated successfully!", "success");
+            changePwdForm.reset();
+        } catch (err) { showToast(err.message || "Could not update password", "error"); }
+    });
+
+    // Sign out button
+    const signOutBtn = document.getElementById('accountSignOutBtn');
+    if (signOutBtn) signOutBtn.addEventListener('click', handleSignOut);
+
+    // Enable trader role button
+    const enableTraderBtn = document.getElementById('enableTraderRoleBtn');
+    if (enableTraderBtn) enableTraderBtn.addEventListener('click', enableTraderRole);
+
+    // Close shop modal
+    const closeShop = document.getElementById('closeShopModal');
+    if (closeShop) closeShop.addEventListener('click', () => closeModal('shopModal'));
+    const shopBackdrop = document.getElementById('shopModalBackdrop');
+    if (shopBackdrop) shopBackdrop.addEventListener('click', () => closeModal('shopModal'));
+
+    // GPS buttons
+    const lookupBtn = document.getElementById('lookupDigitalAddressBtn');
+    if (lookupBtn) lookupBtn.addEventListener('click', lookupDigitalAddress);
+    const gpsBtn = document.getElementById('getLocationBtn');
+    if (gpsBtn) gpsBtn.addEventListener('click', handleGetDeviceLocation);
 
     // Nav Links
     document.querySelectorAll("[data-nav]").forEach(el => {
@@ -735,7 +913,7 @@ function renderMiniProductCard(p, shop) {
 // ====================================================================
 // 6. MAIN SEARCH & FILTERING LOGIC
 // ====================================================================
-function searchListings() {
+async function searchListings() {
     const resultsList = document.getElementById("resultsList");
     const query = document.getElementById("searchInput").value.toLowerCase().trim();
     const market = document.getElementById("marketFilter").value;
@@ -743,53 +921,74 @@ function searchListings() {
 
     let items = [];
 
-    if (currentDomain === "product") {
-        items = demoStore.products.map(p => {
-            const shop = demoStore.shops.find(s => s.id === p.shop_id) || {};
-            return {
-                ...p,
-                item_type: "product",
-                shop_name: shop.shop_name,
-                market_area: shop.market_area,
-                digital_address: shop.digital_address,
-                whatsapp_number: shop.whatsapp_number,
-                phone: shop.phone,
-                latitude: shop.latitude,
-                longitude: shop.longitude,
-                verification_tier: shop.verification_tier,
-                is_verified: shop.is_verified,
-                ad_tier: shop.ad_tier
-            };
-        });
-    } else if (currentDomain === "service") {
-        items = demoStore.service_listings.map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: "Tamale Metro" }));
-    } else if (currentDomain === "hotel" || currentDomain === "eatery" || currentDomain === "company") {
-        const typeMap = { hotel: "hotel", eatery: "restaurant", company: "company" };
-        items = demoStore.business_listings
-            .filter(b => b.business_type === typeMap[currentDomain])
-            .map(b => ({ ...b, item_type: currentDomain, shop_name: b.business_name, market_area: b.address }));
+    if (DEMO_MODE || !supabase) {
+        // Demo mode fallback
+        if (currentDomain === "product") {
+            items = demoStore.products.map(p => {
+                const shop = demoStore.shops.find(s => s.id === p.shop_id) || {};
+                return {
+                    ...p, item_type: "product",
+                    shop_name: shop.shop_name, market_area: shop.market_area,
+                    digital_address: shop.digital_address, whatsapp_number: shop.whatsapp_number,
+                    phone: shop.phone, latitude: shop.latitude, longitude: shop.longitude,
+                    verification_tier: shop.verification_tier, is_verified: shop.is_verified, ad_tier: shop.ad_tier
+                };
+            });
+        } else if (currentDomain === "service") {
+            items = demoStore.service_listings.map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: "Tamale Metro" }));
+        } else if (currentDomain === "hotel" || currentDomain === "eatery" || currentDomain === "company") {
+            const typeMap = { hotel: "hotel", eatery: "restaurant", company: "company" };
+            items = demoStore.business_listings.filter(b => b.business_type === typeMap[currentDomain]).map(b => ({ ...b, item_type: currentDomain, shop_name: b.business_name, market_area: b.address }));
+        }
+    } else {
+        // Fetch from Supabase
+        try {
+            if (currentDomain === "product") {
+                const { data: shops, error: shopErr } = await supabase.from('shops').select('*').eq('is_active', true);
+                if (shopErr) throw shopErr;
+                const { data: products, error: prodErr } = await supabase.from('products').select('*');
+                if (prodErr) throw prodErr;
+                items = products.map(p => {
+                    const shop = shops.find(s => s.id === p.shop_id) || {};
+                    return {
+                        ...p, item_type: "product",
+                        shop_name: shop.shop_name, market_area: shop.market_area,
+                        digital_address: shop.digital_address, whatsapp_number: shop.whatsapp_number,
+                        phone: shop.phone, latitude: shop.latitude, longitude: shop.longitude,
+                        verification_tier: shop.verification_tier, is_verified: shop.is_verified,
+                        ad_tier: shop.ad_tier, shop_id: p.shop_id
+                    };
+                });
+            } else if (currentDomain === "service") {
+                const { data: services, error: srvErr } = await supabase.from('service_listings').select('*,shops(*)').eq('is_available', true);
+                if (srvErr) throw srvErr;
+                items = (services || []).map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: s.service_area || "Tamale Metro" }));
+            } else if (currentDomain === "hotel" || currentDomain === "eatery" || currentDomain === "company") {
+                const typeMap = { hotel: "hotel", eatery: "restaurant", company: "company" };
+                const { data: businesses, error: bizErr } = await supabase.from('business_listings').select('*').eq('business_type', typeMap[currentDomain]);
+                if (bizErr) throw bizErr;
+                items = (businesses || []).map(b => ({ ...b, item_type: currentDomain, shop_name: b.business_name, market_area: b.address }));
+            }
+        } catch (err) {
+            console.error("Error fetching listings:", err);
+            resultsList.innerHTML = `<div class="empty-state" style="text-align:center;padding:40px;"><p>⚠️ Could not load listings. Please try again.</p></div>`;
+            clearMapMarkers();
+            return;
+        }
     }
 
     // Apply Filters
     items = items.filter(item => {
-        // Query Match
         const matchQuery = !query || 
             (item.name && item.name.toLowerCase().includes(query)) ||
             (item.shop_name && item.shop_name.toLowerCase().includes(query)) ||
             (item.description && item.description.toLowerCase().includes(query)) ||
             (item.digital_address && item.digital_address.toLowerCase().includes(query));
-
-        // Category Pill Match
         const matchCategory = !currentCategory || item.category === currentCategory || item.sub_category === currentCategory;
-
-        // Market Filter Match
         const matchMarket = !market || item.market_area === market;
-
-        // Status Filter Match
         let matchStatus = true;
         if (status === "in_stock") matchStatus = item.in_stock && item.stock_quantity > 0;
         if (status === "verified") matchStatus = item.verification_tier === "trusted" || item.verification_tier === "verified" || item.is_verified;
-
         return matchQuery && matchCategory && matchMarket && matchStatus;
     });
 
@@ -813,7 +1012,6 @@ function searchListings() {
         return;
     }
 
-    // Render Cards
     resultsList.innerHTML = items.map(item => {
         if (item.item_type === "product") return renderProductCard(item);
         if (item.item_type === "service") return renderServiceCard(item);
@@ -1047,9 +1245,21 @@ function clearMapMarkers() {
 // ====================================================================
 let activeOrderProduct = null;
 
-function openOrderModal(productId, shopId) {
-    const product = demoStore.products.find(p => p.id === productId);
-    const shop = demoStore.shops.find(s => s.id === shopId) || {};
+async function openOrderModal(productId, shopId) {
+    let product = null;
+    let shop = {};
+
+    if (!DEMO_MODE && supabase) {
+        try {
+            const { data: prod } = await supabase.from('products').select('*').eq('id', productId).single();
+            product = prod;
+            const { data: shopData } = await supabase.from('shops').select('*').eq('id', shopId).single();
+            shop = shopData || {};
+        } catch (err) { console.error("Error loading order data:", err); }
+    } else {
+        product = demoStore.products.find(p => p.id === productId);
+        shop = demoStore.shops.find(s => s.id === shopId) || {};
+    }
 
     if (!product) return;
     activeOrderProduct = { product, shop, qty: 1 };
@@ -1197,7 +1407,7 @@ function handleOrderSubmit(e) {
 // ====================================================================
 // 10. TRADER DASHBOARD & INLINE STOCK CONTROL
 // ====================================================================
-function updateProductStockInline(productId, delta) {
+async function updateProductStockInline(productId, delta) {
     const product = demoStore.products.find(p => p.id === productId);
     if (!product) return;
 
@@ -1212,11 +1422,20 @@ function updateProductStockInline(productId, delta) {
     showToast(`Stock for ${product.name} updated to ${newCount}`, "success");
 }
 
-function renderTraderProductsList() {
+async function renderTraderProductsList() {
     const listEl = document.getElementById("productsList");
     if (!listEl) return;
 
-    const myProducts = demoStore.products.filter(p => p.shop_id === "shop-1" || (userShop && p.shop_id === userShop.id));
+    let myProducts = [];
+    if (!DEMO_MODE && supabase && userShop) {
+        try {
+            const { data, error } = await supabase.from('products').select('*').eq('shop_id', userShop.id);
+            if (error) throw error;
+            myProducts = data || [];
+        } catch (err) { console.error("Error loading products:", err); }
+    } else if (DEMO_MODE || !supabase) {
+        myProducts = demoStore.products.filter(p => p.shop_id === "shop-1" || (userShop && p.shop_id === userShop.id));
+    }
 
     if (myProducts.length === 0) {
         listEl.innerHTML = `<p class="form-hint">No items added to your stall inventory yet. Click '+ Add New Product' above!</p>`;
@@ -1238,11 +1457,20 @@ function renderTraderProductsList() {
     `).join("");
 }
 
-function renderTraderOrders() {
+async function renderTraderOrders() {
     const container = document.getElementById("traderOrdersList");
     if (!container) return;
 
-    const shopOrders = demoStore.orders; // In demo mode, show all incoming
+    let shopOrders = [];
+    if (!DEMO_MODE && supabase && userShop) {
+        try {
+            const { data, error } = await supabase.from('orders').select('*').eq('shop_id', userShop.id).order('created_date', { ascending: false });
+            if (error) throw error;
+            shopOrders = data || [];
+        } catch (err) { console.error("Error loading orders:", err); }
+    } else {
+        shopOrders = demoStore.orders;
+    } incoming
 
     if (shopOrders.length === 0) {
         container.innerHTML = `<p class="form-hint">No buyer orders received yet.</p>`;
@@ -1301,7 +1529,7 @@ function changeOrderStatus(orderId, newStatus) {
     showToast(`Order ${order.order_number} status updated to ${newStatus}`, "success");
 }
 
-function renderBuyerOrders() {
+async function renderBuyerOrders() {
     const container1 = document.getElementById("buyerOrdersList");
     const container2 = document.getElementById("accountOrdersList");
 
@@ -1392,7 +1620,7 @@ function handleReviewSubmit(e) {
     searchListings();
 }
 
-function renderTraderReviews() {
+async function renderTraderReviews() {
     const listEl = document.getElementById("traderReviewsList");
     if (!listEl) return;
 
@@ -1484,7 +1712,7 @@ function handleReportSubmit(e) {
     showToast("Report submitted to moderation. Thank you for keeping TMF safe!", "success");
 }
 
-function renderAdminPanel() {
+async function renderAdminPanel() {
     const reportsList = document.getElementById("adminReportsList");
     if (!reportsList) return;
 
@@ -1655,7 +1883,7 @@ function showShopDetailModal(shopId) {
     openModal("shopModal");
 }
 
-function toggleFavoriteShop(shopId, e) {
+async function toggleFavoriteShop(shopId, e) {
     if (e) e.stopPropagation();
     if (userFavorites.has(shopId)) userFavorites.delete(shopId);
     else userFavorites.add(shopId);
@@ -1773,33 +2001,89 @@ function openWhatsApp(number, itemName, shopName) {
     window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
 }
 
-function enableTraderRole() {
+async function enableTraderRole() {
     userProfile.account_type = "trader";
-    document.getElementById("roleTrader").checked = true;
+    const traderRadio = document.getElementById("roleTrader");
+    if (traderRadio) traderRadio.checked = true;
+    if (!DEMO_MODE && supabase && currentUser) {
+        try {
+            await supabase.from('user_profiles').update({ account_type: "trader" }).eq('id', currentUser.id);
+        } catch (err) { console.error("Error updating role:", err); }
+    }
     updateUIForAuthUser();
     showToast("Trader role enabled! Fill in your stall details below.", "success");
 }
 
 function updateUIForAuthUser() {
-    document.getElementById("drawerName").textContent = userProfile.full_name || "Wasir Habib";
+    document.getElementById("drawerName").textContent = userProfile.full_name || "User";
     document.getElementById("navUserName").textContent = (userProfile.full_name || "Account").split(" ")[0];
+    document.getElementById("drawerEmail").textContent = currentUser?.email || "Sign in to save shops, order & manage listings";
 
+    // Update role badge
+    const roleBadge = document.getElementById("drawerRoleBadge");
+    if (roleBadge) {
+        roleBadge.textContent = userProfile.account_type || "Shopper";
+        roleBadge.className = "role-badge " + (userProfile.account_type || "shopper");
+    }
+
+    // Update auth button text
+    const authBtn = document.getElementById("drawerAuthActionBtn");
+    if (authBtn) {
+        authBtn.innerHTML = currentUser
+            ? '<span class="drawer-icon">🚪</span> Sign Out'
+            : '<span class="drawer-icon">🔑</span> Sign In / Register';
+    }
+
+    // Show/hide trader dashboard
+    const upgradePrompt = document.getElementById("trader-upgrade-prompt");
+    const dashContent = document.getElementById("trader-dashboard-content");
     if (userProfile.account_type === "trader") {
-        document.getElementById("trader-upgrade-prompt").style.display = "none";
-        document.getElementById("trader-dashboard-content").style.display = "block";
+        if (upgradePrompt) upgradePrompt.style.display = "none";
+        if (dashContent) dashContent.style.display = "block";
     } else {
-        document.getElementById("trader-upgrade-prompt").style.display = "block";
-        document.getElementById("trader-dashboard-content").style.display = "none";
+        if (upgradePrompt) upgradePrompt.style.display = "block";
+        if (dashContent) dashContent.style.display = "none";
+    }
+
+    // Fill profile form if elements exist
+    const profName = document.getElementById("profName");
+    if (profName) profName.value = userProfile.full_name || "";
+    const profEmail = document.getElementById("profEmail");
+    if (profEmail && currentUser) profEmail.value = currentUser.email || "";
+    const profPhone = document.getElementById("profPhone");
+    if (profPhone) profPhone.value = userProfile.phone || "";
+    const profMarket = document.getElementById("profPreferredMarket");
+    if (profMarket) profMarket.value = userProfile.preferred_market || "";
+    const roleRadio = document.getElementById("role" + (userProfile.account_type || "shopper").charAt(0).toUpperCase() + (userProfile.account_type || "shopper").slice(1));
+    if (roleRadio) roleRadio.checked = true;
+
+    // Fill shop form if shop exists
+    if (userShop) {
+        const sn = document.getElementById("shopName"); if (sn) sn.value = userShop.shop_name || "";
+        const sc = document.getElementById("shopCategory"); if (sc) sc.value = userShop.category || "";
+        const sma = document.getElementById("shopMarketArea"); if (sma) sma.value = userShop.market_area || "";
+        const sda = document.getElementById("shopDigitalAddress"); if (sda) sda.value = userShop.digital_address || "";
+        const sa = document.getElementById("shopAddress"); if (sa) sa.value = userShop.address || "";
+        const sp = document.getElementById("shopPhone"); if (sp) sp.value = userShop.phone || "";
+        const sw = document.getElementById("shopWhatsapp"); if (sw) sw.value = userShop.whatsapp_number || "";
+        const slat = document.getElementById("shopLat"); if (slat) slat.value = userShop.latitude || "";
+        const slng = document.getElementById("shopLng"); if (slng) slng.value = userShop.longitude || "";
     }
 
     renderTraderProductsList();
     renderTraderOrders();
     renderTraderReviews();
+    updateFavoritesBadge();
 }
 
 function updateUIForGuestUser() {
     document.getElementById("drawerName").textContent = "Guest User";
     document.getElementById("navUserName").textContent = "Account";
+    document.getElementById("drawerEmail").textContent = "Sign in to save shops, order & manage listings";
+    const roleBadge = document.getElementById("drawerRoleBadge");
+    if (roleBadge) { roleBadge.textContent = "Shopper"; roleBadge.className = "role-badge shopper"; }
+    const authBtn = document.getElementById("drawerAuthActionBtn");
+    if (authBtn) authBtn.innerHTML = '<span class="drawer-icon">🔑</span> Sign In / Register';
 }
 
 function showToast(msg, type = "success") {
@@ -1814,40 +2098,164 @@ function showToast(msg, type = "success") {
     }, 3500);
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
-    closeModal("authModal");
-    showToast("Signed in successfully!", "success");
+    if (!supabase) { showToast("Demo mode - auth not available", "error"); return; }
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    const btn = document.getElementById("loginBtn");
+    btn.textContent = "Signing in..."; btn.disabled = true;
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        closeModal("authModal");
+        showToast("Signed in successfully!", "success");
+    } catch (err) {
+        showToast(err.message || "Login failed", "error");
+    } finally {
+        btn.textContent = "Sign In"; btn.disabled = false;
+    }
 }
 
-function handleRegister(e) {
+async function handleRegister(e) {
     e.preventDefault();
-    closeModal("authModal");
-    showToast("Account created successfully!", "success");
+    if (!supabase) { showToast("Demo mode - auth not available", "error"); return; }
+    const fullName = document.getElementById("regName").value.trim();
+    const email = document.getElementById("regEmail").value.trim();
+    const phone = document.getElementById("regPhone").value.trim();
+    const password = document.getElementById("regPassword").value;
+    const role = document.getElementById("regRole").value;
+    const btn = document.getElementById("registerBtn");
+    btn.textContent = "Creating account..."; btn.disabled = true;
+    try {
+        const { data, error } = await supabase.auth.signUp({
+            email, password,
+            options: { data: { full_name: fullName, phone: phone, role: role } }
+        });
+        if (error) throw error;
+        // Create user_profile
+        if (data.user) {
+            await supabase.from('user_profiles').insert({
+                id: data.user.id, full_name: fullName, phone: phone, account_type: role
+            });
+        }
+        closeModal("authModal");
+        showToast("Account created! Check your email to confirm.", "success");
+    } catch (err) {
+        showToast(err.message || "Registration failed", "error");
+    } finally {
+        btn.textContent = "Create Free Account"; btn.disabled = false;
+    }
 }
 
-function handleProfileSave(e) {
+async function handleProfileSave(e) {
     e.preventDefault();
-    showToast("Profile details saved successfully!", "success");
+    if (!supabase || !currentUser) { showToast("Sign in first", "error"); return; }
+    const fullName = document.getElementById("profName").value.trim();
+    const phone = document.getElementById("profPhone").value.trim();
+    const preferredMarket = document.getElementById("profPreferredMarket").value;
+    const role = document.querySelector('input[name="accountRole"]:checked')?.value || "shopper";
+    try {
+        const { error } = await supabase.from('user_profiles').upsert({
+            id: currentUser.id, full_name: fullName, phone: phone,
+            preferred_market: preferredMarket, account_type: role,
+            updated_at: new Date().toISOString()
+        });
+        if (error) throw error;
+        userProfile.full_name = fullName;
+        userProfile.phone = phone;
+        userProfile.account_type = role;
+        userProfile.preferred_market = preferredMarket;
+        updateUIForAuthUser();
+        showToast("Profile details saved successfully!", "success");
+    } catch (err) {
+        showToast(err.message || "Could not save profile", "error");
+    }
 }
 
-function handleSaveShop(e) {
+async function handleSaveShop(e) {
     e.preventDefault();
-    showToast("Market stall details updated!", "success");
+    if (!supabase || !currentUser) { showToast("Sign in first", "error"); return; }
+    const shopData = {
+        created_by: currentUser.id,
+        owner_name: userProfile.full_name,
+        shop_name: document.getElementById("shopName").value.trim(),
+        category: document.getElementById("shopCategory").value,
+        market_area: document.getElementById("shopMarketArea").value,
+        digital_address: document.getElementById("shopDigitalAddress").value.trim(),
+        address: document.getElementById("shopAddress").value.trim(),
+        phone: document.getElementById("shopPhone").value.trim(),
+        whatsapp_number: document.getElementById("shopWhatsapp").value.trim(),
+        opening_hours: document.getElementById("shopHours")?.value?.trim() || "",
+        description: document.getElementById("shopDescription")?.value?.trim() || "",
+        latitude: parseFloat(document.getElementById("shopLat").value) || null,
+        longitude: parseFloat(document.getElementById("shopLng").value) || null,
+        is_active: true,
+        updated_date: new Date().toISOString()
+    };
+    try {
+        if (userShop) {
+            const { error } = await supabase.from('shops').update(shopData).eq('id', userShop.id);
+            if (error) throw error;
+        } else {
+            const { data, error } = await supabase.from('shops').insert(shopData).select().single();
+            if (error) throw error;
+            userShop = data;
+        }
+        showToast("Market stall details saved!", "success");
+    } catch (err) {
+        showToast(err.message || "Could not save shop details", "error");
+    }
 }
 
-function handleSaveProduct(e) {
+async function handleSaveProduct(e) {
     e.preventDefault();
-    closeModal("productModal");
-    showToast("Product item saved!", "success");
+    if (!supabase || !currentUser) { showToast("Sign in first", "error"); return; }
+    if (!userShop) { showToast("Create your shop stall first", "error"); return; }
+    const productId = document.getElementById("productId").value;
+    const productData = {
+        shop_id: userShop.id,
+        name: document.getElementById("productName").value.trim(),
+        category: document.getElementById("productCategory").value.trim(),
+        price: parseFloat(document.getElementById("productPrice").value) || 0,
+        discount_price: parseFloat(document.getElementById("productDiscountPrice").value) || null,
+        badge_tag: document.getElementById("productBadgeTag").value || null,
+        stock_quantity: parseInt(document.getElementById("productStockQuantity").value) || 0,
+        low_stock_threshold: parseInt(document.getElementById("productLowStockThreshold").value) || 3,
+        description: document.getElementById("productDescription").value.trim(),
+        image_url: document.getElementById("productImage").value.trim(),
+        in_stock: document.getElementById("productInStock").checked,
+        listing_type: "product"
+    };
+    try {
+        if (productId) {
+            const { error } = await supabase.from('products').update(productData).eq('id', productId);
+            if (error) throw error;
+        } else {
+            const { error } = await supabase.from('products').insert(productData);
+            if (error) throw error;
+        }
+        closeModal("productModal");
+        showToast("Product item saved!", "success");
+        renderTraderProductsList();
+    } catch (err) {
+        showToast(err.message || "Could not save product", "error");
+    }
 }
 
-function handleSignOut() {
+async function handleSignOut() {
+    if (supabase) {
+        await supabase.auth.signOut();
+    }
     currentUser = null;
+    userProfile = { full_name: "Guest User", account_type: "shopper", verification_tier: "unverified" };
+    userFavorites = new Set();
+    userShop = null;
+    updateUIForGuestUser();
     showToast("Signed out of account", "success");
 }
 
-function renderFavoritesPage() {
+async function renderFavoritesPage() {
     const list = document.getElementById("favoritesList");
     if (!list) return;
 
@@ -1856,11 +2264,24 @@ function renderFavoritesPage() {
         return;
     }
 
-    const favShops = demoStore.shops.filter(s => userFavorites.has(s.id));
+    let favShops = [];
+    if (!DEMO_MODE && supabase) {
+        try {
+            const favIds = Array.from(userFavorites);
+            const { data, error } = await supabase.from('shops').select('*').in('id', favIds);
+            if (error) throw error;
+            favShops = data || [];
+        } catch (err) {
+            favShops = demoStore.shops.filter(s => userFavorites.has(s.id));
+        }
+    } else {
+        favShops = demoStore.shops.filter(s => userFavorites.has(s.id));
+    }
+
     list.innerHTML = favShops.map(s => `
         <div class="card" onclick="showShopDetailModal('${s.id}')">
             <h3 class="card-title">${s.shop_name}</h3>
-            <p style="font-size:12px; color:var(--text-muted);">📍 ${s.market_area} • 🇬🇭 ${s.digital_address}</p>
+            <p style="font-size:12px; color:var(--text-muted);">📍 ${s.market_area} • 🇬🇭 ${s.digital_address || ''}</p>
         </div>
     `).join("");
 }
