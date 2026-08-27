@@ -1,3 +1,10 @@
+// === IMMEDIATE DEBUG MARKER ===
+document.title = "TMF_DEBUG: JS_LOADED";
+if (typeof window.supabase !== 'undefined') {
+    document.title += "_SB_FOUND";
+} else {
+    document.title += "_SB_MISSING";
+}
 /* ====================================================================
    TAMALE MARKET FINDER (TMF) - PHASE 2 JAVASCRIPT ENGINE
    Target: Vanilla JS (ES6+), Leaflet.js, Supabase JS v2, Ghana Post GPS
