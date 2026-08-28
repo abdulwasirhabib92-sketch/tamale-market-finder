@@ -545,7 +545,49 @@ document.addEventListener("DOMContentLoaded", () => {
     try { renderShowcaseSections().catch(e => showErr("renderShowcaseSections", e)); } catch(e) { showErr("renderShowcaseSections", e); }
     try { searchListings(); } catch(e) { showErr("searchListings", e); }
     try { updateUIForAuthUser(); } catch(e) { showErr("updateUIForAuthUser", e); }
+    try { initInlineHandlers(); } catch(e) { showErr("initInlineHandlers", e); }
 });
+
+// Migrate all inline event handlers to addEventListener (CSP compliance)
+function initInlineHandlers() {
+    // Ad booking buttons
+    document.querySelectorAll('[data-ad-tier]').forEach(btn => {
+        btn.addEventListener('click', () => openAdBookingModal(btn.dataset.adTier));
+    });
+
+    // Modal close buttons & backdrops
+    document.querySelectorAll('[data-close-modal]').forEach(el => {
+        el.addEventListener('click', () => closeModal(el.dataset.closeModal));
+    });
+
+    // Star rating buttons
+    document.querySelectorAll('[data-star]').forEach(star => {
+        star.addEventListener('click', () => selectStarRating(parseInt(star.dataset.star)));
+    });
+
+    // Form submissions
+    const reviewForm = document.getElementById('reviewForm');
+    if (reviewForm) reviewForm.addEventListener('submit', handleReviewSubmit);
+
+    const replyReviewForm = document.getElementById('replyReviewForm');
+    if (replyReviewForm) replyReviewForm.addEventListener('submit', handleReviewReplySubmit);
+
+    const reportForm = document.getElementById('reportForm');
+    if (reportForm) reportForm.addEventListener('submit', handleReportSubmit);
+
+    const adBookingForm = document.getElementById('adBookingForm');
+    if (adBookingForm) adBookingForm.addEventListener('submit', handleAdBookingSubmit);
+
+    const helpForm = document.getElementById('helpForm');
+    if (helpForm) helpForm.addEventListener('submit', handleHelpSubmit);
+
+    // Ad tier/duration selects
+    const adTierSelect = document.getElementById('adTierSelect');
+    if (adTierSelect) adTierSelect.addEventListener('change', updateAdFeeDisplay);
+
+    const adDuration = document.getElementById('adDuration');
+    if (adDuration) adDuration.addEventListener('change', updateAdFeeDisplay);
+}
 
 function initSupabase() {
     if (!DEMO_MODE) {
