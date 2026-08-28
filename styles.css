@@ -375,7 +375,7 @@ body {
     padding: 16px;
     color: #FFFFFF;
     cursor: pointer;
-    transition: opacity 0.5s ease, transform 0.5s ease;
+    transition: opacity 0.8s ease, transform 0.8s ease;
     opacity: 0;
     transform: translateX(30px);
     position: absolute;

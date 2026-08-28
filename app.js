@@ -954,7 +954,7 @@ async function renderSpotlightCarousel() {
     // Start auto-rotation
     if (spotlightTimer) clearInterval(spotlightTimer);
     if (spotlightShops.length > 1) {
-        spotlightTimer = setInterval(rotateSpotlight, 4000);
+        spotlightTimer = setInterval(rotateSpotlight, 7000);
     }
 }
 
@@ -990,7 +990,7 @@ function goToSpotlight(idx) {
     // Reset timer
     if (spotlightTimer) clearInterval(spotlightTimer);
     if (window._spotlightShops && window._spotlightShops.length > 1) {
-        spotlightTimer = setInterval(rotateSpotlight, 4000);
+        spotlightTimer = setInterval(rotateSpotlight, 7000);
     }
 }
 
