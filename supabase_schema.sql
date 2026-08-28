@@ -61,6 +61,11 @@ CREATE TABLE IF NOT EXISTS shops (
     is_flagged BOOLEAN DEFAULT false,
     ad_tier TEXT DEFAULT 'free' CHECK (ad_tier IN ('free', 'basic_spotlight', 'premium_top', 'category_featured')),
     created_date TIMESTAMPTZ DEFAULT NOW(),
+    ghana_card_number TEXT,
+    ghana_card_full_name TEXT,
+    ghana_card_type TEXT DEFAULT 'national_id',
+    ghana_card_photo_url TEXT,
+    ghana_card_verified BOOLEAN DEFAULT false,
     updated_date TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -76,7 +81,12 @@ ALTER TABLE shops
   ADD COLUMN IF NOT EXISTS verification_tier TEXT DEFAULT 'unverified',
   ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true,
   ADD COLUMN IF NOT EXISTS is_flagged BOOLEAN DEFAULT false,
-  ADD COLUMN IF NOT EXISTS ad_tier TEXT DEFAULT 'free';
+  ADD COLUMN IF NOT EXISTS ad_tier TEXT DEFAULT 'free',
+  ADD COLUMN IF NOT EXISTS ghana_card_number TEXT,
+  ADD COLUMN IF NOT EXISTS ghana_card_full_name TEXT,
+  ADD COLUMN IF NOT EXISTS ghana_card_type TEXT DEFAULT 'national_id',
+  ADD COLUMN IF NOT EXISTS ghana_card_photo_url TEXT,
+  ADD COLUMN IF NOT EXISTS ghana_card_verified BOOLEAN DEFAULT false;
 
 
 -- ----------------------------------------------------------------------------

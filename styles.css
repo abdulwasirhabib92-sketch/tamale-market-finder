@@ -1720,3 +1720,49 @@ body {
     color: var(--primary-dark);
     border-bottom-color: var(--primary);
 }
+
+/* ====================================================================
+   GHANA CARD VERIFICATION SECTION
+   ==================================================================== */
+.ghana-card-section {
+    margin-top: 15px;
+}
+
+.ghana-card-section .gps-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0F172A;
+}
+
+/* ====================================================================
+   LIVE MAP ENHANCEMENTS
+   ==================================================================== */
+.custom-map-pin {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.custom-map-pin:hover {
+    transform: scale(1.15);
+}
+
+.user-location-pin {
+    z-index: 1000;
+}
+
+.leaflet-popup-content button {
+    font-family: inherit;
+    transition: opacity 0.2s ease;
+}
+
+.leaflet-popup-content button:hover {
+    opacity: 0.85;
+}
+
+.map-locate-btn:hover {
+    background: #074428 !important;
+}

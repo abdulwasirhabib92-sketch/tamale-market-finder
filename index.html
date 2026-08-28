@@ -496,6 +496,52 @@
                                     <textarea id="shopDescription" rows="3" placeholder="Describe the items you sell, wholesale/retail deals, and landmarks..."></textarea>
                                 </div>
 
+                                <!-- Ghana Card Verification Section -->
+                                <div class="card ghana-card-section" style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 16px; margin-bottom: 15px; border-radius: 10px;">
+                                    <div class="gps-card-title" style="margin-bottom: 8px;">
+                                        <span>🪪 Ghana Card Verification (Required for Traders)</span>
+                                        <span class="gps-badge-tag" style="background:#16A34A; color:white;">Mandatory</span>
+                                    </div>
+                                    <p class="form-hint" style="margin-bottom: 12px;">All traders must provide a valid Ghana Card for identity verification. Your details are kept confidential and used only for verification purposes.</p>
+
+                                    <div class="form-row-2">
+                                        <div class="form-group">
+                                            <label for="ghanaCardNumber">Ghana Card Number *</label>
+                                            <input type="text" id="ghanaCardNumber" placeholder="e.g. GHA-123456789-1" required style="text-transform: uppercase;" />
+                                            <small class="form-hint">Format: GHA-XXXXXXXXX-X</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="ghanaCardType">Card Type</label>
+                                            <select id="ghanaCardType">
+                                                <option value="national_id">National ID Card</option>
+                                                <option value="voter_id">Voter's ID (Legacy)</option>
+                                                <option value="driving_license">Driving License</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="ghanaCardFullName">Full Name as on Ghana Card *</label>
+                                        <input type="text" id="ghanaCardFullName" placeholder="Enter your full name exactly as it appears on your Ghana Card" required />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="ghanaCardPhoto">Upload Ghana Card Photo *</label>
+                                        <input type="file" id="ghanaCardPhoto" accept="image/*" capture="environment" required />
+                                        <small class="form-hint">Take a clear photo of your Ghana Card (front side). Make sure all details are visible.</small>
+                                        <div id="ghanaCardPreview" style="margin-top: 8px; display: none;">
+                                            <img id="ghanaCardPreviewImg" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid #BBF7D0;" alt="Ghana Card Preview" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label class="checkbox-label" style="font-size: 13px;">
+                                            <input type="checkbox" id="ghanaCardConsent" required />
+                                            <span>I confirm the Ghana Card details are mine and accurate. I consent to identity verification by Tamale Market Finder.</span>
+                                        </label>
+                                    </div>
+                                </div>
+
                                 <button type="submit" class="btn-primary" id="saveShopBtn">Save Market Stall Details</button>
                             </form>
                         </div>

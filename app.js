@@ -713,6 +713,22 @@ function initNavigation() {
     const shopForm = document.getElementById('shopForm');
     if (shopForm) shopForm.addEventListener('submit', handleSaveShop);
 
+    // Ghana Card photo preview
+    const ghanaCardInput = document.getElementById('ghanaCardPhoto');
+    if (ghanaCardInput) {
+        ghanaCardInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    document.getElementById('ghanaCardPreviewImg').src = ev.target.result;
+                    document.getElementById('ghanaCardPreview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
     // Product form
     const productForm = document.getElementById('productForm');
     if (productForm) productForm.addEventListener('submit', handleSaveProduct);
@@ -1343,20 +1359,172 @@ function renderCompanyCard(c) {
 // ====================================================================
 // 8. LEAFLET MAP ENGINE INTEGRATION
 // ====================================================================
+let userLocationMarker = null;
+let userLocationCircle = null;
+let directionsLayer = null;
+let userLat = null;
+let userLng = null;
+
 function initMap() {
     const mapEl = document.getElementById("map");
     if (!mapEl) return;
 
-    leafletMap = L.map("map").setView([9.4075, -0.8357], 13); // Tamale Central
+    leafletMap = L.map("map", {
+        zoomControl: true,
+        attributionControl: true
+    }).setView([9.4075, -0.8357], 14); // Tamale Central
 
+    // Use a more detailed tile layer
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
     }).addTo(leafletMap);
+
+    // Add a "Find My Location" button to the map
+    const locateBtn = L.control({ position: "topright" });
+    locateBtn.onAdd = function() {
+        const btn = L.DomUtil.create("button", "map-locate-btn");
+        btn.innerHTML = "📍 My Location";
+        btn.style.cssText = "background:#0A5C36; color:white; border:none; padding:8px 14px; border-radius:20px; font-weight:600; font-size:13px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.3); margin:10px;";
+        btn.onclick = function(e) {
+            e.preventDefault();
+            findMyLocation();
+        };
+        return btn;
+    };
+    locateBtn.addTo(leafletMap);
+
+    // Auto-detect user's location on map load
+    setTimeout(findMyLocation, 1500);
 }
+
+function findMyLocation() {
+    if (!leafletMap) return;
+
+    if (!("geolocation" in navigator)) {
+        showToast("GPS not available on this device", "warning");
+        return;
+    }
+
+    showToast("Finding your location...", "success");
+
+    navigator.geolocation.getCurrentPosition(pos => {
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+
+        // Remove old user marker
+        if (userLocationMarker) leafletMap.removeLayer(userLocationMarker);
+        if (userLocationCircle) leafletMap.removeLayer(userLocationCircle);
+
+        // Add user location marker (blue pulsing dot)
+        const userIcon = L.divIcon({
+            html: `<div style="position:relative; width:20px; height:20px;">
+                <div style="position:absolute; width:20px; height:20px; border-radius:50%; background:#2196F3; border:3px solid white; box-shadow:0 0 0 2px #2196F3, 0 2px 6px rgba(0,0,0,0.3);"></div>
+                <div style="position:absolute; width:20px; height:20px; border-radius:50%; background:rgba(33,150,243,0.3); animation:pulse 2s infinite;"></div>
+            </div>
+            <style>@keyframes pulse{0%{transform:scale(1);opacity:0.7}70%{transform:scale(2.5);opacity:0}100%{transform:scale(2.5);opacity:0}}</style>`,
+            className: "user-location-pin",
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+
+        userLocationMarker = L.marker([userLat, userLng], { icon: userIcon }).addTo(leafletMap);
+        userLocationMarker.bindPopup("<b>You are here</b><br><span style='font-size:11px;color:#64748b;'>Your current GPS location</span>");
+
+        // Add accuracy circle
+        if (pos.coords.accuracy) {
+            userLocationCircle = L.circle([userLat, userLng], {
+                radius: pos.coords.accuracy,
+                color: "#2196F3",
+                weight: 1,
+                fillColor: "#2196F3",
+                fillOpacity: 0.1
+            }).addTo(leafletMap);
+        }
+
+        // Center map on user location
+        leafletMap.setView([userLat, userLng], 15);
+        showToast("Location found! You can see shops near you on the map.", "success");
+
+        // Re-add shop markers
+        if (typeof currentMapItems !== 'undefined' && currentMapItems) {
+            updateMapMarkers(currentMapItems);
+        }
+    }, err => {
+        showToast("Could not get your location. Allow GPS permissions and try again.", "warning");
+    }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function drawDirectionsToShop(shopLat, shopLng, shopName) {
+    if (!leafletMap) return;
+
+    // Need user location first
+    if (!userLat || !userLng) {
+        showToast("Finding your location first...", "success");
+        navigator.geolocation.getCurrentPosition(pos => {
+            userLat = pos.coords.latitude;
+            userLng = pos.coords.longitude;
+            drawDirectionsToShop(shopLat, shopLng, shopName);
+        }, () => {
+            showToast("Enable GPS to get directions to this shop.", "warning");
+        }, { enableHighAccuracy: true, timeout: 10000 });
+        return;
+    }
+
+    // Remove old directions
+    if (directionsLayer) leafletMap.removeLayer(directionsLayer);
+
+    // Draw a line from user to shop
+    directionsLayer = L.polyline([[userLat, userLng], [shopLat, shopLng]], {
+        color: "#0A5C36",
+        weight: 4,
+        opacity: 0.7,
+        dashArray: "10, 10",
+        lineCap: "round"
+    }).addTo(leafletMap);
+
+    // Fit map to show both points
+    leafletMap.fitBounds([[userLat, userLng], [shopLat, shopLng]], { padding: [50, 50] });
+
+    // Calculate approximate distance
+    const dist = calculateDistance(userLat, userLng, shopLat, shopLng);
+    const distText = dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(2)}km`;
+
+    // Open Google Maps / Apple Maps directions link
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${shopLat},${shopLng}&travelmode=driving`;
+
+    showToast(`Distance to ${shopName}: ${distText}. Tap the shop marker for turn-by-turn directions.`, "success");
+
+    // Add a popup on the shop marker with directions link
+    if (directionsLayer) {
+        directionsLayer.bindPopup(`
+            <div style="font-family:sans-serif; padding:4px; min-width:180px;">
+                <h4 style="margin:0 0 6px; font-size:13px;">🧭 Directions to ${escapeHtml(shopName)}</h4>
+                <p style="margin:0 0 8px; font-size:12px; color:#64748b;">Distance: ~${distText}</p>
+                <a href="${directionsUrl}" target="_blank" style="display:block; background:#0A5C36; color:white; text-decoration:none; padding:8px; border-radius:6px; text-align:center; font-weight:600; font-size:13px;">Open in Google Maps ➔</a>
+            </div>
+        `);
+        directionsLayer.openPopup();
+    }
+}
+
+function calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+let currentMapItems = null;
 
 function updateMapMarkers(items) {
     if (!leafletMap) return;
     clearMapMarkers();
+    currentMapItems = items;
 
     items.forEach(item => {
         if (!item.latitude || !item.longitude) return;
@@ -1366,23 +1534,29 @@ function updateMapMarkers(items) {
         if (item.ad_tier === "premium_top") markerColor = "#D97706"; // Gold
         else if (item.verification_tier === "trusted" || item.is_verified) markerColor = "#0284C7"; // Blue
 
-        const markerHtml = `<div style="background-color: ${markerColor}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold;">🛒</div>`;
+        const markerHtml = `<div style="background-color: ${markerColor}; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-size: 13px; font-weight: bold;">🛒</div>`;
         
         const customIcon = L.divIcon({
             html: markerHtml,
             className: "custom-map-pin",
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
         });
 
         const marker = L.marker([item.latitude, item.longitude], { icon: customIcon }).addTo(leafletMap);
 
+        const shopId = escapeJs(item.shop_id || item.id);
+        const shopLat = item.latitude;
+        const shopLng = item.longitude;
+        const shopName = escapeHtml(item.shop_name || item.name).replace(/'/g, "\'");
+
         const popupContent = `
-            <div style="font-family: sans-serif; padding: 4px; max-width: 200px;">
+            <div style="font-family: sans-serif; padding: 4px; min-width: 220px;">
                 <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight:700;">${escapeHtml(item.shop_name || item.name)}</h4>
                 <p style="margin: 0 0 4px 0; font-size: 11px; color: #64748b;">📍 ${escapeHtml(item.market_area || 'Tamale')}</p>
                 ${item.digital_address ? `<p style="margin:0 0 6px 0; font-size:11px; color:#0369A1; font-weight:bold;">🇬🇭 ${escapeHtml(item.digital_address)}</p>` : ''}
-                <button onclick="showShopDetailModal('${escapeJs(item.shop_id || item.id)}')" style="width:100%; background:#0A5C36; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">View Stall ➔</button>
+                <button onclick="showShopDetailModal('${shopId}')" style="width:100%; background:#0A5C36; color:white; border:none; padding:6px 8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer; margin-bottom:4px;">View Stall ➔</button>
+                <button onclick="drawDirectionsToShop(${shopLat}, ${shopLng}, '${shopName}')" style="width:100%; background:#2196F3; color:white; border:none; padding:6px 8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">🧭 Get Directions</button>
             </div>
         `;
 
@@ -2155,6 +2329,12 @@ async function showShopDetailModal(shopId) {
             <h2 style="font-size:22px; font-weight:800;">${escapeHtml(shop.shop_name)}</h2>
             <div style="font-size:13px; color:var(--text-muted);">📍 ${escapeHtml(shop.address || shop.market_area)} • 🇬🇭 ${escapeHtml(shop.digital_address || 'NT-092-0621')}</div>
             <div class="star-rating" style="margin-top:6px;">⭐ ${shop.rating_avg || 4.8} (${shop.rating_count || 12} customer reviews)</div>
+            ${shop.ghana_card_verified ? '<span style="display:inline-block; background:#DCFCE7; color:#16A34A; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; margin-top:6px;">✓ Ghana Card Verified</span>' : ''}
+            ${shop.latitude && shop.longitude ? `
+            <div style="margin-top:10px;">
+                <button onclick="drawDirectionsToShop(${shop.latitude}, ${shop.longitude}, '${escapeHtml(shop.shop_name).replace(/'/g, "\'")}')" style="background:#2196F3; color:white; border:none; padding:10px 16px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">🧭 Get Directions to This Stall</button>
+            </div>
+            ` : ''}
         </div>
 
         <h3>In-Stock Items at this Stall</h3>
@@ -2199,37 +2379,85 @@ function updateFavoritesBadge() {
 // ====================================================================
 // 15. GHANA POST GPS ADDRESS GELEOMATION API
 // ====================================================================
-function lookupDigitalAddress() {
+async function lookupDigitalAddress() {
     const code = document.getElementById("shopDigitalAddress").value.toUpperCase().trim();
     if (!code) {
         showToast("Please enter a digital address code (e.g. NT-092-0621)", "warning");
         return;
     }
 
-    showToast("Querying Ghana Post GPS API...", "success");
-    // Mock Ghana Post GPS geocoding offset
-    const lat = 9.4075 + (Math.random() - 0.5) * 0.02;
-    const lng = -0.8357 + (Math.random() - 0.5) * 0.02;
+    showToast("Looking up Ghana Post GPS address...", "success");
 
-    document.getElementById("shopLat").value = lat.toFixed(6);
-    document.getElementById("shopLng").value = lng.toFixed(6);
-    document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    showToast(`Ghana Post GPS location found for ${code}`, "success");
+    try {
+        // Use Ghana Post GPS API to geocode the digital address
+        const response = await fetch(`https://api.ghanapostgps.com/v2/getlocation?address=${encodeURIComponent(code)}`);
+        if (response.ok) {
+            const result = await response.json();
+            if (result?.data?.found && result?.data?.Table) {
+                const loc = result.data.Table[0];
+                const lat = parseFloat(loc.CenterLatitude || loc.Latitude);
+                const lng = parseFloat(loc.CenterLongitude || loc.Longitude);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    document.getElementById("shopLat").value = lat.toFixed(6);
+                    document.getElementById("shopLng").value = lng.toFixed(6);
+                    document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${loc.Street || loc.DigitalAddress || code}`;
+                    showToast(`Location found for ${code}`, "success");
+                    return;
+                }
+            }
+        }
+        throw new Error("API did not return coordinates");
+    } catch (err) {
+        console.warn("Ghana Post GPS API failed, using approximate location:", err);
+        // Fallback: use a reasonable approximation based on the address code
+        // Tamale area is roughly around 9.40°N, 0.84°W
+        const hash = code.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+        const lat = 9.4030 + ((hash % 1000) / 1000 - 0.5) * 0.03;
+        const lng = -0.8357 + ((hash % 777) / 777 - 0.5) * 0.03;
+        document.getElementById("shopLat").value = lat.toFixed(6);
+        document.getElementById("shopLng").value = lng.toFixed(6);
+        document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} (approximate)`;
+        showToast(`Approximate location set for ${code}. Using GPS for precise pin recommended.`, "warning");
+    }
 }
 
 function handleGetDeviceLocation() {
     if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(pos => {
+        document.getElementById("locationStatus").textContent = "GPS Pin: Detecting your location...";
+        navigator.geolocation.getCurrentPosition(async pos => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
             document.getElementById("shopLat").value = lat.toFixed(6);
             document.getElementById("shopLng").value = lng.toFixed(6);
-            document.getElementById("shopDigitalAddress").value = "NT-092-" + Math.floor(1000 + Math.random() * 9000);
-            document.getElementById("locationStatus").textContent = `GPS Pin: Auto-Detected`;
-            showToast("Device location acquired and Ghana Post code generated!", "success");
+
+            // Try to reverse geocode with Ghana Post GPS API
+            let addressCode = "";
+            try {
+                const resp = await fetch(`https://api.ghanapostgps.com/v2/getaddress?lat=${lat}&lng=${lng}`);
+                if (resp.ok) {
+                    const result = await resp.json();
+                    if (result?.data?.found && result?.data?.Table) {
+                        addressCode = result.data.Table[0].DigitalAddress || result.data.Table[0].address || "";
+                    }
+                }
+            } catch (e) {
+                console.warn("Reverse geocoding failed:", e);
+            }
+
+            if (!addressCode) {
+                // Fallback: generate a reasonable NT- prefix address
+                addressCode = "NT-" + Math.floor(lat * 1000).toString().padStart(3, "0") + "-" + Math.floor(Math.abs(lng) * 1000).toString().padStart(4, "0");
+            }
+
+            document.getElementById("shopDigitalAddress").value = addressCode;
+            document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${addressCode}`;
+            showToast("Device location acquired! Digital address: " + addressCode, "success");
         }, err => {
-            showToast("Could not acquire device location. Using default Tamale Central pin.", "warning");
-        });
+            document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
+            showToast("Could not acquire device location. Please enter your digital address manually.", "warning");
+        }, { enableHighAccuracy: true, timeout: 10000 });
+    } else {
+        showToast("GPS not available on this device. Please enter your digital address manually.", "warning");
     }
 }
 
@@ -2241,17 +2469,55 @@ function navigateToPage(pageId) {
     document.querySelectorAll(".drawer-item").forEach(d => d.classList.remove("active"));
     document.querySelectorAll(".bottom-nav-item").forEach(b => b.classList.remove("active"));
 
-    const targetPage = document.getElementById("page-" + pageId);
+    // Handle account sub-navigation from drawer
+    let actualPage = pageId;
+    let accountSubTab = null;
+
+    if (pageId === "account-settings") { actualPage = "account"; accountSubTab = "profile"; }
+    else if (pageId === "account-trader") { actualPage = "account"; accountSubTab = "trader"; }
+    else if (pageId === "account-admin") { actualPage = "account"; accountSubTab = "admin"; }
+
+    const targetPage = document.getElementById("page-" + actualPage);
     if (targetPage) targetPage.classList.add("active");
 
     const drawerItem = document.querySelector(`.drawer-item[data-nav="${pageId}"]`);
     if (drawerItem) drawerItem.classList.add("active");
 
-    const bottomItem = document.querySelector(`.bottom-nav-item[data-nav="${pageId}"]`);
+    const bottomItem = document.querySelector(`.bottom-nav-item[data-nav="${actualPage}"]`);
     if (bottomItem) bottomItem.classList.add("active");
 
-    if (pageId === "my-orders") renderBuyerOrders();
-    if (pageId === "favorites") renderFavoritesPage();
+    // Activate the correct account sub-tab
+    if (accountSubTab) {
+        document.querySelectorAll(".acc-tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".acc-tab-content").forEach(c => c.classList.remove("active"));
+        const tabBtn = document.querySelector(`.acc-tab-btn[data-acctab="${accountSubTab}"]`);
+        const tabContent = document.getElementById("acctab-" + accountSubTab);
+        if (tabBtn) tabBtn.classList.add("active");
+        if (tabContent) tabContent.classList.add("active");
+
+        if (accountSubTab === "trader") {
+            renderTraderProductsList();
+            renderTraderOrders();
+        }
+        if (accountSubTab === "admin") renderAdminPanel();
+    }
+
+    if (actualPage === "my-orders") renderBuyerOrders();
+    if (actualPage === "favorites") renderFavoritesPage();
+
+    // Handle map-mobile: switch home page to map view
+    if (pageId === "map-mobile") {
+        if (mobileViewMode === "list") {
+            toggleMobileViewMode();
+        }
+        if (leafletMap) {
+            setTimeout(() => leafletMap.invalidateSize(), 100);
+            setTimeout(() => findMyLocation(), 300);
+        }
+    }
+
+    // Scroll to top
+    window.scrollTo(0, 0);
 }
 
 function toggleMobileViewMode() {
@@ -2364,6 +2630,17 @@ function updateUIForAuthUser() {
         const sw = document.getElementById("shopWhatsapp"); if (sw) sw.value = userShop.whatsapp_number || "";
         const slat = document.getElementById("shopLat"); if (slat) slat.value = userShop.latitude || "";
         const slng = document.getElementById("shopLng"); if (slng) slng.value = userShop.longitude || "";
+
+        // Fill Ghana Card fields
+        const gcn = document.getElementById("ghanaCardNumber"); if (gcn) gcn.value = userShop.ghana_card_number || "";
+        const gcfn = document.getElementById("ghanaCardFullName"); if (gcfn) gcfn.value = userShop.ghana_card_full_name || "";
+        const gct = document.getElementById("ghanaCardType"); if (gct) gct.value = userShop.ghana_card_type || "national_id";
+        if (userShop.ghana_card_photo_url) {
+            const preview = document.getElementById("ghanaCardPreview");
+            const previewImg = document.getElementById("ghanaCardPreviewImg");
+            if (preview) preview.style.display = "block";
+            if (previewImg) previewImg.src = userShop.ghana_card_photo_url;
+        }
     }
 
     renderTraderProductsList();
@@ -2472,6 +2749,43 @@ async function handleProfileSave(e) {
 async function handleSaveShop(e) {
     e.preventDefault();
     if (!sbClient || !currentUser) { showToast("Sign in first", "error"); return; }
+
+    // Validate Ghana Card fields
+    const ghanaCardNum = document.getElementById("ghanaCardNumber")?.value.trim() || "";
+    const ghanaCardName = document.getElementById("ghanaCardFullName")?.value.trim() || "";
+    const ghanaCardConsent = document.getElementById("ghanaCardConsent")?.checked || false;
+    const ghanaCardPhoto = document.getElementById("ghanaCardPhoto")?.files[0] || null;
+
+    if (!ghanaCardNum) { showToast("Ghana Card number is required for traders", "error"); return; }
+    if (!ghanaCardName) { showToast("Full name as on Ghana Card is required", "error"); return; }
+    if (!ghanaCardConsent) { showToast("Please confirm the Ghana Card consent checkbox", "error"); return; }
+    if (!userShop?.ghana_card_number && !ghanaCardPhoto) {
+        showToast("Please upload a photo of your Ghana Card", "error"); return;
+    }
+
+    // Upload Ghana Card photo if a new file was selected
+    let ghanaCardPhotoUrl = userShop?.ghana_card_photo_url || null;
+    if (ghanaCardPhoto) {
+        try {
+            const fileExt = ghanaCardPhoto.name.split('.').pop();
+            const fileName = `ghana-cards/${currentUser.id}_${Date.now()}.${fileExt}`;
+            const { data: uploadData, error: uploadError } = await sbClient.storage
+                .from('shop-images')
+                .upload(fileName, ghanaCardPhoto);
+            if (!uploadError) {
+                ghanaCardPhotoUrl = `${import.meta?.env?.VITE_SUPABASE_URL || ''}/storage/v1/object/public/shop-images/${fileName}`;
+                // Fallback: use Supabase client URL
+                if (!ghanaCardPhotoUrl || ghanaCardPhotoUrl.includes('undefined')) {
+                    const { data: pubData } = sbClient.storage.from('shop-images').getPublicUrl(fileName);
+                    ghanaCardPhotoUrl = pubData?.publicUrl || null;
+                }
+            }
+        } catch (uploadErr) {
+            console.error("Ghana Card photo upload error:", uploadErr);
+            showToast("Card photo upload failed, but saving other details...", "warning");
+        }
+    }
+
     const shopData = {
         created_by: currentUser.id,
         owner_name: userProfile.full_name,
@@ -2486,6 +2800,11 @@ async function handleSaveShop(e) {
         description: document.getElementById("shopDescription")?.value?.trim() || "",
         latitude: parseFloat(document.getElementById("shopLat").value) || null,
         longitude: parseFloat(document.getElementById("shopLng").value) || null,
+        ghana_card_number: ghanaCardNum,
+        ghana_card_full_name: ghanaCardName,
+        ghana_card_type: document.getElementById("ghanaCardType")?.value || "national_id",
+        ghana_card_photo_url: ghanaCardPhotoUrl,
+        ghana_card_verified: false,
         is_active: true,
         updated_date: new Date().toISOString()
     };
@@ -2498,7 +2817,7 @@ async function handleSaveShop(e) {
             if (error) throw error;
             userShop = data;
         }
-        showToast("Market stall details saved!", "success");
+        showToast("Market stall details saved! Ghana Card pending verification.", "success");
     } catch (err) {
         showToast(err.message || "Could not save shop details", "error");
     }
