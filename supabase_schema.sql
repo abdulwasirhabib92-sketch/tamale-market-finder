@@ -586,3 +586,37 @@ CREATE POLICY "Public can read product images"
 DROP POLICY IF EXISTS "Users can delete own product images" ON storage.objects;
 CREATE POLICY "Users can delete own product images" 
     ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'product-images');
+
+
+-- ----------------------------------------------------------------------------
+-- 16. SUPPORT TICKETS TABLE
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    contact TEXT NOT NULL,
+    request_type TEXT NOT NULL DEFAULT 'support',
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open',
+    admin_response TEXT,
+    created_by UUID REFERENCES auth.users(id),
+    created_date TIMESTAMPTZ DEFAULT NOW(),
+    updated_date TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Allow anyone (including anon) to submit support tickets
+DROP POLICY IF EXISTS "Anyone can submit support tickets" ON support_tickets;
+CREATE POLICY "Anyone can submit support tickets" ON support_tickets 
+    FOR INSERT WITH CHECK (true);
+
+-- Only admins can read all tickets; users can read their own
+DROP POLICY IF EXISTS "Users can view own support tickets" ON support_tickets;
+CREATE POLICY "Users can view own support tickets" ON support_tickets 
+    FOR SELECT USING (auth.uid() = created_by);
+
+-- Admins can update tickets (add response, change status)
+DROP POLICY IF EXISTS "Admins can update support tickets" ON support_tickets;
+CREATE POLICY "Admins can update support tickets" ON support_tickets
+    FOR UPDATE USING (
+        EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin')
+    );

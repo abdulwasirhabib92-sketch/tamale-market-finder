@@ -2147,6 +2147,50 @@ async function handleReportSubmit(e) {
     showToast("Report submitted to moderation. Thank you for keeping TMF safe!", "success");
 }
 
+// Handle Help & Support form submission
+async function handleHelpSubmit(e) {
+    e.preventDefault();
+    const name = document.getElementById("helpName").value.trim();
+    const contact = document.getElementById("helpContact").value.trim();
+    const type = document.getElementById("helpType").value;
+    const message = document.getElementById("helpMessage").value.trim();
+
+    if (!name || !contact || !message) {
+        showToast("Please fill in all fields", "error");
+        return;
+    }
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Sending...";
+
+    if (sbClient) {
+        try {
+            const { error } = await sbClient.from('support_tickets').insert({
+                name: name,
+                contact: contact,
+                request_type: type,
+                message: message,
+                status: "open",
+                created_by: currentUser?.id || null
+            });
+            if (error) throw error;
+
+            showToast("Message sent! Our team will contact you soon.", "success");
+            document.getElementById("helpForm").reset();
+            closeModal("helpModal");
+        } catch (err) {
+            console.error("Help submit error:", err);
+            showToast("Could not send message: " + (err.message || "Unknown error"), "error");
+        }
+    } else {
+        showToast("Database not connected. Please try again later.", "error");
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Send Message";
+}
+
 async function renderAdminPanel() {
     const reportsList = document.getElementById("adminReportsList");
     if (!reportsList) return;
@@ -2543,6 +2587,13 @@ function navigateToPage(pageId) {
         }
     }
 
+    // Help opens a modal, not a page
+    if (pageId === "help") {
+        openModal("helpModal");
+        closeDrawer();
+        return;
+    }
+
     // Scroll to top
     window.scrollTo(0, 0);
 }
@@ -2605,8 +2656,17 @@ async function enableTraderRole() {
 
 function updateUIForAuthUser() {
     document.getElementById("drawerName").textContent = userProfile.full_name || "User";
-    document.getElementById("navUserName").textContent = (userProfile.full_name || "Account").split(" ")[0];
     document.getElementById("drawerEmail").textContent = currentUser?.email || "Sign in to save shops, order & manage listings";
+
+    // Toggle trader-mode class on menu button (orange color in trader mode)
+    const menuBtn = document.getElementById("menuToggle");
+    if (menuBtn) {
+        if (userProfile.account_type === "trader") {
+            menuBtn.classList.add("trader-mode");
+        } else {
+            menuBtn.classList.remove("trader-mode");
+        }
+    }
 
     // Update role badge
     const roleBadge = document.getElementById("drawerRoleBadge");
@@ -2682,6 +2742,8 @@ function updateUIForGuestUser() {
     document.getElementById("drawerEmail").textContent = "Sign in to save shops, order & manage listings";
     const roleBadge = document.getElementById("drawerRoleBadge");
     if (roleBadge) { roleBadge.textContent = "Shopper"; roleBadge.className = "role-badge shopper"; }
+    const menuBtnLogout = document.getElementById("menuToggle");
+    if (menuBtnLogout) menuBtnLogout.classList.remove("trader-mode");
     const authBtn = document.getElementById("drawerAuthActionBtn");
     if (authBtn) authBtn.innerHTML = '<span class="drawer-icon">🔑</span> Sign In / Register';
 }

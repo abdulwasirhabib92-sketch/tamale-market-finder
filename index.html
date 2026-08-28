@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tamale Market Finder — Local Shops, E-Commerce & Ghana Post GPS Map</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260828c">
     <!-- Leaflet for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -36,7 +36,6 @@
             <div class="header-actions">
                 <button class="menu-btn" id="menuToggle" aria-label="Toggle Navigation Menu">
                     <span class="avatar-circle" id="headerAvatar">👤</span>
-                    <span class="menu-label" id="navUserName">Account</span>
                     <span class="hamburger-icon">☰</span>
                 </button>
             </div>
@@ -82,6 +81,9 @@
             </a>
             <a href="#" class="drawer-item" data-nav="account-settings">
                 <span class="drawer-icon">⚙️</span> Account Settings
+            </a>
+            <a href="#" class="drawer-item" data-nav="help">
+                <span class="drawer-icon">💬</span> Help &amp; Support
             </a>
             <hr class="drawer-divider">
             <button class="drawer-auth-btn" id="drawerAuthActionBtn">
@@ -1015,6 +1017,46 @@
         </div>
     </div>
 
+    <!-- HELP & SUPPORT MODAL -->
+    <div id="helpModal" class="modal-backdrop">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>💬 Help &amp; Support</h2>
+                <button class="modal-close" onclick="closeModal('helpModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="helpModalBody">
+                <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Have a question, suggestion, or need to report an issue? Send us a message and our team will get back to you.</p>
+                <form id="helpForm" onsubmit="handleHelpSubmit(event)">
+                    <div class="form-group">
+                        <label class="form-label">Your Name</label>
+                        <input type="text" id="helpName" class="form-input" placeholder="Enter your name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Contact (Phone or Email)</label>
+                        <input type="text" id="helpContact" class="form-input" placeholder="Phone number or email" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Type of Request</label>
+                        <select id="helpType" class="form-input" required>
+                            <option value="support">🆘 Support / Help</option>
+                            <option value="suggestion">💡 Suggestion</option>
+                            <option value="report">⚠️ Report a Problem</option>
+                            <option value="complaint">📝 Complaint</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message</label>
+                        <textarea id="helpMessage" class="form-input" rows="4" placeholder="Describe your issue or suggestion..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width:100%;">Send Message</button>
+                </form>
+                <div style="margin-top:16px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#166534;">
+                    <strong>Quick contact:</strong> WhatsApp 0200000000 • Email support@tamalemarketfinder.gh
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MOBILE FIXED BOTTOM NAVIGATION BAR -->
     <nav class="bottom-nav">
         <a href="#" class="bottom-nav-item active" data-nav="home">
@@ -1041,6 +1083,6 @@
     </nav>
 
     <!-- App Logic Script -->
-    <script src="app.js?v=20260828c"></script>
+    <script src="app.js?v=20260828d"></script>
 </body>
 </html>

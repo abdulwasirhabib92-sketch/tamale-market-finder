@@ -125,6 +125,28 @@ body {
     background: rgba(255,255,255,0.25);
 }
 
+/* Trader mode: header menu turns orange */
+.menu-btn.trader-mode {
+    background: rgba(249, 115, 22, 0.25);
+    border: 1px solid rgba(249, 115, 22, 0.6);
+}
+
+.menu-btn.trader-mode:hover {
+    background: rgba(249, 115, 22, 0.4);
+}
+
+.menu-btn.trader-mode .avatar-circle {
+    background: #F97316;
+    color: #FFFFFF;
+}
+
+/* Help button in drawer */
+.drawer-item[data-nav="help"] {
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+    padding-top: 12px;
+}
+
 .avatar-circle {
     width: 24px;
     height: 24px;
