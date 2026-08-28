@@ -328,28 +328,31 @@ body {
    SPOTLIGHT HEADER BANNER CAROUSEL
    ==================================================================== */
 .spotlight-section {
-    background: linear-gradient(135deg, #074428 0%, #0A5C36 100%);
-    padding: 16px;
+    background: linear-gradient(135deg, #991B1B 0%, #B91C1C 50%, #DC2626 100%);
+    padding: 18px 16px;
     color: #FFFFFF;
     margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
 }
 
 .spotlight-header {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
 }
 
 .spotlight-badge {
-    background: var(--gold);
-    color: #FFFFFF;
+    background: #FCD34D;
+    color: #7F1D1D;
     font-size: 12px;
-    font-weight: 700;
-    padding: 3px 10px;
+    font-weight: 800;
+    padding: 3px 12px;
     border-radius: var(--radius-full);
     letter-spacing: 0.3px;
+    text-transform: uppercase;
 }
 
 .spotlight-subtitle {
@@ -358,56 +361,57 @@ body {
 }
 
 .spotlight-carousel {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding-bottom: 8px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-}
-
-.spotlight-carousel::-webkit-scrollbar {
-    display: none;
+    position: relative;
+    min-height: 150px;
+    overflow: hidden;
 }
 
 .spotlight-card {
-    min-width: 260px;
-    max-width: 300px;
-    background: rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: var(--radius-md);
-    padding: 12px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-lg);
+    padding: 16px;
     color: #FFFFFF;
-    flex-shrink: 0;
-    scroll-snap-align: start;
     cursor: pointer;
-    transition: transform 0.2s ease, background 0.2s ease;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    opacity: 0;
+    transform: translateX(30px);
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.spotlight-card.active {
+    opacity: 1;
+    transform: translateX(0);
+    position: relative;
 }
 
 .spotlight-card:hover {
-    transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.22);
 }
 
 .spotlight-card-top {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+    gap: 12px;
+    margin-bottom: 10px;
 }
 
 .spotlight-img {
-    width: 48px;
-    height: 48px;
-    border-radius: var(--radius-sm);
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-md);
     object-fit: cover;
-    background: #e2e8f0;
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.3);
 }
 
 .spotlight-title {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 800;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
@@ -415,36 +419,69 @@ body {
 }
 
 .spotlight-area {
-    font-size: 11px;
+    font-size: 12px;
     opacity: 0.85;
+    display: block;
+    margin-top: 2px;
 }
 
 .spotlight-desc {
-    font-size: 12px;
+    font-size: 13px;
     opacity: 0.95;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    line-height: 1.4;
 }
 
 .spotlight-action {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
 }
 
 .spotlight-btn {
     background: #FFFFFF;
-    color: var(--primary-dark);
+    color: #B91C1C;
     border: none;
-    padding: 4px 10px;
+    padding: 6px 16px;
     border-radius: var(--radius-full);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.spotlight-btn:hover {
+    background: #FEF3C7;
+}
+
+/* Auto-rotate dots */
+.spotlight-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.spotlight-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s ease;
+    padding: 0;
+}
+
+.spotlight-dot.active {
+    background: #FCD34D;
+    transform: scale(1.3);
 }
 
 /* ====================================================================

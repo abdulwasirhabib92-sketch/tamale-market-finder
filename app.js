@@ -894,6 +894,9 @@ function debounceSearch() {
 // ====================================================================
 // 5. RENDERING HOME SHOWCASE & SPOTLIGHT
 // ====================================================================
+let spotlightIndex = 0;
+let spotlightTimer = null;
+
 async function renderSpotlightCarousel() {
     const carousel = document.getElementById("spotlightCarousel");
     let spotlightShops = [];
@@ -913,12 +916,13 @@ async function renderSpotlightCarousel() {
     }
 
     if (spotlightShops.length === 0) {
-        carousel.innerHTML = `<div class="spotlight-card"><p style="font-size:12px;">🌟 Local merchants: Book a spotlight campaign in your dashboard to feature here!</p></div>`;
+        carousel.innerHTML = `<div class="spotlight-card active"><p style="font-size:13px;">🌟 Local merchants: Book a spotlight campaign in your dashboard to feature here!</p></div>`;
         return;
     }
 
-    carousel.innerHTML = spotlightShops.map(s => `
-        <div class="spotlight-card" onclick="showShopDetailModal('${escapeJs(s.id)}')">
+    // Build all cards (only first is active)
+    carousel.innerHTML = spotlightShops.map((s, i) => `
+        <div class="spotlight-card ${i === 0 ? 'active' : ''}" data-idx="${i}" onclick="showShopDetailModal('${escapeJs(s.id)}')">
             <div class="spotlight-card-top">
                 <img src="${escapeAttr(s.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e')}" class="spotlight-img" alt="${escapeHtml(s.shop_name)}" />
                 <div>
@@ -933,6 +937,61 @@ async function renderSpotlightCarousel() {
             </div>
         </div>
     `).join("");
+
+    // Build navigation dots
+    const dotsContainer = document.createElement('div');
+    dotsContainer.className = 'spotlight-dots';
+    dotsContainer.id = 'spotlightDots';
+    dotsContainer.innerHTML = spotlightShops.map((_, i) =>
+        `<button class="spotlight-dot ${i === 0 ? 'active' : ''}" data-idx="${i}" onclick="goToSpotlight(${i})"></button>`
+    ).join('');
+    carousel.appendChild(dotsContainer);
+
+    // Store shops globally for rotation
+    window._spotlightShops = spotlightShops;
+    spotlightIndex = 0;
+
+    // Start auto-rotation
+    if (spotlightTimer) clearInterval(spotlightTimer);
+    if (spotlightShops.length > 1) {
+        spotlightTimer = setInterval(rotateSpotlight, 4000);
+    }
+}
+
+function rotateSpotlight() {
+    const cards = document.querySelectorAll('#spotlightCarousel .spotlight-card');
+    const dots = document.querySelectorAll('#spotlightDots .spotlight-dot');
+    if (cards.length <= 1) return;
+
+    // Remove active from current
+    cards.forEach(c => c.classList.remove('active'));
+    dots.forEach(d => d.classList.remove('active'));
+
+    // Advance index
+    spotlightIndex = (spotlightIndex + 1) % cards.length;
+
+    // Activate next
+    cards[spotlightIndex].classList.add('active');
+    if (dots[spotlightIndex]) dots[spotlightIndex].classList.add('active');
+}
+
+function goToSpotlight(idx) {
+    const cards = document.querySelectorAll('#spotlightCarousel .spotlight-card');
+    const dots = document.querySelectorAll('#spotlightDots .spotlight-dot');
+    if (idx < 0 || idx >= cards.length) return;
+
+    cards.forEach(c => c.classList.remove('active'));
+    dots.forEach(d => d.classList.remove('active'));
+
+    spotlightIndex = idx;
+    cards[idx].classList.add('active');
+    if (dots[idx]) dots[idx].classList.add('active');
+
+    // Reset timer
+    if (spotlightTimer) clearInterval(spotlightTimer);
+    if (window._spotlightShops && window._spotlightShops.length > 1) {
+        spotlightTimer = setInterval(rotateSpotlight, 4000);
+    }
 }
 
 async function renderShowcaseSections() {
