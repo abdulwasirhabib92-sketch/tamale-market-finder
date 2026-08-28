@@ -456,11 +456,18 @@ ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 -- Shops Policies
 -- Public can read non-sensitive shop fields only
 -- Ghana Card data is restricted to the shop owner and admins
+-- Remove blanket public read on shops (was exposing Ghana Card PII)
+-- Public reads now go through the public_shops VIEW which excludes sensitive columns
 DROP POLICY IF EXISTS "Public can read shops" ON shops;
-CREATE POLICY "Public can read shops" ON shops FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Owners and admins can read full shop data" ON shops;
 
--- Restrict Ghana Card PII: only owner and admins can read sensitive columns
--- (Applied via column-level security: create a separate view for public consumption)
+-- Only owners and admins can SELECT directly from shops (includes PII columns)
+CREATE POLICY "Owners and admins can read full shop data" ON shops FOR SELECT USING (
+    auth.uid() = created_by OR
+    EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin')
+);
+
+-- Public reads use the public_shops view (no Ghana Card PII exposed)
 CREATE OR REPLACE VIEW public_shops AS
 SELECT id, created_by, owner_name, shop_name, category, description,
        latitude, longitude, address, digital_address, whatsapp_number, phone,
@@ -470,12 +477,10 @@ SELECT id, created_by, owner_name, shop_name, category, description,
 FROM shops
 WHERE is_active = true;
 
+-- Grant public access to the safe view
+GRANT SELECT ON public_shops TO anon, authenticated;
+
 -- Admins and shop owners can see full shop data including Ghana Card info
-DROP POLICY IF EXISTS "Owners and admins can read full shop data" ON shops;
-CREATE POLICY "Owners and admins can read full shop data" ON shops FOR SELECT USING (
-    auth.uid() = created_by OR
-    EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin')
-);
 DROP POLICY IF EXISTS "Users can insert own shop" ON shops;
 CREATE POLICY "Users can insert own shop" ON shops FOR INSERT WITH CHECK (auth.uid() = created_by);
 DROP POLICY IF EXISTS "Users can update own shop" ON shops;

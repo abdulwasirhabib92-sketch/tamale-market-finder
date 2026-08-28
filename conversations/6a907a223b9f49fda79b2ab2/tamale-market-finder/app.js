@@ -934,7 +934,7 @@ async function renderSpotlightCarousel() {
 
     if (!DEMO_MODE && sbClient) {
         try {
-            const { data, error } = await sbClient.from('shops').select('*').eq('is_active', true).order('rating_avg', { ascending: false }).limit(3);
+            const { data, error } = await sbClient.from('public_shops').select('*').eq('is_active', true).order('rating_avg', { ascending: false }).limit(3);
             if (error) throw error;
             spotlightShops = (data || []).filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
             if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 2);
@@ -1036,7 +1036,7 @@ async function renderShowcaseSections() {
 
     if (!DEMO_MODE && sbClient) {
         try {
-            const { data: shopData, error: shopErr } = await sbClient.from('shops').select('*').eq('is_active', true);
+            const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true);
             if (shopErr) throw shopErr;
             shops = shopData || [];
             const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('in_stock', true);
@@ -1136,7 +1136,7 @@ async function searchListings() {
         // Fetch from Supabase
         try {
             if (currentDomain === "product") {
-                const { data: shops, error: shopErr } = await sbClient.from('shops').select('*').eq('is_active', true);
+                const { data: shops, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true);
                 if (shopErr) throw shopErr;
                 const { data: products, error: prodErr } = await sbClient.from('products').select('*');
                 if (prodErr) throw prodErr;
@@ -1607,7 +1607,7 @@ async function openOrderModal(productId, shopId) {
         const { data: prod, error: prodErr } = await sbClient.from('products').select('*').eq('id', productId).single();
         if (prodErr) throw prodErr;
         product = prod;
-        const { data: shopData, error: shopErr } = await sbClient.from('shops').select('*').eq('id', shopId).single();
+        const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('id', shopId).single();
         if (shopErr) throw shopErr;
         shop = shopData || {};
     } catch (err) {
@@ -1724,10 +1724,17 @@ async function handleOrderSubmit(e) {
     e.preventDefault();
     if (!activeOrderProduct) return;
 
+    const buyerName = document.getElementById("orderBuyerName").value.trim();
+    const buyerPhone = document.getElementById("orderBuyerPhone").value.trim();
+    if (!buyerName) { showToast("Enter your full name", "error"); return; }
+    if (!buyerPhone || !/^0[0-9]{9}$/.test(buyerPhone)) { showToast("Enter a valid Ghana phone number", "error"); return; }
+
+    const orderQty = activeOrderProduct.qty;
+    const availableStock = activeOrderProduct.product.stock_quantity || 0;
+    if (orderQty > availableStock) { showToast("Not enough stock available", "error"); return; }
+
     const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
     const deliveryAddress = document.getElementById("orderDeliveryAddress") ? document.getElementById("orderDeliveryAddress").value : "";
-    const buyerName = document.getElementById("orderBuyerName").value;
-    const buyerPhone = document.getElementById("orderBuyerPhone").value;
     const buyerNotes = document.getElementById("orderBuyerNotes").value;
 
     const unitPrice = activeOrderProduct.product.discount_price || activeOrderProduct.product.price;
@@ -1743,7 +1750,7 @@ async function handleOrderSubmit(e) {
         product_id: activeOrderProduct.product.id,
         product_name: activeOrderProduct.product.name,
         unit_price: unitPrice,
-        quantity: activeOrderProduct.qty,
+        quantity: orderQty,
         total_amount: totalAmount,
         delivery_type: deliveryType,
         delivery_address: deliveryAddress,
@@ -1776,6 +1783,17 @@ async function handleOrderSubmit(e) {
                 status: "placed"
             });
         } catch (err) { console.error("Error saving order to Supabase:", err); }
+    }
+
+    // Decrement stock after successful order
+    if (!DEMO_MODE && sbClient) {
+        try {
+            const newStock = Math.max(0, availableStock - orderQty);
+            await sbClient.from('products').update({
+                stock_quantity: newStock,
+                in_stock: newStock > 0
+            }).eq('id', activeOrderProduct.product.id);
+        } catch (stockErr) { console.error("Stock decrement error:", stockErr); }
     }
 
     closeModal("orderModal");
@@ -2271,11 +2289,11 @@ async function takeModerationAction(repId) {
         // Hide the reported item based on type
         if (report.reported_type === "product") {
             const { error: prodErr } = await sbClient.from('products')
-                .update({ in_stock: false }).eq('id', report.reported_id);
+                .update({ in_stock: false }).eq('id', report.target_id);
             if (prodErr) console.error("Product hide error:", prodErr);
         } else if (report.reported_type === "shop") {
             const { error: shopErr } = await sbClient.from('shops')
-                .update({ is_active: false }).eq('id', report.reported_id);
+                .update({ is_active: false }).eq('id', report.target_id);
             if (shopErr) console.error("Shop hide error:", shopErr);
         }
 
@@ -2349,12 +2367,19 @@ async function handleAdBookingSubmit(e) {
     const tier = document.getElementById("adTierSelect").value;
     const momoRef = document.getElementById("adMomoRef").value;
 
+    if (!userShop) { showToast("Create your shop stall first", "error"); return; }
+    const duration = parseInt(document.getElementById("adDuration")?.value) || 7;
+    let baseRate = 25.00;
+    if (tier === "category_featured") baseRate = 40.00;
+    if (tier === "premium_top") baseRate = 70.00;
+    const calculatedFee = baseRate * (duration / 7);
+
     const newAd = {
         id: "ad-" + Date.now(),
         trader_id: currentUser ? currentUser.id : "trader-1",
-        shop_id: "shop-1",
+        shop_id: userShop.id,
         ad_tier: tier,
-        fee_paid_ghs: 25.00,
+        fee_paid_ghs: calculatedFee,
         payment_reference: momoRef,
         status: "pending"
     };
@@ -2425,7 +2450,7 @@ async function showShopDetailModal(shopId) {
         return;
     }
     try {
-        const { data: shopData, error: shopErr } = await sbClient.from('shops').select('*').eq('id', shopId).single();
+        const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('id', shopId).single();
         if (shopErr) throw shopErr;
         if (shopData) shop = shopData;
         const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('shop_id', shopId).eq('in_stock', true);
@@ -2987,6 +3012,10 @@ async function handleSaveProduct(e) {
     if (!sbClient || !currentUser) { showToast("Sign in first", "error"); return; }
     if (!userShop) { showToast("Create your shop stall first", "error"); return; }
     const productId = document.getElementById("productId").value;
+    const productName = document.getElementById("productName").value.trim();
+    const productPrice = parseFloat(document.getElementById("productPrice").value) || 0;
+    if (!productName) { showToast("Product name is required", "error"); return; }
+    if (productPrice <= 0) { showToast("Price must be greater than 0", "error"); return; }
     const productData = {
         shop_id: userShop.id,
         name: document.getElementById("productName").value.trim(),
@@ -3042,7 +3071,7 @@ async function renderFavoritesPage() {
     if (!DEMO_MODE && sbClient) {
         try {
             const favIds = Array.from(userFavorites);
-            const { data, error } = await sbClient.from('shops').select('*').in('id', favIds);
+            const { data, error } = await sbClient.from('public_shops').select('*').in('id', favIds);
             if (error) throw error;
             favShops = data || [];
         } catch (err) {
