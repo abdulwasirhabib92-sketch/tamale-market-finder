@@ -73,6 +73,22 @@ function escapeAttr(str) {
 // Rate Limiting Storage
 let gpsRequestCount = 0;
 let lastGpsRequestReset = Date.now();
+const GPS_RATE_LIMIT = 5; // max requests
+const GPS_RATE_WINDOW = 60000; // per 60 seconds
+
+function checkGpsRateLimit() {
+    const now = Date.now();
+    if (now - lastGpsRequestReset > GPS_RATE_WINDOW) {
+        gpsRequestCount = 0;
+        lastGpsRequestReset = now;
+    }
+    if (gpsRequestCount >= GPS_RATE_LIMIT) {
+        showToast("Too many location requests. Please wait a minute.", "warning");
+        return false;
+    }
+    gpsRequestCount++;
+    return true;
+}
 
 // ====================================================================
 // 2. DEMO STORE (MOCK DATABASE FOR UNCONNECTED MVP MODE)
@@ -2196,6 +2212,12 @@ async function renderAdminPanel() {
     const reportsList = document.getElementById("adminReportsList");
     if (!reportsList) return;
 
+    // Authorization check: only admins can access this panel
+    if (userProfile.account_type !== "admin") {
+        reportsList.innerHTML = `<p class="form-hint">⚠️ Admin access required.</p>`;
+        return;
+    }
+
     let reports = [];
     if (!DEMO_MODE && sbClient) {
         try {
@@ -2226,21 +2248,45 @@ async function renderAdminPanel() {
     `).join("");
 }
 
-function dismissReport(repId) {
-    // Report deleted from Supabase
-    renderAdminPanel();
-    showToast("Report dismissed.", "success");
+async function dismissReport(repId) {
+    if (!sbClient) { showToast("Database not connected", "error"); return; }
+    try {
+        const { error } = await sbClient.from('reports').delete().eq('id', repId);
+        if (error) throw error;
+        showToast("Report dismissed.", "success");
+        renderAdminPanel();
+    } catch (err) {
+        showToast(err.message || "Could not dismiss report", "error");
+    }
 }
 
-function takeModerationAction(repId) {
-    // Report fetched from Supabase
-    if (report && report.reported_type === "product") {
-    
-        if (prod) prod.in_stock = false;
+async function takeModerationAction(repId) {
+    if (!sbClient) { showToast("Database not connected", "error"); return; }
+    try {
+        // Fetch the report to find what to moderate
+        const { data: report, error: fetchErr } = await sbClient.from('reports').select('*').eq('id', repId).single();
+        if (fetchErr) throw fetchErr;
+        if (!report) { showToast("Report not found", "error"); return; }
+
+        // Hide the reported item based on type
+        if (report.reported_type === "product") {
+            const { error: prodErr } = await sbClient.from('products')
+                .update({ in_stock: false }).eq('id', report.reported_id);
+            if (prodErr) console.error("Product hide error:", prodErr);
+        } else if (report.reported_type === "shop") {
+            const { error: shopErr } = await sbClient.from('shops')
+                .update({ is_active: false }).eq('id', report.reported_id);
+            if (shopErr) console.error("Shop hide error:", shopErr);
+        }
+
+        // Delete the report after action taken
+        await sbClient.from('reports').delete().eq('id', repId);
+        showToast("Action taken. Item hidden from public search.", "success");
+        renderAdminPanel();
+        searchListings();
+    } catch (err) {
+        showToast(err.message || "Could not take moderation action", "error");
     }
-    dismissReport(repId);
-    searchListings();
-    showToast("Action taken. Item hidden from public search.", "success");
 }
 
 async function runAISecurityScan() {
@@ -2789,6 +2835,22 @@ async function handleRegister(e) {
     const password = document.getElementById("regPassword").value;
     const role = document.getElementById("regRole").value;
     const btn = document.getElementById("registerBtn");
+
+    // Validate Ghana phone format: 0XXXXXXXXX (10 digits starting with 0)
+    if (!/^0[0-9]{9}$/.test(phone)) {
+        showToast("Enter a valid Ghana phone number (e.g. 0244123456)", "error"); return;
+    }
+    // Password strength: min 8 chars with at least 1 number
+    if (password.length < 8) {
+        showToast("Password must be at least 8 characters", "error"); return;
+    }
+    if (!/[0-9]/.test(password)) {
+        showToast("Password must contain at least one number", "error"); return;
+    }
+    if (fullName.length < 2) {
+        showToast("Enter your full name", "error"); return;
+    }
+
     btn.textContent = "Creating account..."; btn.disabled = true;
     try {
         const { data, error } = await sbClient.auth.signUp({
@@ -2856,6 +2918,13 @@ async function handleSaveShop(e) {
     // Upload Ghana Card photo if a new file was selected
     let ghanaCardPhotoUrl = userShop?.ghana_card_photo_url || null;
     if (ghanaCardPhoto) {
+        // Validate file type and size
+        if (!ghanaCardPhoto.type.startsWith('image/')) {
+            showToast("Please upload an image file (JPG, PNG)", "error"); return;
+        }
+        if (ghanaCardPhoto.size > 5 * 1024 * 1024) {
+            showToast("Image must be under 5MB", "error"); return;
+        }
         try {
             const fileExt = ghanaCardPhoto.name.split('.').pop();
             const fileName = `ghana-cards/${currentUser.id}_${Date.now()}.${fileExt}`;

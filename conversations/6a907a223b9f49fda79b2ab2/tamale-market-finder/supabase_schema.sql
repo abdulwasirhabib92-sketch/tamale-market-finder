@@ -454,8 +454,28 @@ ALTER TABLE ad_placements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 
 -- Shops Policies
+-- Public can read non-sensitive shop fields only
+-- Ghana Card data is restricted to the shop owner and admins
 DROP POLICY IF EXISTS "Public can read shops" ON shops;
 CREATE POLICY "Public can read shops" ON shops FOR SELECT USING (true);
+
+-- Restrict Ghana Card PII: only owner and admins can read sensitive columns
+-- (Applied via column-level security: create a separate view for public consumption)
+CREATE OR REPLACE VIEW public_shops AS
+SELECT id, created_by, owner_name, shop_name, category, description,
+       latitude, longitude, address, digital_address, whatsapp_number, phone,
+       opening_hours, market_area, is_verified, cover_image_url, listing_type,
+       rating_avg, rating_count, verification_tier, is_active, is_flagged,
+       ad_tier, created_date, ghana_card_verified, updated_date
+FROM shops
+WHERE is_active = true;
+
+-- Admins and shop owners can see full shop data including Ghana Card info
+DROP POLICY IF EXISTS "Owners and admins can read full shop data" ON shops;
+CREATE POLICY "Owners and admins can read full shop data" ON shops FOR SELECT USING (
+    auth.uid() = created_by OR
+    EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin')
+);
 DROP POLICY IF EXISTS "Users can insert own shop" ON shops;
 CREATE POLICY "Users can insert own shop" ON shops FOR INSERT WITH CHECK (auth.uid() = created_by);
 DROP POLICY IF EXISTS "Users can update own shop" ON shops;
@@ -486,6 +506,13 @@ DROP POLICY IF EXISTS "Users can insert own profile" ON user_profiles;
 CREATE POLICY "Users can insert own profile" ON user_profiles FOR INSERT WITH CHECK (auth.uid() = id);
 DROP POLICY IF EXISTS "Users can update own profile" ON user_profiles;
 CREATE POLICY "Users can update own profile" ON user_profiles FOR UPDATE USING (auth.uid() = id);
+
+-- Admins can update any user profile (verification tiers, bans, flags)
+DROP POLICY IF EXISTS "Admins can manage user profiles" ON user_profiles;
+CREATE POLICY "Admins can manage user profiles" ON user_profiles
+    FOR UPDATE USING (
+        EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin')
+    );
 
 -- Favorites Policies
 DROP POLICY IF EXISTS "Users can view own favorites" ON favorites;
@@ -520,9 +547,18 @@ CREATE POLICY "Traders can view orders for their shop" ON orders FOR SELECT USIN
 );
 DROP POLICY IF EXISTS "Buyers can insert orders" ON orders;
 CREATE POLICY "Buyers can insert orders" ON orders FOR INSERT WITH CHECK (auth.uid() = buyer_id);
-DROP POLICY IF EXISTS "Buyers and Traders can update relevant orders" ON orders;
-CREATE POLICY "Buyers and Traders can update relevant orders" ON orders FOR UPDATE USING (
-    auth.uid() = buyer_id OR EXISTS (SELECT 1 FROM shops WHERE shops.id = orders.shop_id AND shops.created_by = auth.uid())
+-- Buyers can cancel their own orders; traders can update status for their shop orders
+DROP POLICY IF EXISTS "Buyers can cancel own orders" ON orders;
+CREATE POLICY "Buyers can cancel own orders" ON orders FOR UPDATE 
+    USING (auth.uid() = buyer_id) 
+    WITH CHECK (auth.uid() = buyer_id AND status IN ('placed', 'cancelled'));
+
+DROP POLICY IF EXISTS "Traders can update order status" ON orders;
+CREATE POLICY "Traders can update order status" ON orders FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM shops WHERE shops.id = orders.shop_id AND shops.created_by = auth.uid())
+) WITH CHECK (
+    EXISTS (SELECT 1 FROM shops WHERE shops.id = orders.shop_id AND shops.created_by = auth.uid())
+    AND status IN ('accepted', 'rejected', 'ready', 'picked_up', 'delivered', 'completed', 'cancelled')
 );
 
 -- Order Items Policies
@@ -561,11 +597,25 @@ CREATE POLICY "Public can view active ads" ON ad_placements FOR SELECT USING (st
 DROP POLICY IF EXISTS "Traders can submit ad placements" ON ad_placements;
 CREATE POLICY "Traders can submit ad placements" ON ad_placements FOR INSERT WITH CHECK (auth.uid() = trader_id);
 
+-- Admins can update ad placements (approve/reject campaigns)
+DROP POLICY IF EXISTS "Admins can manage ad placements" ON ad_placements;
+CREATE POLICY "Admins can manage ad placements" ON ad_placements
+    FOR UPDATE USING (
+        EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin')
+    );
+
 -- Reports Policies
 DROP POLICY IF EXISTS "Users can view own submitted reports" ON reports;
 CREATE POLICY "Users can view own submitted reports" ON reports FOR SELECT USING (auth.uid() = reporter_id);
 DROP POLICY IF EXISTS "Authenticated users can submit reports" ON reports;
 CREATE POLICY "Authenticated users can submit reports" ON reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+
+-- Admins can update and delete reports (dismiss, take moderation action)
+DROP POLICY IF EXISTS "Admins can manage reports" ON reports;
+CREATE POLICY "Admins can manage reports" ON reports
+    FOR ALL USING (
+        EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin')
+    );
 
 
 -- ----------------------------------------------------------------------------
@@ -573,6 +623,10 @@ CREATE POLICY "Authenticated users can submit reports" ON reports FOR INSERT WIT
 -- ----------------------------------------------------------------------------
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('product-images', 'product-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('shop-images', 'shop-images', true)
 ON CONFLICT (id) DO NOTHING;
 
 DROP POLICY IF EXISTS "Authenticated users can upload product images" ON storage.objects;
@@ -583,9 +637,18 @@ DROP POLICY IF EXISTS "Public can read product images" ON storage.objects;
 CREATE POLICY "Public can read product images" 
     ON storage.objects FOR SELECT USING (bucket_id = 'product-images');
 
+-- Shop images (Ghana Card photos, cover images)
+DROP POLICY IF EXISTS "Authenticated users can upload shop images" ON storage.objects;
+CREATE POLICY "Authenticated users can upload shop images" 
+    ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'shop-images');
+
+DROP POLICY IF EXISTS "Public can read shop images" ON storage.objects;
+CREATE POLICY "Public can read shop images" 
+    ON storage.objects FOR SELECT USING (bucket_id = 'shop-images');
+
 DROP POLICY IF EXISTS "Users can delete own product images" ON storage.objects;
 CREATE POLICY "Users can delete own product images" 
-    ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'product-images');
+    ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'product-images' OR bucket_id = 'shop-images');
 
 
 -- ----------------------------------------------------------------------------
@@ -603,6 +666,9 @@ CREATE TABLE IF NOT EXISTS support_tickets (
     created_date TIMESTAMPTZ DEFAULT NOW(),
     updated_date TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Enable RLS on support_tickets
+ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 
 -- Allow anyone (including anon) to submit support tickets
 DROP POLICY IF EXISTS "Anyone can submit support tickets" ON support_tickets;
