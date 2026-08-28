@@ -7,7 +7,7 @@
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "geolocation=(self), camera=(), microphone=(), payment=()" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https://djcajmglxkmhbipmweps.supabase.co https://api.supabase.com; frame-src 'self'; navigate-to 'self' https://wa.me https://api.whatsapp.com https://www.google.com" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https://djcajmglxkmhbipmweps.supabase.co https://api.supabase.com; frame-src 'self'; navigate-to 'self' https://wa.me https://api.whatsapp.com https://www.google.com" }
       ]
     }
   ]

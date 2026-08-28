@@ -21,16 +21,10 @@
     <!-- Leaflet for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // Fallback if Leaflet CDN fails
-        if (typeof L === 'undefined') { console.warn('Leaflet CDN failed - map features disabled'); }
-    </script>
+    <script src="cdn-checks.js"></script>
     <!-- Supabase JS client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        // Fallback if Supabase CDN fails - app will run in demo mode
-        if (typeof window.supabase === 'undefined') { console.warn('Supabase CDN failed - running in demo mode'); }
-    </script>
+
 </head>
 <body>
     <!-- Toast Notifications Container -->
@@ -625,7 +619,7 @@
                                         <li>✓ "🔥 Spotlight" badge on product cards</li>
                                         <li>✓ 1.5x Search Ranking Boost</li>
                                     </ul>
-                                    <button class="btn-secondary btn-block" onclick="openAdBookingModal('basic_spotlight')">Book Basic Spotlight</button>
+                                    <button class="btn-secondary btn-block" data-ad-tier="basic_spotlight">Book Basic Spotlight</button>
                                 </div>
 
                                 <div class="ad-tier-card featured-tier">
@@ -637,7 +631,7 @@
                                         <li>✓ Highlighted gold border card</li>
                                         <li>✓ 2.0x Search Ranking Boost</li>
                                     </ul>
-                                    <button class="btn-primary btn-block" onclick="openAdBookingModal('category_featured')">Book Category Featured</button>
+                                    <button class="btn-primary btn-block" data-ad-tier="category_featured">Book Category Featured</button>
                                 </div>
 
                                 <div class="ad-tier-card premium-tier">
@@ -648,7 +642,7 @@
                                         <li>✓ Exclusive Gold Pin on Leaflet Map</li>
                                         <li>✓ 3.0x Search Ranking Boost</li>
                                     </ul>
-                                    <button class="btn-secondary btn-block" onclick="openAdBookingModal('premium_top')">Book Premium Top</button>
+                                    <button class="btn-secondary btn-block" data-ad-tier="premium_top">Book Premium Top</button>
                                 </div>
                             </div>
 
@@ -776,9 +770,9 @@
 
     <!-- IN-APP EXPRESS ORDER / RESERVATION MODAL -->
     <div id="orderModal" class="modal">
-        <div class="modal-backdrop" onclick="closeModal('orderModal')"></div>
+        <div class="modal-backdrop" data-close-modal="orderModal"></div>
         <div class="modal-content card drawer-modal">
-            <button class="modal-close" onclick="closeModal('orderModal')">&times;</button>
+            <button class="modal-close" data-close-modal="orderModal">&times;</button>
             <div class="modal-header">
                 <h2>🛒 Express Item Reservation</h2>
                 <p class="modal-subtitle">Reserve stock directly with the stall trader. No upfront online payment required!</p>
@@ -884,23 +878,23 @@
 
     <!-- REVIEW SUBMISSION MODAL -->
     <div id="reviewModal" class="modal">
-        <div class="modal-backdrop" onclick="closeModal('reviewModal')"></div>
+        <div class="modal-backdrop" data-close-modal="reviewModal"></div>
         <div class="modal-content card">
-            <button class="modal-close" onclick="closeModal('reviewModal')">&times;</button>
+            <button class="modal-close" data-close-modal="reviewModal">&times;</button>
             <h3>⭐ Leave a Verified Review</h3>
             <p class="card-subtitle">Share your experience with this Tamale trader to help other shoppers.</p>
-            <form id="reviewForm" onsubmit="handleReviewSubmit(event)">
+            <form id="reviewForm">
                 <input type="hidden" id="reviewOrderId" />
                 <input type="hidden" id="reviewShopId" />
                 
                 <div class="form-group text-center">
                     <label>Tap Stars to Rate:</label>
                     <div class="star-rating-input" id="starRatingInput">
-                        <span data-star="1" onclick="selectStarRating(1)">★</span>
-                        <span data-star="2" onclick="selectStarRating(2)">★</span>
-                        <span data-star="3" onclick="selectStarRating(3)">★</span>
-                        <span data-star="4" onclick="selectStarRating(4)">★</span>
-                        <span data-star="5" onclick="selectStarRating(5)">★</span>
+                        <span data-star="1" data-star="1">★</span>
+                        <span data-star="2" data-star="2">★</span>
+                        <span data-star="3" data-star="3">★</span>
+                        <span data-star="4" data-star="4">★</span>
+                        <span data-star="5" data-star="5">★</span>
                     </div>
                     <input type="hidden" id="selectedStarValue" value="5" />
                 </div>
@@ -917,12 +911,12 @@
 
     <!-- TRADER REVIEW REPLY MODAL -->
     <div id="replyReviewModal" class="modal">
-        <div class="modal-backdrop" onclick="closeModal('replyReviewModal')"></div>
+        <div class="modal-backdrop" data-close-modal="replyReviewModal"></div>
         <div class="modal-content card">
-            <button class="modal-close" onclick="closeModal('replyReviewModal')">&times;</button>
+            <button class="modal-close" data-close-modal="replyReviewModal">&times;</button>
             <h3>💬 Reply to Customer Review</h3>
             <p class="card-subtitle" id="replyReviewCustomerName">Customer Review</p>
-            <form id="replyReviewForm" onsubmit="handleReviewReplySubmit(event)">
+            <form id="replyReviewForm">
                 <input type="hidden" id="replyReviewId" />
                 <div class="form-group">
                     <label for="traderReplyText">Your Reply</label>
@@ -935,12 +929,12 @@
 
     <!-- ANTI-FRAUD / REPORT LISTING MODAL -->
     <div id="reportModal" class="modal">
-        <div class="modal-backdrop" onclick="closeModal('reportModal')"></div>
+        <div class="modal-backdrop" data-close-modal="reportModal"></div>
         <div class="modal-content card">
-            <button class="modal-close" onclick="closeModal('reportModal')">&times;</button>
+            <button class="modal-close" data-close-modal="reportModal">&times;</button>
             <h3>🚩 Report Suspicious Listing or Trader</h3>
             <p class="card-subtitle">Help keep Tamale Market Finder safe & scam-free.</p>
-            <form id="reportForm" onsubmit="handleReportSubmit(event)">
+            <form id="reportForm">
                 <input type="hidden" id="reportTargetType" />
                 <input type="hidden" id="reportTargetId" />
 
@@ -971,15 +965,15 @@
 
     <!-- AD BOOKING MODAL -->
     <div id="adModal" class="modal">
-        <div class="modal-backdrop" onclick="closeModal('adModal')"></div>
+        <div class="modal-backdrop" data-close-modal="adModal"></div>
         <div class="modal-content card">
-            <button class="modal-close" onclick="closeModal('adModal')">&times;</button>
+            <button class="modal-close" data-close-modal="adModal">&times;</button>
             <h3>📢 Book Business Spotlight Campaign</h3>
             <p class="card-subtitle">Select tier, duration, and submit payment reference</p>
-            <form id="adBookingForm" onsubmit="handleAdBookingSubmit(event)">
+            <form id="adBookingForm">
                 <div class="form-group">
                     <label for="adTierSelect">Select Ad Tier *</label>
-                    <select id="adTierSelect" required onchange="updateAdFeeDisplay()">
+                    <select id="adTierSelect" required>
                         <option value="basic_spotlight">🔥 Basic Spotlight (GHS 25 / 7 Days)</option>
                         <option value="category_featured">✨ Category Featured (GHS 40 / 7 Days)</option>
                         <option value="premium_top">⭐ Premium Top Placement (GHS 70 / 7 Days)</option>
@@ -988,7 +982,7 @@
 
                 <div class="form-group">
                     <label for="adDuration">Duration</label>
-                    <select id="adDuration" onchange="updateAdFeeDisplay()">
+                    <select id="adDuration">
                         <option value="7">1 Week (7 Days)</option>
                         <option value="14">2 Weeks (14 Days)</option>
                         <option value="30">1 Month (30 Days)</option>
@@ -1035,11 +1029,11 @@
         <div class="modal-content card">
             <div class="modal-header">
                 <h2>💬 Help &amp; Support</h2>
-                <button class="modal-close" onclick="closeModal('helpModal')">&times;</button>
+                <button class="modal-close" data-close-modal="helpModal">&times;</button>
             </div>
             <div class="modal-body" id="helpModalBody">
                 <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Have a question, suggestion, or need to report an issue? Send us a message and our team will get back to you.</p>
-                <form id="helpForm" onsubmit="handleHelpSubmit(event)">
+                <form id="helpForm">
                     <div class="form-group">
                         <label class="form-label">Your Name</label>
                         <input type="text" id="helpName" class="form-input" placeholder="Enter your name" required>
