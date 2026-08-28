@@ -548,45 +548,106 @@ document.addEventListener("DOMContentLoaded", () => {
     try { initInlineHandlers(); } catch(e) { showErr("initInlineHandlers", e); }
 });
 
-// Migrate all inline event handlers to addEventListener (CSP compliance)
+// Migrate all inline event handlers to addEventListener + event delegation (CSP compliance)
 function initInlineHandlers() {
-    // Ad booking buttons
+    // Static elements (exist in initial HTML)
     document.querySelectorAll('[data-ad-tier]').forEach(btn => {
         btn.addEventListener('click', () => openAdBookingModal(btn.dataset.adTier));
     });
-
-    // Modal close buttons & backdrops
     document.querySelectorAll('[data-close-modal]').forEach(el => {
         el.addEventListener('click', () => closeModal(el.dataset.closeModal));
     });
-
-    // Star rating buttons
     document.querySelectorAll('[data-star]').forEach(star => {
         star.addEventListener('click', () => selectStarRating(parseInt(star.dataset.star)));
     });
-
-    // Form submissions
     const reviewForm = document.getElementById('reviewForm');
     if (reviewForm) reviewForm.addEventListener('submit', handleReviewSubmit);
-
     const replyReviewForm = document.getElementById('replyReviewForm');
     if (replyReviewForm) replyReviewForm.addEventListener('submit', handleReviewReplySubmit);
-
     const reportForm = document.getElementById('reportForm');
     if (reportForm) reportForm.addEventListener('submit', handleReportSubmit);
-
     const adBookingForm = document.getElementById('adBookingForm');
     if (adBookingForm) adBookingForm.addEventListener('submit', handleAdBookingSubmit);
-
     const helpForm = document.getElementById('helpForm');
     if (helpForm) helpForm.addEventListener('submit', handleHelpSubmit);
-
-    // Ad tier/duration selects
     const adTierSelect = document.getElementById('adTierSelect');
     if (adTierSelect) adTierSelect.addEventListener('change', updateAdFeeDisplay);
-
     const adDuration = document.getElementById('adDuration');
     if (adDuration) adDuration.addEventListener('change', updateAdFeeDisplay);
+
+    // Express order form (dynamically generated)
+    const expressOrderForm = document.getElementById('expressOrderForm');
+    if (expressOrderForm) expressOrderForm.addEventListener('submit', handleOrderSubmit);
+
+    // Event delegation for dynamically generated content
+    document.addEventListener('click', handleDelegatedClick);
+    document.addEventListener('change', handleDelegatedChange);
+}
+
+function handleDelegatedClick(e) {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+
+    switch (action) {
+        case 'selectCategory':
+            selectCategoryPill(el, el.dataset.catVal);
+            break;
+        case 'showShopDetail':
+            showShopDetailModal(el.dataset.shopId);
+            break;
+        case 'goToSpotlight':
+            goToSpotlight(parseInt(el.dataset.idx));
+            break;
+        case 'openOrderModal':
+            openOrderModal(el.dataset.pid, el.dataset.sid);
+            break;
+        case 'toggleFavorite':
+            toggleFavoriteShop(el.dataset.shopId, e);
+            break;
+        case 'openWhatsApp':
+            openWhatsApp(el.dataset.waNum, el.dataset.waMsg, el.dataset.waShop);
+            break;
+        case 'openReportModal':
+            openReportModal(el.dataset.reportType, el.dataset.reportId, el.dataset.reportName);
+            break;
+        case 'drawDirections':
+            drawDirectionsToShop(parseFloat(el.dataset.lat), parseFloat(el.dataset.lng), el.dataset.name);
+            break;
+        case 'updateOrderQty':
+            updateOrderModalQty(parseInt(el.dataset.qtyDelta));
+            break;
+        case 'updateStockInline':
+            updateProductStockInline(el.dataset.pid, parseInt(el.dataset.delta));
+            break;
+        case 'changeOrderStatus':
+            changeOrderStatus(el.dataset.orderId, el.dataset.status);
+            break;
+        case 'openReviewModal':
+            openReviewModal(el.dataset.orderId, el.dataset.shopId, el.dataset.productId);
+            break;
+        case 'openReplyModal':
+            openReplyModal(el.dataset.reviewId);
+            break;
+        case 'dismissReport':
+            dismissReport(el.dataset.reportId);
+            break;
+        case 'takeModerationAction':
+            takeModerationAction(el.dataset.reportId);
+            break;
+    }
+}
+
+function handleDelegatedChange(e) {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+
+    switch (action) {
+        case 'toggleDelivery':
+            toggleDeliveryAddressField(el.dataset.show === 'true');
+            break;
+    }
 }
 
 function initSupabase() {
@@ -947,7 +1008,7 @@ function renderCategoryPillsForDomain(domain) {
 
     pillsContainer.innerHTML = categories.map((cat, idx) => {
         const catVal = idx === 0 ? "" : cat;
-        return `<button class="pill ${idx === 0 ? 'active' : ''}" data-category="${catVal}" onclick="selectCategoryPill(this, '${escapeJs(catVal)}')">${cat}</button>`;
+        return `<button class="pill ${idx === 0 ? 'active' : ''}" data-category="${catVal}" data-action="selectCategory" data-cat-val="${escapeJs(catVal)}">${cat}</button>`;
     }).join("");
 }
 
@@ -996,7 +1057,7 @@ async function renderSpotlightCarousel() {
 
     // Build all cards (only first is active)
     carousel.innerHTML = spotlightShops.map((s, i) => `
-        <div class="spotlight-card ${i === 0 ? 'active' : ''}" data-idx="${i}" onclick="showShopDetailModal('${escapeJs(s.id)}')">
+        <div class="spotlight-card ${i === 0 ? 'active' : ''}" data-idx="${i}" data-action="showShopDetail" data-shop-id="${escapeJs(s.id)}">
             <div class="spotlight-card-top">
                 <img src="${escapeAttr(s.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e')}" class="spotlight-img" alt="${escapeHtml(s.shop_name)}" />
                 <div>
@@ -1019,7 +1080,7 @@ async function renderSpotlightCarousel() {
     dotsContainer.className = 'spotlight-dots';
     dotsContainer.id = 'spotlightDots';
     dotsContainer.innerHTML = spotlightShops.map((_, i) =>
-        `<button class="spotlight-dot ${i === 0 ? 'active' : ''}" data-idx="${i}" onclick="goToSpotlight(${i})"></button>`
+        `<button class="spotlight-dot ${i === 0 ? 'active' : ''}" data-idx="${i}" data-action="goToSpotlight" data-idx="${i}"></button>`
     ).join('');
     carousel.appendChild(dotsContainer);
 
@@ -1135,7 +1196,7 @@ function renderMiniProductCard(p, shop) {
                 ${p.discount_price ? `<span class="original-price">GHS ${p.price.toFixed(2)}</span>` : ''}
             </div>
             <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">🏪 ${escapeHtml(shop.shop_name || 'Tamale Trader')}</div>
-            <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} onclick="openOrderModal('${escapeJs(p.id)}', '${escapeJs(p.shop_id)}')">
+            <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} data-action="openOrderModal" data-pid="${escapeJs(p.id)}" data-sid="${escapeJs(p.shop_id)}">
                 ${isOut ? 'Out of Stock' : '🛒 Order Now'}
             </button>
         </div>
@@ -1291,14 +1352,14 @@ function renderProductCard(p) {
 
             <div class="card-img-container">
                 <img src="${escapeAttr(p.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e')}" class="card-img" alt="${escapeHtml(p.name)}" />
-                <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavoriteShop('${escapeJs(p.shop_id)}', event)" title="Bookmark Shop">
+                <button class="fav-btn ${isFav ? 'active' : ''}" data-action="toggleFavorite" data-shop-id="${escapeJs(p.shop_id)}" title="Bookmark Shop">
                     ${isFav ? '❤️' : '🤍'}
                 </button>
                 ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; bottom:8px; left:8px;">${p.badge_tag.toUpperCase()}</span>` : ''}
             </div>
 
             <h3 class="card-title">${escapeHtml(p.name)}</h3>
-            <div class="card-subtitle-shop" onclick="showShopDetailModal('${escapeJs(p.shop_id)}')" style="cursor:pointer;">
+            <div class="card-subtitle-shop" data-action="showShopDetail" data-shop-id="${escapeJs(p.shop_id)}" style="cursor:pointer;">
                 <span>🏪 <strong>${escapeHtml(p.shop_name)}</strong></span>
                 <span>• 📍 ${escapeHtml(p.market_area)}</span>
             </div>
@@ -1315,11 +1376,11 @@ function renderProductCard(p) {
             </div>
 
             <div class="card-actions-row">
-                <button class="btn-whatsapp btn-sm" onclick="openWhatsApp('${escapeJs(p.whatsapp_number)}', '${escapeJs(p.name)}', '${escapeJs(p.shop_name)}')">💬 WhatsApp</button>
-                <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} onclick="openOrderModal('${escapeJs(p.id)}', '${escapeJs(p.shop_id)}')">
+                <button class="btn-whatsapp btn-sm" data-action="openWhatsApp" data-wa-num="${escapeJs(p.whatsapp_number)}" data-wa-msg="${escapeJs(p.name)}" data-wa-shop="${escapeJs(p.shop_name)}">💬 WhatsApp</button>
+                <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} data-action="openOrderModal" data-pid="${escapeJs(p.id)}" data-sid="${escapeJs(p.shop_id)}">
                     ${isOut ? 'Out of Stock' : '🛒 Order Now'}
                 </button>
-                <button class="btn-report" onclick="openReportModal('product', '${escapeJs(p.id)}', '${escapeJs(p.name)}')" title="Report listing">🚩</button>
+                <button class="btn-report" data-action="openReportModal" data-report-type="product" data-report-id="${escapeJs(p.id)}" data-report-name="${escapeJs(p.name)}" title="Report listing">🚩</button>
             </div>
         </div>
     `;
@@ -1343,8 +1404,8 @@ function renderServiceCard(s) {
             </div>
 
             <div class="card-actions-row">
-                <button class="btn-whatsapp btn-sm btn-block" onclick="openWhatsApp('${escapeJs(s.whatsapp_number || "233244123456")}', '${escapeJs(s.title)}', 'Service Inquiry')">💬 Book / Inquire Service</button>
-                <button class="btn-report" onclick="openReportModal('service', '${escapeJs(s.id)}', '${escapeJs(s.title)}')">🚩</button>
+                <button class="btn-whatsapp btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(s.whatsapp_number || "233244123456")}" data-wa-msg="${escapeJs(s.title)}" data-wa-shop="Service Inquiry">💬 Book / Inquire Service</button>
+                <button class="btn-report" data-action="openReportModal" data-report-type="service" data-report-id="${escapeJs(s.id)}" data-report-name="${escapeJs(s.title)}">🚩</button>
             </div>
         </div>
     `;
@@ -1373,7 +1434,7 @@ function renderHotelCard(h) {
             </div>
 
             <div class="card-actions-row" style="margin-top:10px;">
-                <button class="btn-primary btn-sm btn-block" onclick="openWhatsApp('${escapeJs(h.whatsapp_number)}', 'Room Booking', '${escapeJs(h.business_name)}')">📞 Call / Reserve Room</button>
+                <button class="btn-primary btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(h.whatsapp_number)}" data-wa-msg="Room Booking" data-wa-shop="${escapeJs(h.business_name)}">📞 Call / Reserve Room</button>
             </div>
         </div>
     `;
@@ -1394,7 +1455,7 @@ function renderEateryCard(e) {
             <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">📍 ${escapeHtml(e.address)} • 🕐 ${escapeHtml(e.opening_hours)}</div>
             
             <div class="card-actions-row">
-                <button class="btn-whatsapp btn-sm btn-block" onclick="openWhatsApp('${escapeJs(e.whatsapp_number)}', 'Food Order', '${escapeJs(e.business_name)}')">💬 Order Food / Reserve Table</button>
+                <button class="btn-whatsapp btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(e.whatsapp_number)}" data-wa-msg="Food Order" data-wa-shop="${escapeJs(e.business_name)}">💬 Order Food / Reserve Table</button>
             </div>
         </div>
     `;
@@ -1412,7 +1473,7 @@ function renderCompanyCard(c) {
             <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">📍 ${escapeHtml(c.address)} • 🇬🇭 ${escapeHtml(c.digital_address)}</div>
             
             <div class="card-actions-row">
-                <button class="btn-secondary btn-sm btn-block" onclick="openWhatsApp('${escapeJs(c.whatsapp_number)}', 'B2B Inquiry', '${escapeJs(c.business_name)}')">✉️ Contact Business Office</button>
+                <button class="btn-secondary btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(c.whatsapp_number)}" data-wa-msg="B2B Inquiry" data-wa-shop="${escapeJs(c.business_name)}">✉️ Contact Business Office</button>
             </div>
         </div>
     `;
@@ -1617,8 +1678,8 @@ function updateMapMarkers(items) {
                 <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight:700;">${escapeHtml(item.shop_name || item.name)}</h4>
                 <p style="margin: 0 0 4px 0; font-size: 11px; color: #64748b;">📍 ${escapeHtml(item.market_area || 'Tamale')}</p>
                 ${item.digital_address ? `<p style="margin:0 0 6px 0; font-size:11px; color:#0369A1; font-weight:bold;">🇬🇭 ${escapeHtml(item.digital_address)}</p>` : ''}
-                <button onclick="showShopDetailModal('${shopId}')" style="width:100%; background:#0A5C36; color:white; border:none; padding:6px 8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer; margin-bottom:4px;">View Stall ➔</button>
-                <button onclick="drawDirectionsToShop(${shopLat}, ${shopLng}, '${shopName}')" style="width:100%; background:#2196F3; color:white; border:none; padding:6px 8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">🧭 Get Directions</button>
+                <button data-action="showShopDetail" data-shop-id="${shopId}" style="width:100%; background:#0A5C36; color:white; border:none; padding:6px 8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer; margin-bottom:4px;">View Stall ➔</button>
+                <button data-action="drawDirections" data-lat="${shopLat}" data-lng="${shopLng}" data-name="${shopName}" style="width:100%; background:#2196F3; color:white; border:none; padding:6px 8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">🧭 Get Directions</button>
             </div>
         `;
 
@@ -1677,13 +1738,13 @@ async function openOrderModal(productId, shopId) {
             </div>
         </div>
 
-        <form id="expressOrderForm" onsubmit="handleOrderSubmit(event)">
+        <form id="expressOrderForm" data-form="orderSubmit">
             <div class="form-group">
                 <label>Select Reservation Quantity (Available Stock: ${product.stock_quantity}):</label>
                 <div class="inline-stock-control" style="width:140px; margin-top:4px;">
-                    <button type="button" class="stock-btn" onclick="updateOrderModalQty(-1)">-</button>
+                    <button type="button" class="stock-btn" data-action="updateOrderQty" data-qty-delta="-1">-</button>
                     <span class="stock-count-num" id="orderModalQtyDisplay">1</span>
-                    <button type="button" class="stock-btn" onclick="updateOrderModalQty(1)">+</button>
+                    <button type="button" class="stock-btn" data-action="updateOrderQty" data-qty-delta="1">+</button>
                 </div>
             </div>
 
@@ -1691,14 +1752,14 @@ async function openOrderModal(productId, shopId) {
                 <label>Fulfillment Preference:</label>
                 <div class="radio-cards">
                     <label class="radio-card">
-                        <input type="radio" name="deliveryType" value="pickup" checked onchange="toggleDeliveryAddressField(false)" />
+                        <input type="radio" name="deliveryType" value="pickup" checked data-action="toggleDelivery" data-show="false" />
                         <div class="radio-content">
                             <strong>🛍️ Pickup at Stall / Digital Address</strong>
                             <span>Visit shop at 🇬🇭 ${shop.digital_address || 'Tamale Stall'}</span>
                         </div>
                     </label>
                     <label class="radio-card">
-                        <input type="radio" name="deliveryType" value="local_delivery" onchange="toggleDeliveryAddressField(true)" />
+                        <input type="radio" name="deliveryType" value="local_delivery" data-action="toggleDelivery" data-show="true" />
                         <div class="radio-content">
                             <strong>🚚 Local Delivery in Tamale</strong>
                             <span>Delivery rider brings item to your address (Delivery fee paid to rider)</span>
@@ -1902,9 +1963,9 @@ async function renderTraderProductsList() {
                 <div class="inventory-item-meta">GHS ${(p.discount_price || p.price).toFixed(2)} • ${p.category}</div>
             </div>
             <div class="inline-stock-control">
-                <button class="stock-btn" onclick="updateProductStockInline('${escapeJs(p.id)}', -1)">-</button>
+                <button class="stock-btn" data-action="updateStockInline" data-pid="${escapeJs(p.id)}" data-delta="-1">-</button>
                 <span class="stock-count-num">${p.stock_quantity}</span>
-                <button class="stock-btn" onclick="updateProductStockInline('${escapeJs(p.id)}', 1)">+</button>
+                <button class="stock-btn" data-action="updateStockInline" data-pid="${escapeJs(p.id)}" data-delta="1">+</button>
             </div>
         </div>
     `).join("");
@@ -1942,11 +2003,11 @@ async function renderTraderOrders() {
             </div>
             <div class="order-card-actions">
                 ${o.status === 'placed' ? `
-                    <button class="btn-primary btn-sm" onclick="changeOrderStatus('${escapeJs(o.id)}', 'accepted')">Accept Order 👍</button>
-                    <button class="btn-danger btn-sm" onclick="changeOrderStatus('${escapeJs(o.id)}', 'rejected')">Reject</button>
+                    <button class="btn-primary btn-sm" data-action="changeOrderStatus" data-order-id="${escapeJs(o.id)}" data-status="accepted">Accept Order 👍</button>
+                    <button class="btn-danger btn-sm" data-action="changeOrderStatus" data-order-id="${escapeJs(o.id)}" data-status="rejected">Reject</button>
                 ` : ''}
-                ${o.status === 'accepted' ? `<button class="btn-primary btn-sm" onclick="changeOrderStatus('${escapeJs(o.id)}', 'ready')">Mark Ready 📦</button>` : ''}
-                ${o.status === 'ready' ? `<button class="btn-primary btn-sm" onclick="changeOrderStatus('${escapeJs(o.id)}', 'completed')">Complete Order ✅</button>` : ''}
+                ${o.status === 'accepted' ? `<button class="btn-primary btn-sm" data-action="changeOrderStatus" data-order-id="${escapeJs(o.id)}" data-status="ready">Mark Ready 📦</button>` : ''}
+                ${o.status === 'ready' ? `<button class="btn-primary btn-sm" data-action="changeOrderStatus" data-order-id="${escapeJs(o.id)}" data-status="completed">Complete Order ✅</button>` : ''}
             </div>
         </div>
     `).join("");
@@ -2026,7 +2087,7 @@ async function renderBuyerOrders() {
                 </div>
                 <div class="order-card-actions">
                     ${o.status === 'completed' ? `
-                        <button class="btn-primary btn-sm" onclick="openReviewModal('${escapeJs(o.id)}', '${escapeJs(o.shop_id)}', '${escapeJs(o.product_id)}')">⭐ Leave Verified Review</button>
+                        <button class="btn-primary btn-sm" data-action="openReviewModal" data-order-id="${escapeJs(o.id)}" data-shop-id="${escapeJs(o.shop_id)}" data-product-id="${escapeJs(o.product_id)}">⭐ Leave Verified Review</button>
                     ` : ''}
                 </div>
             </div>
@@ -2139,7 +2200,7 @@ async function renderTraderReviews() {
                     <strong>Your Reply:</strong> ${escapeHtml(r.trader_reply)}
                 </div>
             ` : `
-                <button class="btn-secondary btn-sm" style="margin-top:6px;" onclick="openReplyModal('${escapeJs(r.id)}')">💬 Reply to Review</button>
+                <button class="btn-secondary btn-sm" style="margin-top:6px;" data-action="openReplyModal" data-review-id="${escapeJs(r.id)}">💬 Reply to Review</button>
             `}
         </div>
     `).join("");
@@ -2301,8 +2362,8 @@ async function renderAdminPanel() {
             </div>
             <p style="font-size:13px; margin:8px 0;">${escapeHtml(r.description)}</p>
             <div style="display:flex; gap:6px;">
-                <button class="btn-secondary btn-sm" onclick="dismissReport('${escapeJs(r.id)}')">Approve & Dismiss</button>
-                <button class="btn-danger btn-sm" onclick="takeModerationAction('${escapeJs(r.id)}')">Hide Item / Suspend</button>
+                <button class="btn-secondary btn-sm" data-action="dismissReport" data-report-id="${escapeJs(r.id)}">Approve & Dismiss</button>
+                <button class="btn-danger btn-sm" data-action="takeModerationAction" data-report-id="${escapeJs(r.id)}">Hide Item / Suspend</button>
             </div>
         </div>
     `).join("");
@@ -2517,7 +2578,7 @@ async function showShopDetailModal(shopId) {
             ${shop.ghana_card_verified ? '<span style="display:inline-block; background:#DCFCE7; color:#16A34A; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; margin-top:6px;">✓ Ghana Card Verified</span>' : ''}
             ${shop.latitude && shop.longitude ? `
             <div style="margin-top:10px;">
-                <button onclick="drawDirectionsToShop(${shop.latitude}, ${shop.longitude}, '${escapeJs(shop.shop_name)}')" style="background:#2196F3; color:white; border:none; padding:10px 16px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">🧭 Get Directions to This Stall</button>
+                <button data-action="drawDirections" data-lat="${shop.latitude}" data-lng="${shop.longitude}" data-name="${escapeJs(shop.shop_name)}" style="background:#2196F3; color:white; border:none; padding:10px 16px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">🧭 Get Directions to This Stall</button>
             </div>
             ` : ''}
         </div>
@@ -3124,7 +3185,7 @@ async function renderFavoritesPage() {
     }
 
     list.innerHTML = favShops.map(s => `
-        <div class="card" onclick="showShopDetailModal('${escapeJs(s.id)}')">
+        <div class="card" data-action="showShopDetail" data-shop-id="${escapeJs(s.id)}">
             <h3 class="card-title">${escapeHtml(s.shop_name)}</h3>
             <p style="font-size:12px; color:var(--text-muted);">📍 ${escapeHtml(s.market_area)} • 🇬🇭 ${escapeHtml(s.digital_address || '')}</p>
         </div>
