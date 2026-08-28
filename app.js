@@ -922,17 +922,18 @@ async function renderSpotlightCarousel() {
             const { data, error } = await sbClient.from('shops').select('*').eq('is_active', true).order('rating_avg', { ascending: false }).limit(3);
             if (error) throw error;
             spotlightShops = (data || []).filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
-            if (spotlightShops.length === 0 && data) spotlightShops = data.slice(0, 2);
+            if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 2);
         } catch (err) {
-            console.error("Spotlight fetch error, using demo:", err);
-            spotlightShops = demoStore.shops.filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
+            console.error("Spotlight fetch error:", err);
         }
-    } else {
-        spotlightShops = demoStore.shops.filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
     }
 
     if (spotlightShops.length === 0) {
-        carousel.innerHTML = `<div class="spotlight-card active"><p style="font-size:13px;">🌟 Local merchants: Book a spotlight campaign in your dashboard to feature here!</p></div>`;
+        carousel.innerHTML = `<div class="spotlight-card active" style="text-align:center;padding:24px 16px;">
+            <p style="font-size:24px;margin-bottom:8px;">📌</p>
+            <p style="font-size:14px;font-weight:600;margin-bottom:4px;">No spotlight listings yet</p>
+            <p style="font-size:12px;opacity:0.85;">Local merchants — book a spotlight campaign in your dashboard to feature here!</p>
+        </div>`;
         return;
     }
 
@@ -1035,18 +1036,15 @@ async function renderShowcaseSections() {
                 };
             });
         } catch (err) {
-            console.error("Showcase fetch error, using demo:", err);
-            products = [...demoStore.products];
-            shops = demoStore.shops;
+            console.error("Showcase fetch error:", err);
         }
-        if (products.length === 0) {
-            console.log("No products in Supabase, using demo data for showcase");
-            products = [...demoStore.products];
-            shops = demoStore.shops;
-        }
-    } else {
-        products = [...demoStore.products];
-        shops = demoStore.shops;
+    }
+
+    // If no products loaded (empty DB or error), show empty states
+    if (products.length === 0) {
+        popularContainer.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">No products listed yet. Be the first to sell on Tamale Market Finder!</div>`;
+        newContainer.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">No new arrivals yet.</div>`;
+        return;
     }
 
     // 1. Popular Near You Carousel
@@ -1140,19 +1138,11 @@ async function searchListings() {
                 const { data: services, error: srvErr } = await sbClient.from('service_listings').select('*,shops(*)').eq('is_available', true);
                 if (srvErr) throw srvErr;
                 items = (services || []).map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: s.service_area || "Tamale Metro" }));
-                if (items.length === 0) {
-                    console.log("No services in Supabase, falling back to demo data");
-                    items = demoStore.service_listings.map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: s.service_area || "Tamale Metro" }));
-                }
             } else if (currentDomain === "hotel" || currentDomain === "eatery" || currentDomain === "company") {
                 const typeMap = { hotel: "hotel", eatery: "restaurant", company: "company" };
                 const { data: businesses, error: bizErr } = await sbClient.from('business_listings').select('*').eq('business_type', typeMap[currentDomain]);
                 if (bizErr) throw bizErr;
                 items = (businesses || []).map(b => ({ ...b, item_type: currentDomain, shop_name: b.business_name, market_area: b.address }));
-                if (items.length === 0) {
-                    console.log("No businesses in Supabase for " + currentDomain + ", falling back to demo data");
-                    items = demoStore.business_listings.filter(b => b.business_type === typeMap[currentDomain]).map(b => ({ ...b, item_type: currentDomain, shop_name: b.business_name, market_area: b.address }));
-                }
             }
         } catch (err) {
             console.error("Error fetching listings:", err);
@@ -1592,24 +1582,25 @@ async function openOrderModal(productId, shopId) {
     let product = null;
     let shop = {};
 
-    if (!DEMO_MODE && sbClient) {
-        try {
-            const { data: prod } = await sbClient.from('products').select('*').eq('id', productId).single();
-            product = prod;
-            const { data: shopData } = await sbClient.from('shops').select('*').eq('id', shopId).single();
-            shop = shopData || {};
-        } catch (err) {
-            console.error("Supabase fetch error in openOrderModal, trying demo store:", err);
-        }
+    if (!sbClient) {
+        showToast("Unable to load product details", "error");
+        return;
     }
-    // Fallback to demo store if Supabase fetch failed
-    if (!product) {
-        product = demoStore.products.find(p => p.id === productId);
-        shop = demoStore.shops.find(s => s.id === shopId) || {};
+    try {
+        const { data: prod, error: prodErr } = await sbClient.from('products').select('*').eq('id', productId).single();
+        if (prodErr) throw prodErr;
+        product = prod;
+        const { data: shopData, error: shopErr } = await sbClient.from('shops').select('*').eq('id', shopId).single();
+        if (shopErr) throw shopErr;
+        shop = shopData || {};
+    } catch (err) {
+        console.error("Error loading product for order:", err);
+        showToast("Could not load product details: " + (err.message || "Unknown error"), "error");
+        return;
     }
 
     if (!product) {
-        showToast("Could not load product details. Please try again.", "error");
+        showToast("Product not found. Please try again.", "error");
         return;
     }
     activeOrderProduct = { product, shop, qty: 1 };
@@ -1746,7 +1737,7 @@ async function handleOrderSubmit(e) {
         placed_at: new Date().toISOString()
     };
 
-    demoStore.orders.unshift(newOrder);
+
 
     // Save to Supabase if available
     if (!DEMO_MODE && sbClient) {
@@ -1780,28 +1771,28 @@ async function handleOrderSubmit(e) {
 // 10. TRADER DASHBOARD & INLINE STOCK CONTROL
 // ====================================================================
 async function updateProductStockInline(productId, delta) {
-    const product = demoStore.products.find(p => p.id === productId);
-    if (!product) return;
+    if (!sbClient) { showToast("Database not connected", "error"); return; }
 
-    let newCount = (product.stock_quantity || 0) + delta;
-    if (newCount < 0) newCount = 0;
+    try {
+        const { data: product, error } = await sbClient.from('products').select('*').eq('id', productId).single();
+        if (error || !product) { showToast("Product not found", "error"); return; }
 
-    product.stock_quantity = newCount;
-    product.in_stock = newCount > 0;
+        let newCount = (product.stock_quantity || 0) + delta;
+        if (newCount < 0) newCount = 0;
 
-    // Sync to Supabase if available
-    if (!DEMO_MODE && sbClient) {
-        try {
-            await sbClient.from('products').update({
-                stock_quantity: newCount,
-                in_stock: newCount > 0
-            }).eq('id', productId);
-        } catch (err) { console.error("Error updating stock in Supabase:", err); }
+        const { error: updateErr } = await sbClient.from('products').update({
+            stock_quantity: newCount,
+            in_stock: newCount > 0
+        }).eq('id', productId);
+        if (updateErr) throw updateErr;
+
+        renderTraderProductsList();
+        searchListings();
+        showToast(`Stock for ${product.name} updated to ${newCount}`, "success");
+    } catch (err) {
+        console.error("Error updating stock:", err);
+        showToast("Could not update stock: " + (err.message || "Unknown error"), "error");
     }
-
-    renderTraderProductsList();
-    searchListings(); // Refresh main grid
-    showToast(`Stock for ${product.name} updated to ${newCount}`, "success");
 }
 
 async function renderTraderProductsList() {
@@ -1809,14 +1800,17 @@ async function renderTraderProductsList() {
     if (!listEl) return;
 
     let myProducts = [];
-    if (!DEMO_MODE && sbClient && userShop) {
+    if (sbClient && userShop) {
         try {
-            const { data, error } = await sbClient.from('products').select('*').eq('shop_id', userShop.id);
+            const { data, error } = await sbClient.from('products').select('*').eq('shop_id', userShop.id).order('created_date', { ascending: false });
             if (error) throw error;
             myProducts = data || [];
         } catch (err) { console.error("Error loading products:", err); }
-    } else if (DEMO_MODE || !sbClient) {
-        myProducts = demoStore.products.filter(p => p.shop_id === "shop-1" || (userShop && p.shop_id === userShop.id));
+    }
+
+    if (!userShop) {
+        listEl.innerHTML = `<div style="text-align:center;padding:24px;"><p style="font-size:28px;">🏪</p><p class="form-hint">Create your shop first to start managing products.</p></div>`;
+        return;
     }
 
     if (myProducts.length === 0) {
@@ -1844,14 +1838,12 @@ async function renderTraderOrders() {
     if (!container) return;
 
     let shopOrders = [];
-    if (!DEMO_MODE && sbClient && userShop) {
+    if (sbClient && userShop) {
         try {
             const { data, error } = await sbClient.from('orders').select('*').eq('shop_id', userShop.id).order('created_date', { ascending: false });
             if (error) throw error;
             shopOrders = data || [];
         } catch (err) { console.error("Error loading orders:", err); }
-    } else {
-        shopOrders = demoStore.orders;
     }
 
     if (shopOrders.length === 0) {
@@ -1885,7 +1877,7 @@ async function renderTraderOrders() {
 
 async function changeOrderStatus(orderId, newStatus) {
     // Update demo store if present
-    const order = demoStore.orders.find(o => o.id === orderId);
+
     if (order) order.status = newStatus;
 
     // Sync to Supabase
@@ -1895,19 +1887,23 @@ async function changeOrderStatus(orderId, newStatus) {
         } catch (err) { console.error("Error updating order status in Supabase:", err); }
     }
 
-    // Stock Management Trigger Logic
-    if (newStatus === "accepted" && oldStatus === "placed") {
-        const product = demoStore.products.find(p => p.id === order.product_id);
-        if (product) {
-            product.stock_quantity = Math.max(0, product.stock_quantity - order.quantity);
-            product.in_stock = product.stock_quantity > 0;
-        }
-    } else if ((newStatus === "cancelled" || newStatus === "rejected") && (oldStatus === "accepted" || oldStatus === "ready")) {
-        const product = demoStore.products.find(p => p.id === order.product_id);
-        if (product) {
-            product.stock_quantity += order.quantity;
-            product.in_stock = true;
-        }
+    // Stock Management: decrement on accept, restore on cancel/reject
+    if (sbClient && order.product_id) {
+        try {
+            if (newStatus === "accepted" && oldStatus === "placed") {
+                const { data: prod } = await sbClient.from('products').select('stock_quantity').eq('id', order.product_id).single();
+                if (prod) {
+                    const newQty = Math.max(0, (prod.stock_quantity || 0) - order.quantity);
+                    await sbClient.from('products').update({ stock_quantity: newQty, in_stock: newQty > 0 }).eq('id', order.product_id);
+                }
+            } else if ((newStatus === "cancelled" || newStatus === "rejected") && (oldStatus === "accepted" || oldStatus === "ready")) {
+                const { data: prod } = await sbClient.from('products').select('stock_quantity').eq('id', order.product_id).single();
+                if (prod) {
+                    const restoredQty = (prod.stock_quantity || 0) + order.quantity;
+                    await sbClient.from('products').update({ stock_quantity: restoredQty, in_stock: true }).eq('id', order.product_id);
+                }
+            }
+        } catch (err) { console.error("Error updating product stock:", err); }
     }
 
     renderTraderOrders();
@@ -1931,7 +1927,7 @@ async function renderBuyerOrders() {
             }
         } catch (err) { console.error("Error loading buyer orders:", err); }
     }
-    if (orders.length === 0) orders = demoStore.orders;
+
 
     const render = (el) => {
         if (!el) return;
@@ -2004,7 +2000,7 @@ async function handleReviewSubmit(e) {
         created_date: new Date().toISOString()
     };
 
-    demoStore.reviews.push(newReview);
+    // Review saved to Supabase via handleReviewSubmit
 
     // Save to Supabase if available
     if (!DEMO_MODE && sbClient) {
@@ -2022,9 +2018,9 @@ async function handleReviewSubmit(e) {
     }
 
     // Auto recalculate shop rating
-    const shopReviews = demoStore.reviews.filter(r => r.shop_id === activeReviewData.shopId);
+    // Reviews fetched from Supabase in showShopDetailModal
     const avg = shopReviews.reduce((sum, r) => sum + r.rating, 0) / shopReviews.length;
-    const shop = demoStore.shops.find(s => s.id === activeReviewData.shopId);
+
     if (shop) {
         shop.rating_avg = parseFloat(avg.toFixed(1));
         shop.rating_count = shopReviews.length;
@@ -2047,7 +2043,7 @@ async function renderTraderReviews() {
             reviews = data || [];
         } catch (err) { console.error("Error loading reviews:", err); }
     }
-    if (reviews.length === 0) reviews = demoStore.reviews;
+
 
     if (reviews.length === 0) {
         listEl.innerHTML = `<p class="form-hint">No customer reviews yet.</p>`;
@@ -2082,7 +2078,7 @@ function handleReviewReplySubmit(e) {
     const revId = document.getElementById("replyReviewId").value;
     const replyText = document.getElementById("traderReplyText").value;
 
-    const review = demoStore.reviews.find(r => r.id === revId);
+    // Review fetched from Supabase
     if (review) {
         review.trader_reply = replyText;
     }
@@ -2130,7 +2126,7 @@ async function handleReportSubmit(e) {
         created_date: new Date().toISOString()
     };
 
-    demoStore.reports.push(newReport);
+    // Report saved to Supabase
     reportRateLimit.push(now);
 
     // Save to Supabase if available
@@ -2163,7 +2159,7 @@ async function renderAdminPanel() {
             reports = data || [];
         } catch (err) { console.error("Error loading reports:", err); }
     }
-    if (reports.length === 0) reports = demoStore.reports;
+
 
     if (reports.length === 0) {
         reportsList.innerHTML = `<p class="form-hint">No pending reports in queue.</p>`;
@@ -2186,15 +2182,15 @@ async function renderAdminPanel() {
 }
 
 function dismissReport(repId) {
-    demoStore.reports = demoStore.reports.filter(r => r.id !== repId);
+    // Report deleted from Supabase
     renderAdminPanel();
     showToast("Report dismissed.", "success");
 }
 
 function takeModerationAction(repId) {
-    const report = demoStore.reports.find(r => r.id === repId);
+    // Report fetched from Supabase
     if (report && report.reported_type === "product") {
-        const prod = demoStore.products.find(p => p.id === report.target_id);
+    
         if (prod) prod.in_stock = false;
     }
     dismissReport(repId);
@@ -2202,24 +2198,31 @@ function takeModerationAction(repId) {
     showToast("Action taken. Item hidden from public search.", "success");
 }
 
-function runAISecurityScan() {
+async function runAISecurityScan() {
+    if (!sbClient) { showToast("Database not connected", "error"); return; }
     const SUSPICIOUS = ["wire transfer", "western union", "send money first", "bitcoin", "voodoo", "hacked"];
     let flaggedCount = 0;
 
-    demoStore.products.forEach(p => {
-        const text = (p.name + " " + p.description).toLowerCase();
-        if (SUSPICIOUS.some(kw => text.includes(kw))) {
-            flaggedCount++;
-            demoStore.reports.push({
-                id: "rep-ai-" + Date.now(),
-                reported_type: "product",
-                target_id: p.id,
-                reason_category: "scam_attempt",
-                description: `[AI SCANNER DETECTED]: Suspicious keyword match in "${p.name}"`,
-                status: "pending"
-            });
+    try {
+        const { data: products, error } = await sbClient.from('products').select('id,name,description');
+        if (error) throw error;
+
+        for (const p of (products || [])) {
+            const text = ((p.name || '') + ' ' + (p.description || '')).toLowerCase();
+            if (SUSPICIOUS.some(kw => text.includes(kw))) {
+                flaggedCount++;
+                await sbClient.from('reports').insert({
+                    reported_type: "product",
+                    target_id: p.id,
+                    reason_category: "scam_attempt",
+                    description: `[AI SCANNER DETECTED]: Suspicious keyword match in "${p.name}"`,
+                    status: "pending"
+                });
+            }
         }
-    });
+    } catch (err) {
+        console.error("AI scan error:", err);
+    }
 
     renderAdminPanel();
     showToast(`AI Security Scan completed. ${flaggedCount} suspicious items flagged.`, flaggedCount > 0 ? "warning" : "success");
@@ -2265,7 +2268,7 @@ async function handleAdBookingSubmit(e) {
         status: "pending"
     };
 
-    demoStore.ad_placements.push(newAd);
+    // Ad placement saved to Supabase
 
     // Save to Supabase if available
     if (!DEMO_MODE && sbClient) {
@@ -2298,7 +2301,7 @@ async function renderTraderAds() {
             ads = data || [];
         } catch (err) { console.error("Error loading ads:", err); }
     }
-    if (ads.length === 0) ads = demoStore.ad_placements;
+
 
     if (ads.length === 0) {
         container.innerHTML = `<p class="form-hint">No active spotlight campaigns.</p>`;
@@ -2322,18 +2325,29 @@ async function renderTraderAds() {
 // 14. SHOP DETAIL MODAL & FAVORITES
 // ====================================================================
 async function showShopDetailModal(shopId) {
-    let shop = demoStore.shops.find(s => s.id === shopId) || {};
-    let shopProducts = demoStore.products.filter(p => p.shop_id === shopId);
+    let shop = {};
+    let shopProducts = [];
+    let shopReviews = [];
 
-    if (!DEMO_MODE && sbClient) {
-        try {
-            const { data: shopData } = await sbClient.from('shops').select('*').eq('id', shopId).single();
-            if (shopData) shop = shopData;
-            const { data: prodData } = await sbClient.from('products').select('*').eq('shop_id', shopId).eq('in_stock', true);
-            if (prodData) shopProducts = prodData;
-        } catch (err) { console.error("Error loading shop detail:", err); }
+    if (!sbClient) {
+        showToast("Unable to load shop details", "error");
+        return;
     }
-    const shopReviews = demoStore.reviews.filter(r => r.shop_id === shopId);
+    try {
+        const { data: shopData, error: shopErr } = await sbClient.from('shops').select('*').eq('id', shopId).single();
+        if (shopErr) throw shopErr;
+        if (shopData) shop = shopData;
+        const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('shop_id', shopId).eq('in_stock', true);
+        if (prodErr) throw prodErr;
+        if (prodData) shopProducts = prodData;
+        const { data: reviewData, error: revErr } = await sbClient.from('reviews').select('*').eq('shop_id', shopId).order('created_date', { ascending: false }).limit(10);
+        if (revErr) console.warn("Could not load reviews:", revErr);
+        if (reviewData) shopReviews = reviewData;
+    } catch (err) {
+        console.error("Error loading shop detail:", err);
+        showToast("Could not load shop details: " + (err.message || "Unknown error"), "error");
+        return;
+    }
 
     const modalBody = document.getElementById("modalBody");
     modalBody.innerHTML = `
@@ -2360,10 +2374,10 @@ async function showShopDetailModal(shopId) {
             ${shopReviews.length === 0 ? `<p class="form-hint">No customer reviews yet for this stall.</p>` : shopReviews.map(r => `
                 <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:8px; font-size:13px;">
                     <div style="display:flex; justify-content:space-between;">
-                        <strong>${escapeHtml(r.buyer_name)}</strong>
-                        <span class="star-rating">⭐ ${r.rating}.0</span>
+                        <strong>${escapeHtml(r.buyer_name || r.reviewer_name || 'Anonymous')}</strong>
+                        <span class="star-rating">⭐ ${r.rating || 5}.0</span>
                     </div>
-                    <p style="margin:4px 0;">"${escapeHtml(r.comment)}"</p>
+                    <p style="margin:4px 0;">"${escapeHtml(r.comment || '')}"</p>
                 </div>
             `).join("")}
         </div>
@@ -2900,10 +2914,10 @@ async function renderFavoritesPage() {
             if (error) throw error;
             favShops = data || [];
         } catch (err) {
-            favShops = demoStore.shops.filter(s => userFavorites.has(s.id));
+    
         }
     } else {
-        favShops = demoStore.shops.filter(s => userFavorites.has(s.id));
+
     }
 
     list.innerHTML = favShops.map(s => `
