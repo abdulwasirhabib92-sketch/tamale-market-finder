@@ -2773,7 +2773,7 @@ async function handleSaveShop(e) {
                 .from('shop-images')
                 .upload(fileName, ghanaCardPhoto);
             if (!uploadError) {
-                ghanaCardPhotoUrl = `${import.meta?.env?.VITE_SUPABASE_URL || ''}/storage/v1/object/public/shop-images/${fileName}`;
+                ghanaCardPhotoUrl = `${SUPABASE_URL}/storage/v1/object/public/shop-images/${fileName}`;
                 // Fallback: use Supabase client URL
                 if (!ghanaCardPhotoUrl || ghanaCardPhotoUrl.includes('undefined')) {
                     const { data: pubData } = sbClient.storage.from('shop-images').getPublicUrl(fileName);
