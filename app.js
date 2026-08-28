@@ -1039,6 +1039,11 @@ async function renderShowcaseSections() {
             products = [...demoStore.products];
             shops = demoStore.shops;
         }
+        if (products.length === 0) {
+            console.log("No products in Supabase, using demo data for showcase");
+            products = [...demoStore.products];
+            shops = demoStore.shops;
+        }
     } else {
         products = [...demoStore.products];
         shops = demoStore.shops;
@@ -1135,11 +1140,19 @@ async function searchListings() {
                 const { data: services, error: srvErr } = await sbClient.from('service_listings').select('*,shops(*)').eq('is_available', true);
                 if (srvErr) throw srvErr;
                 items = (services || []).map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: s.service_area || "Tamale Metro" }));
+                if (items.length === 0) {
+                    console.log("No services in Supabase, falling back to demo data");
+                    items = demoStore.service_listings.map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: s.service_area || "Tamale Metro" }));
+                }
             } else if (currentDomain === "hotel" || currentDomain === "eatery" || currentDomain === "company") {
                 const typeMap = { hotel: "hotel", eatery: "restaurant", company: "company" };
                 const { data: businesses, error: bizErr } = await sbClient.from('business_listings').select('*').eq('business_type', typeMap[currentDomain]);
                 if (bizErr) throw bizErr;
                 items = (businesses || []).map(b => ({ ...b, item_type: currentDomain, shop_name: b.business_name, market_area: b.address }));
+                if (items.length === 0) {
+                    console.log("No businesses in Supabase for " + currentDomain + ", falling back to demo data");
+                    items = demoStore.business_listings.filter(b => b.business_type === typeMap[currentDomain]).map(b => ({ ...b, item_type: currentDomain, shop_name: b.business_name, market_area: b.address }));
+                }
             }
         } catch (err) {
             console.error("Error fetching listings:", err);
