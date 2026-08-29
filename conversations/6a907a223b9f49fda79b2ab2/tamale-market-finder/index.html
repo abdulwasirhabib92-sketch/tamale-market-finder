@@ -258,7 +258,7 @@
                 <button class="acc-tab-btn active" data-acctab="profile">⚙️ Profile & Settings</button>
                 <button class="acc-tab-btn" data-acctab="orders">🛍️ My Orders</button>
                 <button class="acc-tab-btn" data-acctab="trader">🏪 Trader Dashboard</button>
-                <button class="acc-tab-btn" data-acctab="admin" id="adminTabBtn">🛡️ Admin Moderation</button>
+                <button class="acc-tab-btn" data-acctab="admin" id="adminTabBtn" style="display:none;">🛡️ Admin Moderation</button>
             </div>
 
             <!-- SUB-TAB 1: USER PROFILE & SETTINGS -->
@@ -410,24 +410,15 @@
                                     <input type="text" id="shopName" placeholder="e.g. Alhassan Grain Store & Produce" required />
                                 </div>
 
-                                <div class="form-row-2">
-                                    <div class="form-group">
-                                        <label for="shopCategory">Primary Category *</label>
-                                        <select id="shopCategory" required>
-                                            <option value="">Select Category</option>
-                                            <option value="Grains & Cereals">🌾 Grains & Cereals</option>
-                                            <option value="Meat & Livestock">🥩 Meat & Livestock</option>
-                                            <option value="Textiles & Smocks">🧵 Textiles & Smocks</option>
-                                            <option value="Electronics & Phones">📱 Electronics & Phones</option>
-                                            <option value="Hardware & Building">🔨 Hardware & Building</option>
-                                            <option value="Fresh Produce">🍎 Fresh Produce</option>
-                                            <option value="Pharmacy & Health">💊 Pharmacy & Health</option>
-                                            <option value="Cooked Food">🍳 Cooked Food</option>
-                                            <option value="Crafts & Artifacts">🎨 Crafts & Artifacts</option>
-                                            <option value="General Goods">📦 General Goods</option>
-                                        </select>
+                                <div class="form-group">
+                                    <label for="shopDescription">What do you sell? *</label>
+                                    <textarea id="shopDescription" rows="2" placeholder="e.g. White maize, millet, sorghum, local rice — wholesale and retail" required></textarea>
+                                    <div id="shopCategoryAutoDetect" style="margin-top:6px; display:none;">
+                                        <span style="font-size:12px; background:#DCFCE7; color:#16A34A; padding:3px 10px; border-radius:12px; font-weight:600;">✓ Detected: <span id="shopDetectedCategory"></span></span>
                                     </div>
+                                </div>
 
+                                <div class="form-row-2">
                                     <div class="form-group">
                                         <label for="shopMarketArea">Market Location *</label>
                                         <select id="shopMarketArea" required>
@@ -440,118 +431,104 @@
                                             <option value="Other">Other Area</option>
                                         </select>
                                     </div>
-                                </div>
-
-                                <!-- Ghana Post GPS Digital Address Integration -->
-                                <div class="card gps-integration-card">
-                                    <div class="gps-card-title">
-                                        <span>🇬🇭 Ghana Post GPS Digital Address</span>
-                                        <span class="gps-badge-tag">Official Location</span>
-                                    </div>
-                                    <p class="form-hint">Enter your stall's digital address (e.g. <strong>NT-092-0621</strong>) or click the GPS button to auto-detect coordinates.</p>
-                                    
                                     <div class="form-group">
-                                        <label for="shopDigitalAddress">Digital Address Code</label>
-                                        <div class="input-with-btn">
-                                            <input type="text" id="shopDigitalAddress" placeholder="e.g. NT-092-0621" uppercase />
-                                            <button type="button" class="btn-secondary" id="lookupDigitalAddressBtn">🔍 Lookup Address</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="gps-action-row">
-                                        <button type="button" class="btn-gps" id="getLocationBtn">
-                                            <span>📍 Use My Device GPS & Auto-Fill Digital Address</span>
-                                        </button>
-                                        <span class="location-status-text" id="locationStatus">GPS Pin: Not Set</span>
-                                    </div>
-
-                                    <div class="form-row-2" style="margin-top: 10px;">
-                                        <div class="form-group">
-                                            <label for="shopLat">Latitude</label>
-                                            <input type="number" step="any" id="shopLat" placeholder="9.4075" readonly />
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="shopLng">Longitude</label>
-                                            <input type="number" step="any" id="shopLng" placeholder="-0.8357" readonly />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="shopAddress">Physical Directions / Stall Number</label>
-                                    <input type="text" id="shopAddress" placeholder="e.g. Shed B-45, Near Aboabo Main Mosque Gate" />
-                                </div>
-
-                                <div class="form-row-2">
-                                    <div class="form-group">
-                                        <label for="shopPhone">Phone Number</label>
-                                        <input type="tel" id="shopPhone" placeholder="0244123456" />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="shopWhatsapp">WhatsApp Contact Number *</label>
+                                        <label for="shopWhatsapp">WhatsApp Number *</label>
                                         <input type="tel" id="shopWhatsapp" placeholder="e.g. 233244123456" required />
-                                        <small class="form-hint">Include country code without + (e.g. 233244123456)</small>
+                                        <small class="form-hint">Include country code without +</small>
                                     </div>
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="shopHours">Opening Hours</label>
-                                    <input type="text" id="shopHours" placeholder="e.g. Mon-Sat: 7:00 AM - 6:00 PM" />
+                                    <label for="shopPhone">Phone Number (if different from WhatsApp)</label>
+                                    <input type="tel" id="shopPhone" placeholder="0244123456" />
                                 </div>
 
-                                <div class="form-group">
-                                    <label for="shopDescription">Stall Description & Specialization</label>
-                                    <textarea id="shopDescription" rows="3" placeholder="Describe the items you sell, wholesale/retail deals, and landmarks..."></textarea>
+                                <!-- Delivery Toggle -->
+                                <div class="card" style="background:#F0FDF4; border:1px solid #BBF7D0; padding:14px; border-radius:10px; margin-bottom:15px;">
+                                    <label class="checkbox-label" style="font-size:14px; cursor:pointer;">
+                                        <input type="checkbox" id="shopOffersDelivery" style="width:18px; height:18px;" />
+                                        <span><strong>🚚 I offer local delivery in Tamale</strong><br><small style="color:#666;">Buyers will see a delivery option when ordering from your stall</small></span>
+                                    </label>
                                 </div>
 
-                                <!-- Ghana Card Verification Section -->
-                                <div class="card ghana-card-section" style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 16px; margin-bottom: 15px; border-radius: 10px;">
-                                    <div class="gps-card-title" style="margin-bottom: 8px;">
-                                        <span>🪪 Ghana Card Verification (Required for Traders)</span>
-                                        <span class="gps-badge-tag" style="background:#16A34A; color:white;">Mandatory</span>
-                                    </div>
-                                    <p class="form-hint" style="margin-bottom: 12px;">All traders must provide a valid Ghana Card for identity verification. Your details are kept confidential and used only for verification purposes.</p>
-
-                                    <div class="form-row-2">
+                                <!-- Location (collapsible) -->
+                                <details style="margin-bottom:15px;">
+                                    <summary style="cursor:pointer; font-weight:600; font-size:14px; color:var(--text-primary); padding:8px 0;">📍 Set your stall location (GPS)</summary>
+                                    <div class="card gps-integration-card" style="margin-top:8px;">
+                                        <p class="form-hint">Enter your digital address or use GPS to auto-detect.</p>
                                         <div class="form-group">
-                                            <label for="ghanaCardNumber">Ghana Card Number *</label>
-                                            <input type="text" id="ghanaCardNumber" placeholder="e.g. GHA-123456789-1" required style="text-transform: uppercase;" />
-                                            <small class="form-hint">Format: GHA-XXXXXXXXX-X</small>
+                                            <label for="shopDigitalAddress">Digital Address Code</label>
+                                            <div class="input-with-btn">
+                                                <input type="text" id="shopDigitalAddress" placeholder="e.g. NT-092-0621" uppercase />
+                                                <button type="button" class="btn-secondary" id="lookupDigitalAddressBtn">🔍 Lookup</button>
+                                            </div>
+                                        </div>
+                                        <div class="gps-action-row">
+                                            <button type="button" class="btn-gps" id="getLocationBtn">
+                                                <span>📍 Use My Device GPS</span>
+                                            </button>
+                                            <span class="location-status-text" id="locationStatus">GPS Pin: Not Set</span>
+                                        </div>
+                                        <input type="hidden" id="shopLat" />
+                                        <input type="hidden" id="shopLng" />
+                                        <div class="form-group" style="margin-top:8px;">
+                                            <label for="shopAddress">Physical Directions / Stall Number</label>
+                                            <input type="text" id="shopAddress" placeholder="e.g. Shed B-45, Near Aboabo Main Mosque Gate" />
+                                        </div>
+                                    </div>
+                                </details>
+
+                                <!-- Optional fields -->
+                                <details style="margin-bottom:15px;">
+                                    <summary style="cursor:pointer; font-weight:600; font-size:14px; color:var(--text-primary); padding:8px 0;">🕒 Opening hours & extra details</summary>
+                                    <div class="form-group" style="margin-top:8px;">
+                                        <label for="shopHours">Opening Hours</label>
+                                        <input type="text" id="shopHours" placeholder="e.g. Mon-Sat: 7:00 AM - 6:00 PM" />
+                                    </div>
+                                </details>
+
+                                <!-- Ghana Card (optional, collapsible) -->
+                                <details style="margin-bottom:15px;">
+                                    <summary style="cursor:pointer; font-weight:600; font-size:14px; color:var(--text-primary); padding:8px 0;">🪪 Verify with Ghana Card <span style="font-size:11px; background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:10px; margin-left:6px;">Optional — get verified badge</span></summary>
+                                    <div class="card ghana-card-section" style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 16px; margin-top:8px; border-radius: 10px;">
+                                        <p class="form-hint" style="margin-bottom: 12px;">Verified traders get a ✓ badge on their stall, building trust with buyers. You can do this now or come back later.</p>
+                                        <div class="form-row-2">
+                                            <div class="form-group">
+                                                <label for="ghanaCardNumber">Ghana Card Number</label>
+                                                <input type="text" id="ghanaCardNumber" placeholder="e.g. GHA-123456789-1" style="text-transform: uppercase;" />
+                                                <small class="form-hint">Format: GHA-XXXXXXXXX-X</small>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="ghanaCardType">Card Type</label>
+                                                <select id="ghanaCardType">
+                                                    <option value="national_id">National ID Card</option>
+                                                    <option value="voter_id">Voter's ID (Legacy)</option>
+                                                    <option value="driving_license">Driving License</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <div class="form-group">
-                                            <label for="ghanaCardType">Card Type</label>
-                                            <select id="ghanaCardType">
-                                                <option value="national_id">National ID Card</option>
-                                                <option value="voter_id">Voter's ID (Legacy)</option>
-                                                <option value="driving_license">Driving License</option>
-                                            </select>
+                                            <label for="ghanaCardFullName">Full Name as on Ghana Card</label>
+                                            <input type="text" id="ghanaCardFullName" placeholder="Enter your full name exactly as on your card" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="ghanaCardPhoto">Upload Ghana Card Photo</label>
+                                            <input type="file" id="ghanaCardPhoto" accept="image/*" capture="environment" />
+                                            <small class="form-hint">Clear photo of front side. Max 5MB.</small>
+                                            <div id="ghanaCardPreview" style="margin-top: 8px; display: none;">
+                                                <img id="ghanaCardPreviewImg" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid #BBF7D0;" alt="Ghana Card Preview" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label class="checkbox-label" style="font-size: 13px;">
+                                                <input type="checkbox" id="ghanaCardConsent" />
+                                                <span>I confirm these details are mine and consent to verification.</span>
+                                            </label>
                                         </div>
                                     </div>
+                                </details>
 
-                                    <div class="form-group">
-                                        <label for="ghanaCardFullName">Full Name as on Ghana Card *</label>
-                                        <input type="text" id="ghanaCardFullName" placeholder="Enter your full name exactly as it appears on your Ghana Card" required />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="ghanaCardPhoto">Upload Ghana Card Photo *</label>
-                                        <input type="file" id="ghanaCardPhoto" accept="image/*" capture="environment" required />
-                                        <small class="form-hint">Take a clear photo of your Ghana Card (front side). Make sure all details are visible.</small>
-                                        <div id="ghanaCardPreview" style="margin-top: 8px; display: none;">
-                                            <img id="ghanaCardPreviewImg" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid #BBF7D0;" alt="Ghana Card Preview" />
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group" style="margin-bottom: 0;">
-                                        <label class="checkbox-label" style="font-size: 13px;">
-                                            <input type="checkbox" id="ghanaCardConsent" required />
-                                            <span>I confirm the Ghana Card details are mine and accurate. I consent to identity verification by Tamale Market Finder.</span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <button type="submit" class="btn-primary" id="saveShopBtn">Save Market Stall Details</button>
+                                <button type="submit" class="btn-primary" id="saveShopBtn" style="width:100%; padding:14px; font-size:16px;">Save Stall & Start Selling</button>
                             </form>
                         </div>
 
@@ -811,8 +788,9 @@
 
                 <div class="form-row-2">
                     <div class="form-group">
-                        <label for="productCategory">Category *</label>
-                        <input type="text" id="productCategory" placeholder="e.g. Grains & Cereals" required />
+                        <label for="productCategory">Category</label>
+                        <input type="text" id="productCategory" placeholder="Auto-detected from product name" readonly style="background:#F9FAFB; cursor:default;" />
+                        <div id="productCategoryHint" style="margin-top:4px; font-size:12px; color:#666;">Start typing the product name — category auto-detects</div>
                     </div>
 
                     <div class="form-group">
@@ -857,8 +835,16 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="productImage">Image URL</label>
-                    <input type="url" id="productImage" placeholder="https://example.com/image.jpg" />
+                    <label for="productImageFile">Product Photo</label>
+                    <input type="file" id="productImageFile" accept="image/*" capture="environment" style="margin-bottom:8px;" />
+                    <div id="productImagePreview" style="display:none; margin-bottom:8px;">
+                        <img id="productImagePreviewImg" style="max-width:100%; max-height:150px; border-radius:8px; border:1px solid #E5E7EB;" alt="Preview" />
+                    </div>
+                    <input type="hidden" id="productImage" />
+                    <details>
+                        <summary style="font-size:12px; color:#666; cursor:pointer;">Or paste an image URL instead</summary>
+                        <input type="url" id="productImageUrl" placeholder="https://example.com/image.jpg" style="margin-top:6px;" />
+                    </details>
                 </div>
 
                 <div class="form-group">

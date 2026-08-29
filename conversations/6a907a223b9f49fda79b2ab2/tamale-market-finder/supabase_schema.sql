@@ -86,7 +86,8 @@ ALTER TABLE shops
   ADD COLUMN IF NOT EXISTS ghana_card_full_name TEXT,
   ADD COLUMN IF NOT EXISTS ghana_card_type TEXT DEFAULT 'national_id',
   ADD COLUMN IF NOT EXISTS ghana_card_photo_url TEXT,
-  ADD COLUMN IF NOT EXISTS ghana_card_verified BOOLEAN DEFAULT false;
+  ADD COLUMN IF NOT EXISTS ghana_card_verified BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS offers_delivery BOOLEAN DEFAULT false;
 
 
 -- ----------------------------------------------------------------------------
@@ -473,7 +474,7 @@ SELECT id, created_by, owner_name, shop_name, category, description,
        latitude, longitude, address, digital_address, whatsapp_number, phone,
        opening_hours, market_area, is_verified, cover_image_url, listing_type,
        rating_avg, rating_count, verification_tier, is_active, is_flagged,
-       ad_tier, created_date, ghana_card_verified, updated_date
+       ad_tier, created_date, ghana_card_verified, updated_date, offers_delivery
 FROM shops
 WHERE is_active = true;
 
