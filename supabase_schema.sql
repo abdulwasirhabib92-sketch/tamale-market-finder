@@ -505,8 +505,14 @@ CREATE POLICY "Users can delete own products" ON products FOR DELETE USING (
 );
 
 -- User Profiles Policies
+-- SECURITY FIX: Restrict profile reads to authenticated users only (self + admin) to prevent PII leakage
 DROP POLICY IF EXISTS "Public can read user profiles" ON user_profiles;
-CREATE POLICY "Public can read user profiles" ON user_profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can read own profile" ON user_profiles;
+CREATE POLICY "Users can read own profile" ON user_profiles
+    FOR SELECT USING (
+        auth.uid() = id
+        OR EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin')
+    );
 DROP POLICY IF EXISTS "Users can insert own profile" ON user_profiles;
 CREATE POLICY "Users can insert own profile" ON user_profiles FOR INSERT WITH CHECK (auth.uid() = id);
 DROP POLICY IF EXISTS "Users can update own profile" ON user_profiles;
