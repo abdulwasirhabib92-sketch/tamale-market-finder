@@ -141,6 +141,33 @@ function detectCategory(text) {
     return bestScore > 0 ? bestCat : "General Goods";
 }
 
+
+// Price anomaly detection — flags suspiciously low prices
+function detectPriceAnomaly(price, category, allProducts) {
+    if (!price || price <= 0 || !allProducts || allProducts.length < 3) return null;
+    
+    // Get average price for same category
+    const sameCategory = allProducts.filter(p => p.category === category && p.price > 0);
+    if (sameCategory.length < 2) return null;
+    
+    const avgPrice = sameCategory.reduce((sum, p) => sum + p.price, 0) / sameCategory.length;
+    const minPrice = Math.min(...sameCategory.map(p => p.price));
+    
+    // Flag if price is less than 30% of average and below all others
+    if (price < avgPrice * 0.3 && price < minPrice * 0.5) {
+        return {
+            level: "high",
+            message: "This price is unusually low compared to similar items. Exercise caution."
+        };
+    } else if (price < avgPrice * 0.5) {
+        return {
+            level: "medium",
+            message: "This price is below average for this category. Verify the item before purchase."
+        };
+    }
+    return null;
+}
+
 // Collect all distinct categories actually used by shops/products in the DB
 let dynamicCategories = {};
 async function fetchDynamicCategories() {
@@ -1520,6 +1547,17 @@ function renderProductCard(p) {
     let verBadge = `<span class="verification-badge unverified">⚪ Unverified</span>`;
     if (p.verification_tier === "trusted") verBadge = `<span class="verification-badge trusted">⭐ Trusted</span>`;
     else if (p.verification_tier === "verified" || p.is_verified) verBadge = `<span class="verification-badge verified">🔵 Verified</span>`;
+    if (p.ghana_card_verified) verBadge += ` <span class="verification-badge verified" style="background:#DCFCE7; color:#16A34A;">🪪 ID Verified</span>`;
+    let deliveryBadge = p.offers_delivery ? ` <span class="badge-tag" style="background:#EFF6FF; color:#1D4ED8; font-size:10px;">🚚 Delivery</span>` : "";
+    let accountAge = "";
+    if (p.created_date) {
+        const days = Math.floor((Date.now() - new Date(p.created_date).getTime()) / 86400000);
+        if (days < 7) accountAge = `<span style="font-size:10px; color:#D97706;">🆕 New seller (${days}d)</span>`;
+        else if (days < 30) accountAge = `<span style="font-size:10px; color:#666;">⏱️ ${days}d on TMF</span>`;
+        else accountAge = `<span style="font-size:10px; color:#666;">⏱️ ${Math.floor(days/30)}mo on TMF</span>`;
+    }
+    let priceWarning = "";
+    if (p.price > 0 && p.price < 5) priceWarning = `<div style="font-size:10px; color:#DC2626; margin-top:2px;">⚠️ Unusually low price — verify before buying</div>`;
 
     let adBadge = "";
     if (p.ad_tier === "premium_top") adBadge = `<span class="badge-tag deal" style="background:#FEF3C7; color:#B45309;">⭐ TOP</span>`;
@@ -1530,12 +1568,16 @@ function renderProductCard(p) {
     return `
         <div class="card ${isOut ? 'card-out-of-stock' : ''}">
             <div class="card-badge-row">
-                <div style="display:flex; gap:4px; align-items:center;">
+                <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
                     ${stockPill}
                     ${adBadge}
+                    ${deliveryBadge}
                 </div>
-                ${verBadge}
+                <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+                    ${verBadge}
+                </div>
             </div>
+            ${accountAge}
 
             <div class="card-img-container">
                 <img src="${escapeAttr(p.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e')}" class="card-img" alt="${escapeHtml(p.name)}" />
@@ -1562,6 +1604,7 @@ function renderProductCard(p) {
                 <span>★★★★☆</span> <span>${p.rating_avg || 4.5} (${p.rating_count || 12})</span>
             </div>
 
+            ${priceWarning}
             <div class="card-actions-row">
                 <button class="btn-whatsapp btn-sm" data-action="openWhatsApp" data-wa-num="${escapeJs(p.whatsapp_number)}" data-wa-msg="${escapeJs(p.name)}" data-wa-shop="${escapeJs(p.shop_name)}">💬 WhatsApp</button>
                 <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} data-action="openOrderModal" data-pid="${escapeJs(p.id)}" data-sid="${escapeJs(p.shop_id)}">
@@ -2765,7 +2808,23 @@ async function takeModerationAction(repId) {
 
 async function runAISecurityScan() {
     if (!sbClient) { showToast("Database not connected", "error"); return; }
-    const SUSPICIOUS = ["wire transfer", "western union", "send money first", "bitcoin", "voodoo", "hacked"];
+    const SUSPICIOUS = [
+        "wire transfer", "bitcoin", "cryptocurrency", "send money first",
+        "advance payment", "western union", "moneygram", "paypal gift",
+        "gift card", "google play card", "itunes card", "steam card",
+        "too good to be true", "guaranteed profit", "double your money",
+        "investment opportunity", "forex trading", "mlm", "pyramid scheme",
+        "work from home", "earn money fast", "get rich quick",
+        "free iphone", "free money", "lottery winner", "inheritance",
+        "nigerian prince", "bank transfer only", "no cash on delivery",
+        "urgent sale", "must sell today", "moving abroad",
+        "send deposit", "hold this item", "pre-order only",
+        "agent fee", "delivery fee upfront", "custom clearance fee",
+        "no refund", "non-refundable", "final sale no return", "no guarantee",
+        "whatsapp only", "dont call", "no calls", "text only",
+        "fake", "replica", "counterfeit", "clone", "copy of original",
+        "voodoo", "hacked", "cracked", "modded", "jailbroken"
+    ];
     let flaggedCount = 0;
 
     try {

@@ -1,0 +1,44 @@
+{
+  "name": "Tamale Market Monitor",
+  "description": "Monitors the Tamale Market Finder app every 6 hours \u2014 checks if the site is live, Supabase connection works, CSP headers are correct, scans for security issues, and reports findings to the owner via Telegram.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 */6 * * *",
+      "one_time_date": null,
+      "timezone": "Africa/Accra",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "tamale_market_monitor",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "monitor_app": {
+          "call": "invoke_superagent_step",
+          "with": {
+            "message": "You are monitoring the Tamale Market Finder app (https://tamale-market-finder.vercel.app). Do the following checks and report results to the owner via broadcast_message:\n\n1. SITE HEALTH: Navigate to https://tamale-market-finder.vercel.app/ using browserbase tools. Check if the page loads, if products are visible, and if there are any console errors.\n\n2. SUPABASE CHECK: Check if the Supabase backend is responding by trying to fetch data from the public_shops view at https://djcajmglxkmhbipmweps.supabase.co/rest/v1/public_shops?select=id&limit=1 with the anon key in app.js.\n\n3. SECURITY HEADERS: Use curl to check the HTTP response headers on the live site. Verify CSP, X-Content-Type-Options, X-Frame-Options are present.\n\n4. NEW REPORTS: Check if there are any new reported listings in the database that need admin attention.\n\n5. SUMMARY: Compose a brief, friendly status report. If everything is fine, say so briefly. If there are issues, describe them clearly and suggest fixes. Ask for permission before making any changes.\n\nReport your findings to the owner using broadcast_message."
+          },
+          "then": "end",
+          "x-base44": {
+            "description": "Check site, Supabase, security, reports",
+            "title": "Monitor app health"
+          }
+        }
+      }
+    ]
+  }
+}
