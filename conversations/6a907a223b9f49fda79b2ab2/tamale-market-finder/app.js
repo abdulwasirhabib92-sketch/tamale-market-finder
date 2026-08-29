@@ -617,6 +617,9 @@ function handleDelegatedClick(e) {
         case 'updateOrderQty':
             updateOrderModalQty(parseInt(el.dataset.qtyDelta));
             break;
+        case 'goToOrderStep':
+            goToOrderStep(parseInt(el.dataset.step));
+            break;
         case 'updateStockInline':
             updateProductStockInline(el.dataset.pid, parseInt(el.dataset.delta));
             break;
@@ -1724,85 +1727,233 @@ async function openOrderModal(productId, shopId) {
         return;
     }
     activeOrderProduct = { product, shop, qty: 1 };
+    currentOrderStep = 0;
 
     const modalBody = document.getElementById("orderModalBody");
     const unitPrice = product.discount_price || product.price;
 
     modalBody.innerHTML = `
-        <div style="display:flex; gap:12px; margin-bottom:16px; align-items:center; background:#f8fafc; padding:10px; border-radius:8px;">
-            <img src="${escapeAttr(product.image_url)}" style="width:60px; height:60px; object-fit:cover; border-radius:6px;" />
-            <div>
-                <h4 style="font-size:15px; font-weight:700; line-height:1.2;">${escapeHtml(product.name)}</h4>
-                <div style="font-size:12px; color:var(--text-muted);">🏪 ${escapeHtml(shop.shop_name)} • 📍 ${escapeHtml(shop.market_area)}</div>
-                <div style="font-size:14px; font-weight:800; color:var(--primary-dark); margin-top:2px;">GHS ${unitPrice.toFixed(2)} / unit</div>
-            </div>
+        <div class="order-stepper" id="orderStepper">
+            <div class="step-dot active" id="step-dot-0">1</div>
+            <div class="step-bar" id="step-bar-0"></div>
+            <div class="step-dot" id="step-dot-1">2</div>
+            <div class="step-bar" id="step-bar-1"></div>
+            <div class="step-dot" id="step-dot-2">3</div>
+            <div class="step-bar" id="step-bar-2"></div>
+            <div class="step-dot" id="step-dot-3">4</div>
         </div>
 
         <form id="expressOrderForm" data-form="orderSubmit">
-            <div class="form-group">
-                <label>Select Reservation Quantity (Available Stock: ${product.stock_quantity}):</label>
-                <div class="inline-stock-control" style="width:140px; margin-top:4px;">
-                    <button type="button" class="stock-btn" data-action="updateOrderQty" data-qty-delta="-1">-</button>
-                    <span class="stock-count-num" id="orderModalQtyDisplay">1</span>
-                    <button type="button" class="stock-btn" data-action="updateOrderQty" data-qty-delta="1">+</button>
+            <!-- STEP 1: Item & Quantity -->
+            <div class="order-step active" id="order-step-0">
+                <div class="order-step-title">Reserve Item</div>
+                <div class="order-step-subtitle">Review the item and select how many you'd like to reserve.</div>
+
+                <div style="display:flex; gap:12px; margin-bottom:16px; align-items:center; background:#f8fafc; padding:12px; border-radius:10px;">
+                    <img src="${escapeAttr(product.image_url)}" style="width:56px; height:56px; object-fit:cover; border-radius:8px;" />
+                    <div>
+                        <h4 style="font-size:15px; font-weight:700; line-height:1.2;">${escapeHtml(product.name)}</h4>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">\ud83c\udfea ${escapeHtml(shop.shop_name)} \u2022 \ud83d\udccd ${escapeHtml(shop.market_area)}</div>
+                        <div style="font-size:15px; font-weight:800; color:var(--primary-dark); margin-top:3px;">GHS ${unitPrice.toFixed(2)} <span style="font-size:11px;font-weight:500;color:#9ca3af;">/ unit</span></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:600; font-size:14px;">How many do you want to reserve?</label>
+                    <div style="display:flex; align-items:center; gap:16px; margin-top:8px;">
+                        <div class="inline-stock-control" style="width:130px;">
+                            <button type="button" class="stock-btn" data-action="updateOrderQty" data-qty-delta="-1">\u2212</button>
+                            <span class="stock-count-num" id="orderModalQtyDisplay" style="font-size:18px; font-weight:700;">1</span>
+                            <button type="button" class="stock-btn" data-action="updateOrderQty" data-qty-delta="1">+</button>
+                        </div>
+                        <span style="font-size:12px; color:#6b7280;">${product.stock_quantity} available in stock</span>
+                    </div>
+                </div>
+
+                <div class="order-nav-buttons">
+                    <span></span>
+                    <button type="button" class="btn-next" data-action="goToOrderStep" data-step="1">Continue \u2192</button>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label>Fulfillment Preference:</label>
+            <!-- STEP 2: Fulfillment -->
+            <div class="order-step" id="order-step-1">
+                <div class="order-step-title">Delivery or Pickup?</div>
+                <div class="order-step-subtitle">Choose how you'd like to receive your item.</div>
+
                 <div class="radio-cards">
-                    <label class="radio-card">
+                    <label class="radio-card" style="cursor:pointer; padding:14px; border-radius:10px; margin-bottom:10px; border:2px solid #e5e7eb; transition:border-color 0.2s;">
                         <input type="radio" name="deliveryType" value="pickup" checked data-action="toggleDelivery" data-show="false" />
                         <div class="radio-content">
-                            <strong>🛍️ Pickup at Stall / Digital Address</strong>
-                            <span>Visit shop at 🇬🇭 ${shop.digital_address || 'Tamale Stall'}</span>
+                            <strong style="font-size:14px;">\ud83d\udecd\ufe0f Pickup at Stall</strong>
+                            <span style="font-size:12px; color:#6b7280; display:block; margin-top:2px;">Visit shop at \ud83c\uddec\ud83c\udded ${shop.digital_address || 'Tamale Stall'}</span>
                         </div>
                     </label>
-                    <label class="radio-card">
+                    <label class="radio-card" style="cursor:pointer; padding:14px; border-radius:10px; margin-bottom:10px; border:2px solid #e5e7eb; transition:border-color 0.2s;">
                         <input type="radio" name="deliveryType" value="local_delivery" data-action="toggleDelivery" data-show="true" />
                         <div class="radio-content">
-                            <strong>🚚 Local Delivery in Tamale</strong>
-                            <span>Delivery rider brings item to your address (Delivery fee paid to rider)</span>
+                            <strong style="font-size:14px;">\ud83d\ude9a Local Delivery in Tamale</strong>
+                            <span style="font-size:12px; color:#6b7280; display:block; margin-top:2px;">Rider brings item to your address (fee paid to rider)</span>
                         </div>
                     </label>
                 </div>
-            </div>
 
-            <div class="form-group" id="deliveryAddressGroup" style="display:none;">
-                <label for="orderDeliveryAddress">Delivery Address / Landmark *</label>
-                <input type="text" id="orderDeliveryAddress" placeholder="e.g. Near Central Hospital Gate, Tamale" />
-            </div>
-
-            <div class="form-row-2">
-                <div class="form-group">
-                    <label for="orderBuyerName">Your Full Name *</label>
-                    <input type="text" id="orderBuyerName" value="${userProfile.full_name || ''}" required />
+                <div class="form-group" id="deliveryAddressGroup" style="display:none; margin-top:12px;">
+                    <label for="orderDeliveryAddress" style="font-weight:600; font-size:14px;">Delivery Address / Landmark *</label>
+                    <input type="text" id="orderDeliveryAddress" class="form-input" placeholder="e.g. Near Central Hospital Gate, Tamale" style="margin-top:6px;" />
                 </div>
-                <div class="form-group">
-                    <label for="orderBuyerPhone">Phone Number *</label>
-                    <input type="tel" id="orderBuyerPhone" value="${userProfile.phone || ''}" required />
+
+                <div class="order-nav-buttons">
+                    <button type="button" class="btn-back" data-action="goToOrderStep" data-step="0">\u2190 Back</button>
+                    <button type="button" class="btn-next" data-action="goToOrderStep" data-step="2">Continue \u2192</button>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="orderBuyerNotes">Notes for Trader (Optional)</label>
-                <input type="text" id="orderBuyerNotes" placeholder="e.g. Expected arrival time or color preference..." />
+            <!-- STEP 3: Contact Details -->
+            <div class="order-step" id="order-step-2">
+                <div class="order-step-title">Your Contact Details</div>
+                <div class="order-step-subtitle">The trader needs this to confirm your reservation.</div>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label for="orderBuyerName" style="font-weight:600; font-size:14px;">Full Name *</label>
+                    <input type="text" id="orderBuyerName" class="form-input" value="${userProfile.full_name || ''}" placeholder="Enter your full name" style="margin-top:6px;" required />
+                </div>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label for="orderBuyerPhone" style="font-weight:600; font-size:14px;">Phone Number *</label>
+                    <input type="tel" id="orderBuyerPhone" class="form-input" value="${userProfile.phone || ''}" placeholder="e.g. 0244123456" style="margin-top:6px;" required />
+                </div>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label for="orderBuyerNotes" style="font-weight:600; font-size:14px;">Notes for Trader <span style="font-weight:400;color:#9ca3af;">(Optional)</span></label>
+                    <input type="text" id="orderBuyerNotes" class="form-input" placeholder="e.g. Expected arrival time, color preference..." style="margin-top:6px;" />
+                </div>
+
+                <div class="order-nav-buttons">
+                    <button type="button" class="btn-back" data-action="goToOrderStep" data-step="1">\u2190 Back</button>
+                    <button type="button" class="btn-next" data-action="goToOrderStep" data-step="3">Review Order \u2192</button>
+                </div>
             </div>
 
-            <div class="card" style="background:#fef3c7; border-color:#fcd34d; padding:10px; margin-bottom:14px; font-size:11px; color:#b45309;">
-                ℹ️ <strong>Payment Disclaimer:</strong> No online payment charged here. Payment is handled directly between buyer and trader upon stall pickup or delivery (Cash / MoMo).
-            </div>
+            <!-- STEP 4: Review & Confirm -->
+            <div class="order-step" id="order-step-3">
+                <div class="order-step-title">Review &amp; Confirm</div>
+                <div class="order-step-subtitle">Double-check everything before placing your reservation.</div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                <span style="font-weight:600; font-size:14px;">Total Reservation Amount:</span>
-                <span style="font-size:18px; font-weight:800; color:var(--primary-dark);" id="orderModalTotalDisplay">GHS ${unitPrice.toFixed(2)}</span>
-            </div>
+                <div class="order-review-summary" id="orderReviewSummary">
+                    <div class="order-review-row">
+                        <span class="order-review-label">Item</span>
+                        <span class="order-review-value">${escapeHtml(product.name)}</span>
+                    </div>
+                    <div class="order-review-row">
+                        <span class="order-review-label">Shop</span>
+                        <span class="order-review-value">${escapeHtml(shop.shop_name)}</span>
+                    </div>
+                    <div class="order-review-row">
+                        <span class="order-review-label">Quantity</span>
+                        <span class="order-review-value" id="reviewQty">1</span>
+                    </div>
+                    <div class="order-review-row">
+                        <span class="order-review-label">Fulfillment</span>
+                        <span class="order-review-value" id="reviewDelivery">Pickup</span>
+                    </div>
+                    <div class="order-review-row">
+                        <span class="order-review-label">Name</span>
+                        <span class="order-review-value" id="reviewName">-</span>
+                    </div>
+                    <div class="order-review-row">
+                        <span class="order-review-label">Phone</span>
+                        <span class="order-review-value" id="reviewPhone">-</span>
+                    </div>
+                    <div class="order-review-row">
+                        <span class="order-review-label">Total Amount</span>
+                        <span class="order-review-value" id="reviewTotal">GHS ${unitPrice.toFixed(2)}</span>
+                    </div>
+                </div>
 
-            <button type="submit" class="btn-primary btn-block btn-large">Confirm Express Reservation</button>
+                <div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:10px; margin-bottom:14px; font-size:11px; color:#b45309; display:flex; gap:6px; align-items:flex-start;">
+                    <span style="font-size:14px;">\u2139\ufe0f</span>
+                    <div><strong>Payment Disclaimer:</strong> No online payment charged here. Payment is handled directly between buyer and trader (Cash / MoMo).</div>
+                </div>
+
+                <div class="order-nav-buttons">
+                    <button type="button" class="btn-back" data-action="goToOrderStep" data-step="2">\u2190 Back</button>
+                    <button type="submit" class="btn-next" style="flex:1; text-align:center;">\u2705 Confirm Reservation</button>
+                </div>
+            </div>
         </form>
     `;
 
     openModal("orderModal");
+    // Set initial radio card highlight
+    setTimeout(() => {
+        const firstRadio = document.querySelector('input[name="deliveryType"]:checked');
+        if (firstRadio) toggleDeliveryAddressField(firstRadio.dataset.show === 'true');
+    }, 50);
+}
+
+let currentOrderStep = 0;
+const ORDER_STEPS = 4;
+
+function goToOrderStep(step) {
+    if (step < 0 || step >= ORDER_STEPS) return;
+    if (step > currentOrderStep) {
+        // Validate forward navigation
+        if (currentOrderStep === 2) {
+            const name = document.getElementById("orderBuyerName").value.trim();
+            const phone = document.getElementById("orderBuyerPhone").value.trim();
+            if (!name) { showToast("Enter your full name", "error"); document.getElementById("orderBuyerName").focus(); return; }
+            if (!phone || !/^0[0-9]{9}$/.test(phone)) { showToast("Enter a valid Ghana phone number (e.g. 0244123456)", "error"); document.getElementById("orderBuyerPhone").focus(); return; }
+        }
+        if (currentOrderStep === 1) {
+            const delivery = document.querySelector('input[name="deliveryType"]:checked');
+            if (delivery && delivery.value === 'local_delivery') {
+                const addr = document.getElementById("orderDeliveryAddress");
+                if (addr && !addr.value.trim()) { showToast("Enter a delivery address", "error"); addr.focus(); return; }
+            }
+        }
+    }
+
+    document.getElementById("order-step-" + currentOrderStep).classList.remove("active");
+    document.getElementById("order-step-" + step).classList.add("active");
+
+    for (let i = 0; i < ORDER_STEPS; i++) {
+        const dot = document.getElementById("step-dot-" + i);
+        dot.classList.remove("active", "done");
+        if (i < step) dot.classList.add("done");
+        if (i === step) dot.classList.add("active");
+    }
+    for (let i = 0; i < ORDER_STEPS - 1; i++) {
+        const bar = document.getElementById("step-bar-" + i);
+        bar.classList.toggle("done", i < step);
+    }
+
+    if (step === 3) updateOrderReview();
+
+    currentOrderStep = step;
+    const modalBody = document.getElementById("orderModalBody");
+    if (modalBody) modalBody.scrollTop = 0;
+}
+
+function updateOrderReview() {
+    if (!activeOrderProduct) return;
+    const unitPrice = activeOrderProduct.product.discount_price || activeOrderProduct.product.price;
+    const qty = activeOrderProduct.qty;
+    const delivery = document.querySelector('input[name="deliveryType"]:checked');
+    const deliveryType = delivery ? delivery.value : 'pickup';
+    const name = document.getElementById("orderBuyerName") ? document.getElementById("orderBuyerName").value : '-';
+    const phone = document.getElementById("orderBuyerPhone") ? document.getElementById("orderBuyerPhone").value : '-';
+
+    const rq = document.getElementById("reviewQty");
+    const rd = document.getElementById("reviewDelivery");
+    const rn = document.getElementById("reviewName");
+    const rp = document.getElementById("reviewPhone");
+    const rt = document.getElementById("reviewTotal");
+    if (rq) rq.textContent = qty + " unit" + (qty > 1 ? "s" : "");
+    if (rd) rd.textContent = deliveryType === 'pickup' ? "\ud83d\udecd\ufe0f Pickup" : "\ud83d\ude9a Delivery";
+    if (rn) rn.textContent = name || '-';
+    if (rp) rp.textContent = phone || '-';
+    if (rt) rt.textContent = "GHS " + (unitPrice * qty).toFixed(2);
 }
 
 function updateOrderModalQty(delta) {
@@ -1813,14 +1964,31 @@ function updateOrderModalQty(delta) {
     if (newQty > max) newQty = max;
 
     activeOrderProduct.qty = newQty;
-    document.getElementById("orderModalQtyDisplay").textContent = newQty;
+    const qtyDisplay = document.getElementById("orderModalQtyDisplay");
+    if (qtyDisplay) qtyDisplay.textContent = newQty;
 
     const unitPrice = activeOrderProduct.product.discount_price || activeOrderProduct.product.price;
-    document.getElementById("orderModalTotalDisplay").textContent = `GHS ${(unitPrice * newQty).toFixed(2)}`;
+    const totalEl = document.getElementById("orderModalTotalDisplay");
+    if (totalEl) totalEl.textContent = `GHS ${(unitPrice * newQty).toFixed(2)}`;
+    if (currentOrderStep === 3) updateOrderReview();
 }
 
 function toggleDeliveryAddressField(show) {
-    document.getElementById("deliveryAddressGroup").style.display = show ? "block" : "none";
+    const group = document.getElementById("deliveryAddressGroup");
+    if (group) group.style.display = show ? "block" : "none";
+    // Highlight the selected radio card
+    document.querySelectorAll('input[name="deliveryType"]').forEach(radio => {
+        const card = radio.closest('.radio-card');
+        if (card) {
+            if (radio.checked) {
+                card.style.borderColor = 'var(--primary)';
+                card.style.background = 'rgba(26,102,52,0.04)';
+            } else {
+                card.style.borderColor = '#e5e7eb';
+                card.style.background = '';
+            }
+        }
+    });
 }
 
 async function handleOrderSubmit(e) {
