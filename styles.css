@@ -1790,3 +1790,163 @@ body {
 .map-locate-btn:hover {
     background: #074428 !important;
 }
+
+/* ===== Multi-Step Order Form Stepper ===== */
+.order-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 20px;
+    padding: 0 8px;
+}
+.order-stepper .step-dot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+    background: #e5e7eb;
+    color: #9ca3af;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+.order-stepper .step-dot.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(26,102,52,0.15);
+}
+.order-stepper .step-dot.done {
+    background: var(--primary-dark);
+    color: #fff;
+}
+.order-stepper .step-bar {
+    flex: 1;
+    height: 3px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    transition: background 0.3s ease;
+}
+.order-stepper .step-bar.done {
+    background: var(--primary-dark);
+}
+.order-step {
+    display: none;
+    animation: fadeSlideIn 0.35s ease;
+}
+.order-step.active {
+    display: block;
+}
+@keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.order-step-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: #1f2937;
+}
+.order-step-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 18px;
+}
+.order-nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 22px;
+    gap: 10px;
+}
+.order-nav-buttons .btn-back {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.order-nav-buttons .btn-back:hover {
+    background: #e5e7eb;
+}
+.order-nav-buttons .btn-next {
+    background: var(--primary);
+    color: #fff;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+.order-nav-buttons .btn-next:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(26,102,52,0.25);
+}
+.order-nav-buttons .btn-next:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+.order-review-summary {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+}
+.order-review-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.order-review-row:last-child {
+    border-bottom: none;
+    font-weight: 700;
+    font-size: 15px;
+    padding-top: 10px;
+    color: var(--primary-dark);
+}
+.order-review-label {
+    color: #6b7280;
+}
+.order-review-value {
+    color: #1f2937;
+    font-weight: 600;
+    text-align: right;
+}
+.order-success-check {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 30px 20px;
+}
+.order-success-check .check-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #dcfce7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin-bottom: 16px;
+    animation: popIn 0.4s ease;
+}
+@keyframes popIn {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+}
