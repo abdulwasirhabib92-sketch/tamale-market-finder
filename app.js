@@ -90,6 +90,124 @@ function checkGpsRateLimit() {
     return true;
 }
 
+
+// ====================================================================
+// AUTO-CATEGORY DETECTION ENGINE
+// ====================================================================
+const CATEGORY_KEYWORD_MAP = {
+    "Grains & Cereals": ["maize", "corn", "millet", "sorghum", "rice", "beans", "cowpea", "soybean", "groundnut", "wheat", "flour", "koko", "porridge", "cereals", "grain", "guinea corn", "yam flour", "bankye"],
+    "Fresh Produce": ["tomato", "onion", "pepper", "okro", "okra", "garden eggs", "cabbage", "lettuce", "carrot", "cucumber", "plantain", "cassava", "yam", "cocoyam", "potato", "vegetable", "fruit", "orange", "mango", "banana", "watermelon", "pineapple", "pawpaw", "shea butter", "sheabutter", "dawadawa", "spices", "pepper", "ginger", "garlic", "fresh produce", "produce", "salad"],
+    "Meat & Livestock": ["meat", "beef", "goat", "sheep", "lamb", "chicken", "poultry", "guinea fowl", "turkey", "duck", "fish", "tilapia", "smoked fish", "catfish", "pork", "sausage", "livestock", "cattle", "cow", "butcher", "meat shop", "frozen chicken", "offal", "liver"],
+    "Cooked Food": ["cooked food", "tuo zaafi", "waakye", "jollof", "rice", "banku", "kenkey", "fufu", "koko", "porridge", "hausa koko", "food", "meals", "buka", "chop bar", "restaurant", "fast food", "snacks", "kelewele", "kose", "koose", "tea", "breakfast", "lunch", "dinner", "catering", "traditional food"],
+    "Textiles & Smocks": ["smock", "batakari", "kente", "fabric", "cloth", "textile", "sewing", "weaving", "kpalongo", "fugu", "dansiki", "agbada", "kapok", "thread", "yarn", "cotton", "smock weaving", "cap", "hat", "ghana fabric", "ankara", "wax print", "tie and dye"],
+    "Electronics & Phones": ["phone", "smartphone", "iphone", "android", "samsung", "techno", "infinix", "itel", "charger", "power bank", "battery", "earphone", "earbud", "speaker", "bluetooth", "laptop", "computer", "tablet", "electronics", "solar", "inverter", "charger", "cable", "usb", "led", "bulb", "tv", "television", "radio"],
+    "Hardware & Building": ["cement", "paint", "nails", "hammer", "screwdriver", "tools", "building", "construction", "hardware", "plumbing", "pipe", "wire", "electrical", "welding", "iron", "steel", "sand", "gravel", "blocks", "tiles", "door", "window", "roofing", "sheet", "carpentry", "wood"],
+    "Pharmacy & Health": ["medicine", "drug", "pharmacy", "tablet", "syrup", "cream", "ointment", "health", "hospital", "clinic", "first aid", "bandage", "herbal", "supplement", "vitamin", "sanitizer", "mask", "medical", "cosmetics", "soap", "detergent"],
+    "Crafts & Artifacts": ["craft", "artifact", "carving", "sculpture", "pottery", "beads", "jewelry", "leather", "sandals", "bag", "handicraft", "art", "painting", "decoration", "gift", "souvenir", "drum", "musical instrument", "calabash", "woven"],
+    "Auto & Mechanics": ["car", "vehicle", "motor", "engine", "tyre", "tire", "battery", "brake", "mechanic", "auto", "spare parts", "motorcycle", "bicycle", "oil", "grease", "repair", "workshop", "garage"],
+    "Fashion & Tailoring": ["tailor", "tailoring", "sewing", "clothing", "dress", "shirt", "trousers", "skirt", "fashion", "boutique", "alteration", "measurement", "fabric", "seamstress", "designer", "apparel", "shoes", "sandals", "fashion"],
+    "Barber & Beauty": ["barber", "haircut", "salon", "beauty", "makeup", "manicure", "pedicure", "hair", "wig", "weave", "nails", "barbing", "styling", "cosmetics", "spa", "barbershop"],
+    "Electrical & Solar": ["solar", "inverter", "battery", "electrical", "wiring", "lighting", "led", "panel", "charge controller", "deep cycle", "off-grid", "power", "electrician", "installation"],
+    "Construction & Plumbing": ["plumber", "plumbing", "construction", "mason", "bricklayer", "tiler", "roofing", "building", "contractor", "renovation", "painting", "fencing", "tiling"],
+    "Logistics & Delivery": ["delivery", "logistics", "transport", "shipping", "courier", "rider", "dispatch", "haulage", "truck", "van", "moving", "relocation", "cargo"],
+    "General Goods": ["general", "provisions", "groceries", "shop", "store", "supplies", "household", "miscellaneous", "various", "assorted"]
+};
+
+function detectCategory(text) {
+    if (!text || text.trim().length < 2) return null;
+    const lower = text.toLowerCase().trim();
+    const scores = {};
+    
+    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORD_MAP)) {
+        scores[category] = 0;
+        for (const kw of keywords) {
+            if (lower.includes(kw)) {
+                // Weight: longer keyword match = more specific = higher score
+                scores[category] += kw.length > 4 ? 3 : 2;
+            }
+        }
+    }
+    
+    // Find best match
+    let bestCat = null;
+    let bestScore = 0;
+    for (const [cat, score] of Object.entries(scores)) {
+        if (score > bestScore) {
+            bestScore = score;
+            bestCat = cat;
+        }
+    }
+    
+    return bestScore > 0 ? bestCat : "General Goods";
+}
+
+
+// Price anomaly detection — flags suspiciously low prices
+function detectPriceAnomaly(price, category, allProducts) {
+    if (!price || price <= 0 || !allProducts || allProducts.length < 3) return null;
+    
+    // Get average price for same category
+    const sameCategory = allProducts.filter(p => p.category === category && p.price > 0);
+    if (sameCategory.length < 2) return null;
+    
+    const avgPrice = sameCategory.reduce((sum, p) => sum + p.price, 0) / sameCategory.length;
+    const minPrice = Math.min(...sameCategory.map(p => p.price));
+    
+    // Flag if price is less than 30% of average and below all others
+    if (price < avgPrice * 0.3 && price < minPrice * 0.5) {
+        return {
+            level: "high",
+            message: "This price is unusually low compared to similar items. Exercise caution."
+        };
+    } else if (price < avgPrice * 0.5) {
+        return {
+            level: "medium",
+            message: "This price is below average for this category. Verify the item before purchase."
+        };
+    }
+    return null;
+}
+
+// Collect all distinct categories actually used by shops/products in the DB
+let dynamicCategories = {};
+async function fetchDynamicCategories() {
+    if (DEMO_MODE || !sbClient) return;
+    try {
+        const { data: shopCats, error: e1 } = await sbClient.from('public_shops').select('category').not('category', 'is', null);
+        if (e1) throw e1;
+        const { data: prodCats, error: e2 } = await sbClient.from('products').select('category').not('category', 'is', null);
+        if (e2) throw e2;
+        
+        const allCats = new Set();
+        (shopCats || []).forEach(s => { if (s.category) allCats.add(s.category); });
+        (prodCats || []).forEach(p => { if (p.category) allCats.add(p.category); });
+        
+        // Group by domain
+        const domainMap = { product: [], service: [], hotel: [], eatery: [], company: [] };
+        for (const cat of allCats) {
+            const domain = detectDomainForCategory(cat);
+            if (!domainMap[domain].includes(cat)) domainMap[domain].push(cat);
+        }
+        dynamicCategories = domainMap;
+    } catch (err) {
+        console.warn("Could not fetch dynamic categories:", err);
+    }
+}
+
+function detectDomainForCategory(category) {
+    const foodCats = ["Grains & Cereals", "Fresh Produce", "Meat & Livestock", "Cooked Food"];
+    const serviceCats = ["Auto & Mechanics", "Fashion & Tailoring", "Electrical & Solar", "Barber & Beauty", "Construction & Plumbing", "Logistics & Delivery"];
+    const hotelCats = ["Hotels", "Guest Houses", "Lodges & Resorts", "Hostels", "Hospitality"];
+    const eateryCats = ["Cooked Food", "Restaurants & Dining", "Fast Food & Snacks", "Tuo Zaafi & Local Buka", "Waakye & Rice Spots"];
+    
+    if (foodCats.includes(category)) return "product";
+    if (serviceCats.includes(category)) return "service";
+    if (hotelCats.includes(category)) return "hotel";
+    if (eateryCats.includes(category)) return "eatery";
+    return "product";
+}
+
+
 // ====================================================================
 // 2. DEMO STORE (MOCK DATABASE FOR UNCONNECTED MVP MODE)
 // ====================================================================
@@ -835,6 +953,93 @@ function initNavigation() {
     const shopForm = document.getElementById('shopForm');
     if (shopForm) shopForm.addEventListener('submit', handleSaveShop);
 
+    // Auto-category detection on shop description typing
+    const shopDescInput = document.getElementById("shopDescription");
+    if (shopDescInput) {
+        shopDescInput.addEventListener("input", () => {
+            const text = shopDescInput.value.trim();
+            if (text.length > 3) {
+                const detected = detectCategory(text);
+                const badge = document.getElementById("shopCategoryAutoDetect");
+                const catSpan = document.getElementById("shopDetectedCategory");
+                if (detected && catSpan) {
+                    catSpan.textContent = detected;
+                    if (badge) badge.style.display = "block";
+                }
+            } else {
+                const badge = document.getElementById("shopCategoryAutoDetect");
+                if (badge) badge.style.display = "none";
+            }
+        });
+    }
+
+    // Auto-category detection on product name typing
+    const productNameInput = document.getElementById("productName");
+    if (productNameInput) {
+        productNameInput.addEventListener("input", () => {
+            const text = productNameInput.value.trim();
+            const catInput = document.getElementById("productCategory");
+            const hint = document.getElementById("productCategoryHint");
+            if (text.length > 3) {
+                const detected = detectCategory(text + " " + (document.getElementById("productDescription")?.value || ""));
+                if (catInput && detected) {
+                    catInput.value = detected;
+                    if (hint) hint.innerHTML = '<span style="color:#16A34A;">✓ Auto-detected: ' + detected + '</span>';
+                }
+            } else {
+                if (catInput) catInput.value = "";
+                if (hint) hint.textContent = "Start typing the product name — category auto-detects";
+            }
+        });
+    }
+
+    // Also detect on product description typing
+    const productDescInput = document.getElementById("productDescription");
+    if (productDescInput) {
+        productDescInput.addEventListener("input", () => {
+            const name = document.getElementById("productName")?.value.trim() || "";
+            if (name.length > 3) {
+                const detected = detectCategory(name + " " + productDescInput.value);
+                const catInput = document.getElementById("productCategory");
+                const hint = document.getElementById("productCategoryHint");
+                if (catInput && detected) {
+                    catInput.value = detected;
+                    if (hint) hint.innerHTML = '<span style="color:#16A34A;">✓ Auto-detected: ' + detected + '</span>';
+                }
+            }
+        });
+    }
+
+    // Product image file upload + preview
+    const productImageFile = document.getElementById("productImageFile");
+    if (productImageFile) {
+        productImageFile.addEventListener("change", () => {
+            const file = productImageFile.files[0];
+            if (!file) return;
+            if (!file.type.startsWith("image/")) { showToast("Please select an image file", "error"); return; }
+            if (file.size > 5 * 1024 * 1024) { showToast("Image must be under 5MB", "error"); return; }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = document.getElementById("productImagePreview");
+                const previewImg = document.getElementById("productImagePreviewImg");
+                const hiddenInput = document.getElementById("productImage");
+                if (previewImg) previewImg.src = e.target.result;
+                if (preview) preview.style.display = "block";
+                if (hiddenInput) hiddenInput.value = e.target.result; // Will upload to Supabase on save
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Product image URL fallback
+    const productImageUrl = document.getElementById("productImageUrl");
+    if (productImageUrl) {
+        productImageUrl.addEventListener("input", () => {
+            const hiddenInput = document.getElementById("productImage");
+            if (hiddenInput) hiddenInput.value = productImageUrl.value.trim();
+        });
+    }
+
     // Ghana Card photo preview
     const ghanaCardInput = document.getElementById('ghanaCardPhoto');
     if (ghanaCardInput) {
@@ -991,22 +1196,28 @@ function initDomainTabs() {
         });
     });
     renderCategoryPillsForDomain("product");
+    fetchDynamicCategories().then(() => renderCategoryPillsForDomain(currentDomain));
 }
 
 function renderCategoryPillsForDomain(domain) {
     const pillsContainer = document.getElementById("categoryPills");
     let categories = [];
 
-    if (domain === "product") {
-        categories = ["All Products", "Grains & Cereals", "Meat & Livestock", "Textiles & Smocks", "Electronics & Phones", "Hardware & Building", "Fresh Produce", "Pharmacy & Health", "Cooked Food", "Crafts & Artifacts", "General Goods"];
-    } else if (domain === "service") {
-        categories = ["All Services", "Auto & Mechanics", "Fashion & Tailoring", "Electrical & Solar", "Barber & Beauty", "Construction & Plumbing", "Logistics & Delivery"];
-    } else if (domain === "hotel") {
-        categories = ["All Lodging", "Luxury Hotels", "Guest Houses", "Lodges & Resorts", "Hostels"];
-    } else if (domain === "eatery") {
-        categories = ["All Food Spots", "Tuo Zaafi & Local Buka", "Restaurants & Dining", "Waakye & Rice Spots", "Fast Food & Snacks"];
-    } else if (domain === "company") {
-        categories = ["All Companies", "Agribusiness & Export", "IT & Tech Hubs", "Financial & Rural Banks", "NGOs & Agencies"];
+    // Base categories per domain
+    const baseCategories = {
+        product: ["All Products", "Grains & Cereals", "Meat & Livestock", "Textiles & Smocks", "Electronics & Phones", "Hardware & Building", "Fresh Produce", "Pharmacy & Health", "Cooked Food", "Crafts & Artifacts", "General Goods"],
+        service: ["All Services", "Auto & Mechanics", "Fashion & Tailoring", "Electrical & Solar", "Barber & Beauty", "Construction & Plumbing", "Logistics & Delivery"],
+        hotel: ["All Lodging", "Luxury Hotels", "Guest Houses", "Lodges & Resorts", "Hostels"],
+        eatery: ["All Food Spots", "Tuo Zaafi & Local Buka", "Restaurants & Dining", "Waakye & Rice Spots", "Fast Food & Snacks"],
+        company: ["All Companies", "Agribusiness & Export", "IT & Tech Hubs", "Financial & Rural Banks", "NGOs & Agencies"]
+    };
+
+    categories = [...(baseCategories[domain] || ["All"])];
+
+    // Merge in dynamic categories from the database that aren't in the base list
+    const dynamic = dynamicCategories[domain] || [];
+    for (const cat of dynamic) {
+        if (!categories.includes(cat) && cat) categories.push(cat);
     }
 
     pillsContainer.innerHTML = categories.map((cat, idx) => {
@@ -1336,6 +1547,17 @@ function renderProductCard(p) {
     let verBadge = `<span class="verification-badge unverified">⚪ Unverified</span>`;
     if (p.verification_tier === "trusted") verBadge = `<span class="verification-badge trusted">⭐ Trusted</span>`;
     else if (p.verification_tier === "verified" || p.is_verified) verBadge = `<span class="verification-badge verified">🔵 Verified</span>`;
+    if (p.ghana_card_verified) verBadge += ` <span class="verification-badge verified" style="background:#DCFCE7; color:#16A34A;">🪪 ID Verified</span>`;
+    let deliveryBadge = p.offers_delivery ? ` <span class="badge-tag" style="background:#EFF6FF; color:#1D4ED8; font-size:10px;">🚚 Delivery</span>` : "";
+    let accountAge = "";
+    if (p.created_date) {
+        const days = Math.floor((Date.now() - new Date(p.created_date).getTime()) / 86400000);
+        if (days < 7) accountAge = `<span style="font-size:10px; color:#D97706;">🆕 New seller (${days}d)</span>`;
+        else if (days < 30) accountAge = `<span style="font-size:10px; color:#666;">⏱️ ${days}d on TMF</span>`;
+        else accountAge = `<span style="font-size:10px; color:#666;">⏱️ ${Math.floor(days/30)}mo on TMF</span>`;
+    }
+    let priceWarning = "";
+    if (p.price > 0 && p.price < 5) priceWarning = `<div style="font-size:10px; color:#DC2626; margin-top:2px;">⚠️ Unusually low price — verify before buying</div>`;
 
     let adBadge = "";
     if (p.ad_tier === "premium_top") adBadge = `<span class="badge-tag deal" style="background:#FEF3C7; color:#B45309;">⭐ TOP</span>`;
@@ -1346,12 +1568,16 @@ function renderProductCard(p) {
     return `
         <div class="card ${isOut ? 'card-out-of-stock' : ''}">
             <div class="card-badge-row">
-                <div style="display:flex; gap:4px; align-items:center;">
+                <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
                     ${stockPill}
                     ${adBadge}
+                    ${deliveryBadge}
                 </div>
-                ${verBadge}
+                <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+                    ${verBadge}
+                </div>
             </div>
+            ${accountAge}
 
             <div class="card-img-container">
                 <img src="${escapeAttr(p.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e')}" class="card-img" alt="${escapeHtml(p.name)}" />
@@ -1378,6 +1604,7 @@ function renderProductCard(p) {
                 <span>★★★★☆</span> <span>${p.rating_avg || 4.5} (${p.rating_count || 12})</span>
             </div>
 
+            ${priceWarning}
             <div class="card-actions-row">
                 <button class="btn-whatsapp btn-sm" data-action="openWhatsApp" data-wa-num="${escapeJs(p.whatsapp_number)}" data-wa-msg="${escapeJs(p.name)}" data-wa-shop="${escapeJs(p.shop_name)}">💬 WhatsApp</button>
                 <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} data-action="openOrderModal" data-pid="${escapeJs(p.id)}" data-sid="${escapeJs(p.shop_id)}">
@@ -1702,6 +1929,7 @@ function clearMapMarkers() {
 let activeOrderProduct = null;
 
 async function openOrderModal(productId, shopId) {
+    // Check if shop offers delivery before showing the delivery option
     let product = null;
     let shop = {};
 
@@ -2580,7 +2808,23 @@ async function takeModerationAction(repId) {
 
 async function runAISecurityScan() {
     if (!sbClient) { showToast("Database not connected", "error"); return; }
-    const SUSPICIOUS = ["wire transfer", "western union", "send money first", "bitcoin", "voodoo", "hacked"];
+    const SUSPICIOUS = [
+        "wire transfer", "bitcoin", "cryptocurrency", "send money first",
+        "advance payment", "western union", "moneygram", "paypal gift",
+        "gift card", "google play card", "itunes card", "steam card",
+        "too good to be true", "guaranteed profit", "double your money",
+        "investment opportunity", "forex trading", "mlm", "pyramid scheme",
+        "work from home", "earn money fast", "get rich quick",
+        "free iphone", "free money", "lottery winner", "inheritance",
+        "nigerian prince", "bank transfer only", "no cash on delivery",
+        "urgent sale", "must sell today", "moving abroad",
+        "send deposit", "hold this item", "pre-order only",
+        "agent fee", "delivery fee upfront", "custom clearance fee",
+        "no refund", "non-refundable", "final sale no return", "no guarantee",
+        "whatsapp only", "dont call", "no calls", "text only",
+        "fake", "replica", "counterfeit", "clone", "copy of original",
+        "voodoo", "hacked", "cracked", "modded", "jailbroken"
+    ];
     let flaggedCount = 0;
 
     try {
@@ -2724,6 +2968,11 @@ async function showShopDetailModal(shopId) {
         const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('id', shopId).single();
         if (shopErr) throw shopErr;
         if (shopData) shop = shopData;
+        // Hide delivery option if shop doesn't offer delivery
+        const deliveryLabel = document.getElementById("deliveryOptionLabel");
+        if (deliveryLabel) {
+            deliveryLabel.style.display = shop?.offers_delivery ? "" : "none";
+        }
         const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('shop_id', shopId).eq('in_stock', true);
         if (prodErr) throw prodErr;
         if (prodData) shopProducts = prodData;
@@ -2997,6 +3246,20 @@ async function enableTraderRole() {
     showToast("Trader role enabled! Fill in your stall details below.", "success");
 }
 
+// Dashboard delivery toggle - quick toggle for delivery
+async function toggleDashboardDelivery() {
+    const checkbox = document.getElementById("dashboardDeliveryToggle");
+    if (!checkbox || !sbClient || !userShop) return;
+    try {
+        await sbClient.from("shops").update({ offers_delivery: checkbox.checked }).eq("id", userShop.id);
+        userShop.offers_delivery = checkbox.checked;
+        showToast(checkbox.checked ? "Delivery enabled! Buyers can now choose delivery." : "Delivery disabled.", "success");
+    } catch (err) {
+        showToast("Could not update delivery setting", "error");
+        checkbox.checked = !checkbox.checked;
+    }
+}
+
 function updateUIForAuthUser() {
     document.getElementById("drawerName").textContent = userProfile.full_name || "User";
     document.getElementById("drawerEmail").textContent = currentUser?.email || "Sign in to save shops, order & manage listings";
@@ -3026,6 +3289,12 @@ function updateUIForAuthUser() {
             : '<span class="drawer-icon">🔑</span> Sign In / Register';
     }
 
+    // Show/hide admin tab — only visible to actual admins
+    const adminTabBtn = document.getElementById("adminTabBtn");
+    if (adminTabBtn) {
+        adminTabBtn.style.display = (userProfile.account_type === "admin") ? "" : "none";
+    }
+
     // Show/hide trader dashboard
     const upgradePrompt = document.getElementById("trader-upgrade-prompt");
     const dashContent = document.getElementById("trader-dashboard-content");
@@ -3053,6 +3322,8 @@ function updateUIForAuthUser() {
     if (userShop) {
         const sn = document.getElementById("shopName"); if (sn) sn.value = userShop.shop_name || "";
         const sc = document.getElementById("shopCategory"); if (sc) sc.value = userShop.category || "";
+        const sd = document.getElementById("shopOffersDelivery"); if (sd) sd.checked = userShop.offers_delivery || false;
+        const ddt = document.getElementById("dashboardDeliveryToggle"); if (ddt) ddt.checked = userShop.offers_delivery || false;
         const sma = document.getElementById("shopMarketArea"); if (sma) sma.value = userShop.market_area || "";
         const sda = document.getElementById("shopDigitalAddress"); if (sda) sda.value = userShop.digital_address || "";
         const sa = document.getElementById("shopAddress"); if (sa) sa.value = userShop.address || "";
@@ -3089,6 +3360,9 @@ function updateUIForGuestUser() {
     if (menuBtnLogout) menuBtnLogout.classList.remove("trader-mode");
     const authBtn = document.getElementById("drawerAuthActionBtn");
     if (authBtn) authBtn.innerHTML = '<span class="drawer-icon">🔑</span> Sign In / Register';
+    // Hide admin tab for guests
+    const adminTabBtn = document.getElementById("adminTabBtn");
+    if (adminTabBtn) adminTabBtn.style.display = "none";
 }
 
 function showToast(msg, type = "success") {
@@ -3198,17 +3472,15 @@ async function handleSaveShop(e) {
     e.preventDefault();
     if (!sbClient || !currentUser) { showToast("Sign in first", "error"); return; }
 
-    // Validate Ghana Card fields
+    // Ghana Card fields are now optional
     const ghanaCardNum = document.getElementById("ghanaCardNumber")?.value.trim() || "";
     const ghanaCardName = document.getElementById("ghanaCardFullName")?.value.trim() || "";
     const ghanaCardConsent = document.getElementById("ghanaCardConsent")?.checked || false;
     const ghanaCardPhoto = document.getElementById("ghanaCardPhoto")?.files[0] || null;
 
-    if (!ghanaCardNum) { showToast("Ghana Card number is required for traders", "error"); return; }
-    if (!ghanaCardName) { showToast("Full name as on Ghana Card is required", "error"); return; }
-    if (!ghanaCardConsent) { showToast("Please confirm the Ghana Card consent checkbox", "error"); return; }
-    if (!userShop?.ghana_card_number && !ghanaCardPhoto) {
-        showToast("Please upload a photo of your Ghana Card", "error"); return;
+    // Only validate consent if they filled in card number
+    if (ghanaCardNum && !ghanaCardConsent) {
+        showToast("Please confirm the Ghana Card consent checkbox", "error"); return;
     }
 
     // Upload Ghana Card photo if a new file was selected
@@ -3245,7 +3517,8 @@ async function handleSaveShop(e) {
         created_by: currentUser.id,
         owner_name: userProfile.full_name,
         shop_name: document.getElementById("shopName").value.trim(),
-        category: document.getElementById("shopCategory").value,
+        category: document.getElementById("shopCategory")?.value || detectCategory(document.getElementById("shopDescription")?.value || ""),
+        offers_delivery: document.getElementById("shopOffersDelivery")?.checked || false,
         market_area: document.getElementById("shopMarketArea").value,
         digital_address: document.getElementById("shopDigitalAddress").value.trim(),
         address: document.getElementById("shopAddress").value.trim(),
@@ -3287,17 +3560,36 @@ async function handleSaveProduct(e) {
     const productPrice = parseFloat(document.getElementById("productPrice").value) || 0;
     if (!productName) { showToast("Product name is required", "error"); return; }
     if (productPrice <= 0) { showToast("Price must be greater than 0", "error"); return; }
+
+    // Handle product image file upload
+    let productImageUrl = document.getElementById("productImage")?.value || "";
+    const productImageFile = document.getElementById("productImageFile")?.files[0] || null;
+    if (productImageFile && productImageUrl.startsWith("data:")) {
+        try {
+            const fileExt = productImageFile.name.split(".").pop();
+            const fileName = `products/${currentUser.id}_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await sbClient.storage.from("shop-images").upload(fileName, productImageFile);
+            if (!uploadError) {
+                const { data: pubData } = sbClient.storage.from("shop-images").getPublicUrl(fileName);
+                productImageUrl = pubData?.publicUrl || "";
+            }
+        } catch (uploadErr) {
+            console.error("Product image upload error:", uploadErr);
+            showToast("Image upload failed, saving without image...", "warning");
+            productImageUrl = "";
+        }
+    }
     const productData = {
         shop_id: userShop.id,
         name: document.getElementById("productName").value.trim(),
-        category: document.getElementById("productCategory").value.trim(),
+        category: document.getElementById("productCategory").value.trim() || detectCategory(document.getElementById("productName").value + " " + (document.getElementById("productDescription")?.value || "")),
         price: parseFloat(document.getElementById("productPrice").value) || 0,
         discount_price: parseFloat(document.getElementById("productDiscountPrice").value) || null,
         badge_tag: document.getElementById("productBadgeTag").value || null,
         stock_quantity: parseInt(document.getElementById("productStockQuantity").value) || 0,
         low_stock_threshold: parseInt(document.getElementById("productLowStockThreshold").value) || 3,
         description: document.getElementById("productDescription").value.trim(),
-        image_url: document.getElementById("productImage").value.trim(),
+        image_url: productImageUrl,
         in_stock: document.getElementById("productInStock").checked,
         listing_type: "product"
     };
@@ -3359,3 +3651,4 @@ async function renderFavoritesPage() {
         </div>
     `).join("");
 }
+// Latest security update
