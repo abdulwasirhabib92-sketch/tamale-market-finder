@@ -1070,6 +1070,26 @@ body {
     color: var(--danger);
 }
 
+.btn-take-me {
+    background: #E8F5E9;
+    border: 1px solid #0A5C36;
+    color: #0A5C36;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.btn-take-me:hover {
+    background: #0A5C36;
+    color: white;
+}
+
+
+
 /* Amenity Badges for Hotels */
 .amenities-row {
     display: flex;

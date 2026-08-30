@@ -732,9 +732,6 @@ function handleDelegatedClick(e) {
         case 'drawDirections':
             drawDirectionsToShop(parseFloat(el.dataset.lat), parseFloat(el.dataset.lng), el.dataset.name);
             break;
-        case 'takeMeThere':
-            takeMeThere(parseFloat(el.dataset.lat), parseFloat(el.dataset.lng), el.dataset.name || '');
-            break;
         case 'updateOrderQty':
             updateOrderModalQty(parseInt(el.dataset.qtyDelta));
             break;
@@ -1118,7 +1115,8 @@ function initNavigation() {
     });
 
     // Mobile View Switcher Pill
-
+    const mvToggle = document.getElementById("mobileViewToggle");
+    if (mvToggle) mvToggle.addEventListener("click", toggleMobileViewMode);
 
     // Account Sub-Tabs
     document.querySelectorAll(".acc-tab-btn").forEach(btn => {
@@ -1612,7 +1610,6 @@ function renderProductCard(p) {
                 <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} data-action="openOrderModal" data-pid="${escapeJs(p.id)}" data-sid="${escapeJs(p.shop_id)}">
                     ${isOut ? 'Out of Stock' : '🛒 Order Now'}
                 </button>
-                <button class="btn-take-me btn-sm" data-action="takeMeThere" data-lat="${escapeJs(p.latitude)}" data-lng="${escapeJs(p.longitude)}" data-name="${escapeJs(p.shop_name)}" title="Get directions">📍 Take me there</button>
                 <button class="btn-report" data-action="openReportModal" data-report-type="product" data-report-id="${escapeJs(p.id)}" data-report-name="${escapeJs(p.name)}" title="Report listing">🚩</button>
             </div>
         </div>
@@ -1668,7 +1665,6 @@ function renderHotelCard(h) {
 
             <div class="card-actions-row" style="margin-top:10px;">
                 <button class="btn-primary btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(h.whatsapp_number)}" data-wa-msg="Room Booking" data-wa-shop="${escapeJs(h.business_name)}">📞 Call / Reserve Room</button>
-                <button class="btn-take-me btn-sm" data-action="takeMeThere" data-lat="${escapeJs(h.latitude)}" data-lng="${escapeJs(h.longitude)}" data-name="${escapeJs(h.business_name)}" title="Get directions">📍 Take me there</button>
             </div>
         </div>
     `;
@@ -1690,7 +1686,6 @@ function renderEateryCard(e) {
             
             <div class="card-actions-row">
                 <button class="btn-whatsapp btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(e.whatsapp_number)}" data-wa-msg="Food Order" data-wa-shop="${escapeJs(e.business_name)}">💬 Order Food / Reserve Table</button>
-                <button class="btn-take-me btn-sm" data-action="takeMeThere" data-lat="${escapeJs(e.latitude)}" data-lng="${escapeJs(e.longitude)}" data-name="${escapeJs(e.business_name)}" title="Get directions">📍 Take me there</button>
             </div>
         </div>
     `;
@@ -1709,21 +1704,9 @@ function renderCompanyCard(c) {
             
             <div class="card-actions-row">
                 <button class="btn-secondary btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(c.whatsapp_number)}" data-wa-msg="B2B Inquiry" data-wa-shop="${escapeJs(c.business_name)}">✉️ Contact Business Office</button>
-                <button class="btn-take-me btn-sm" data-action="takeMeThere" data-lat="${escapeJs(c.latitude)}" data-lng="${escapeJs(c.longitude)}" data-name="${escapeJs(c.business_name)}" title="Get directions">📍 Take me there</button>
             </div>
         </div>
     `;
-}
-
-// Simple "Take me there" — opens Google Maps directions in a new tab
-function takeMeThere(lat, lng, name) {
-    if (!lat || !lng) {
-        showToast('Location not available for this listing.', 'warning');
-        return;
-    }
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-    window.open(url, '_blank');
-    showToast(`Opening directions to ${name || 'this location'}...`, 'success');
 }
 
 // ====================================================================
@@ -3185,9 +3168,15 @@ function navigateToPage(pageId) {
     if (actualPage === "my-orders") renderBuyerOrders();
     if (actualPage === "favorites") renderFavoritesPage();
 
-    // Terms page is static HTML, nothing to render dynamically
-    if (pageId === "terms") {
-        // Just scroll to top
+    // Handle map-mobile: switch home page to map view
+    if (pageId === "map-mobile") {
+        if (mobileViewMode === "list") {
+            toggleMobileViewMode();
+        }
+        if (leafletMap) {
+            setTimeout(() => leafletMap.invalidateSize(), 100);
+            setTimeout(() => findMyLocation(), 300);
+        }
     }
 
     // Help opens a modal, not a page
