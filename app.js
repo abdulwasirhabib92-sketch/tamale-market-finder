@@ -3245,18 +3245,19 @@ function toggleMobileViewMode() {
     const container = document.getElementById("resultsContainer");
     const icon = document.getElementById("viewToggleIcon");
     const text = document.getElementById("viewToggleText");
+    if (!container) return;
 
     if (mobileViewMode === "list") {
         mobileViewMode = "map";
         container.classList.add("map-active");
-        icon.textContent = "📋";
-        text.textContent = "View List";
+        if (icon) icon.textContent = "\u{1f4cb}";
+        if (text) text.textContent = "View List";
         if (leafletMap) leafletMap.invalidateSize();
     } else {
         mobileViewMode = "list";
         container.classList.remove("map-active");
-        icon.textContent = "🗺️";
-        text.textContent = "View Map";
+        if (icon) icon.textContent = "\u{1f5fa}\u{fe0f}";
+        if (text) text.textContent = "View Map";
     }
 }
 
@@ -3403,7 +3404,7 @@ function updateUIForAuthUser() {
 
 function updateUIForGuestUser() {
     document.getElementById("drawerName").textContent = "Guest User";
-    document.getElementById("navUserName").textContent = "Account";
+    const navUserNameEl = document.getElementById("navUserName"); if (navUserNameEl) navUserNameEl.textContent = "Account";
     document.getElementById("drawerEmail").textContent = "Sign in to save shops, order & manage listings";
     const roleBadge = document.getElementById("drawerRoleBadge");
     if (roleBadge) { roleBadge.textContent = "Shopper"; roleBadge.className = "role-badge shopper"; }
