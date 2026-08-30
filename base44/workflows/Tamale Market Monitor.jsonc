@@ -1,6 +1,6 @@
 {
   "name": "Tamale Market Monitor",
-  "description": "Monitors the Tamale Market Finder app every 6 hours \u2014 checks if the site is live, Supabase connection works, CSP headers are correct, scans for security issues, and reports findings to the owner via Telegram.",
+  "description": "Monitors the Tamale Market Finder app every 6 hours \u2014 checks if the site is live, PWA installability, Supabase connection, security headers, and reports findings to the owner via Telegram.",
   "trigger": {
     "condition": null,
     "config": {
@@ -22,20 +22,20 @@
     "document": {
       "dsl": "1.0.0",
       "name": "tamale_market_monitor",
-      "version": "1.0",
-      "namespace": "base44"
+      "namespace": "base44",
+      "version": "2.0"
     },
     "do": [
       {
         "monitor_app": {
           "call": "invoke_superagent_step",
-          "with": {
-            "message": "You are monitoring the Tamale Market Finder app (https://tamale-market-finder.vercel.app). Do the following checks and report results to the owner via broadcast_message:\n\n1. SITE HEALTH: Navigate to https://tamale-market-finder.vercel.app/ using browserbase tools. Check if the page loads, if products are visible, and if there are any console errors.\n\n2. SUPABASE CHECK: Check if the Supabase backend is responding by trying to fetch data from the public_shops view at https://djcajmglxkmhbipmweps.supabase.co/rest/v1/public_shops?select=id&limit=1 with the anon key in app.js.\n\n3. SECURITY HEADERS: Use curl to check the HTTP response headers on the live site. Verify CSP, X-Content-Type-Options, X-Frame-Options are present.\n\n4. NEW REPORTS: Check if there are any new reported listings in the database that need admin attention.\n\n5. SUMMARY: Compose a brief, friendly status report. If everything is fine, say so briefly. If there are issues, describe them clearly and suggest fixes. Ask for permission before making any changes.\n\nReport your findings to the owner using broadcast_message."
-          },
           "then": "end",
+          "with": {
+            "message": "You are monitoring the Tamale Market Finder app (https://tamale-market-finder.vercel.app). Run these checks and report a concise summary to the owner via broadcast_message:\n\n1. SITE HEALTH: Use curl to fetch https://tamale-market-finder.vercel.app/ \u2014 check HTTP status 200 and that the HTML contains product cards.\n\n2. PWA CHECK: Use curl to fetch /manifest.json and /sw.js \u2014 verify both return 200 and manifest.json has valid JSON with name, icons, and display:standalone.\n\n3. SUPABASE CHECK: curl https://djcajmglxkmhbipmweps.supabase.co/rest/v1/public_shops?select=id&limit=1 with header 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqY2FqbWdseGttaGJpcG13ZXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTE3NDcsImV4cCI6MjA5NjQyNzc0N30.ccaT6pQW8Dbqy1LC97p2hH0Q7CuYtWJwnoDgrOdwAX4' \u2014 verify it returns JSON data.\n\n4. SECURITY HEADERS: curl -I https://tamale-market-finder.vercel.app/ \u2014 verify CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy headers are present.\n\n5. CONSOLE ERRORS: Navigate to the site with browserbase, take a screenshot, check for visible errors.\n\n6. REPORT: Compose a brief status report. Format: \u2705 or \u274c for each check. If all pass, keep it to 2-3 lines. If issues found, describe them and suggest fixes. Send via broadcast_message."
+          },
           "x-base44": {
-            "description": "Check site, Supabase, security, reports",
-            "title": "Monitor app health"
+            "description": "Check site, PWA, Supabase, security headers, console",
+            "title": "Monitor app health & PWA"
           }
         }
       }
