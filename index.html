@@ -68,8 +68,8 @@
             <a href="#" class="drawer-item active" data-nav="home">
                 <span class="drawer-icon">🔍</span> Explore Markets
             </a>
-            <a href="#" class="drawer-item" data-nav="map-mobile">
-                <span class="drawer-icon">🗺️</span> Interactive Map
+            <a href="#" class="drawer-item" data-nav="terms">
+                <span class="drawer-icon">📋</span> Terms &amp; Conditions
             </a>
             <a href="#" class="drawer-item" data-nav="favorites">
                 <span class="drawer-icon">❤️</span> Saved Shops
@@ -218,10 +218,7 @@
             </div>
         </div>
 
-        <!-- Floating Mobile View Switcher Pill -->
-        <button id="mobileViewToggle" class="floating-view-toggle">
-            <span id="viewToggleIcon">🗺️</span> <span id="viewToggleText">View Map</span>
-        </button>
+        <!-- Map view toggle removed — directions now in product cards -->
     </main>
 
     <!-- PAGE 2: SAVED SHOPS / FAVORITES -->
@@ -250,6 +247,51 @@
         </div>
     </main>
 
+
+    <!-- PAGE: TERMS & CONDITIONS -->
+    <main id="page-terms" class="page">
+        <div class="page-header">
+            <h2>📋 Terms &amp; Conditions</h2>
+            <p>How Tamale Market Finder works for buyers and sellers</p>
+        </div>
+        <div style="max-width: 700px; margin: 0 auto; padding: 20px; line-height: 1.7; font-size: 14px; color: #1f2937;">
+
+            <h3 style="color: #0A5C36; margin-top: 24px;">1. What Tamale Market Finder Is</h3>
+            <p>Tamale Market Finder (TMF) is an online marketplace that connects buyers with local traders, service providers, hotels, eateries, and businesses in the Tamale metropolitan area and surrounding communities. TMF lists products and services, enables WhatsApp contact between buyers and sellers, and provides directions to physical stall or business locations.</p>
+
+            <h3 style="color: #0A5C36; margin-top: 24px;">2. Who Can Use TMF</h3>
+            <p>Anyone in or around Tamale can browse listings and contact sellers for free. To list products or services, you must register as a trader and provide accurate information about your business. You must be at least 18 years old to create a trader account.</p>
+
+            <h3 style="color: #0A5C36; margin-top: 24px;">3. Buying on TMF</h3>
+            <p>TMF facilitates contact between buyers and sellers but does not process payments, hold inventory, or guarantee delivery. All transactions — including payment, delivery, and returns — are arranged directly between you and the seller, typically through WhatsApp. TMF's "Order Now" feature sends a reservation message to the seller; it is not a guaranteed purchase.</p>
+            <p>We recommend meeting sellers in person at their verified stall or business location for payment and pickup. Always inspect goods before paying.</p>
+
+            <h3 style="color: #0A5C36; margin-top: 24px;">4. Selling on TMF</h3>
+            <p>As a trader, you are responsible for the accuracy of your listings — including product descriptions, prices, photos, and stock availability. You agree to respond to buyer inquiries promptly and in good faith. Listings that are fraudulent, misleading, or illegal will be removed, and your account may be banned.</p>
+            <p>TMF offers optional Ghana Card verification to display a verified badge on your listings. Verification increases buyer trust but does not constitute an endorsement by TMF.</p>
+
+            <h3 style="color: #0A5C36; margin-top: 24px;">5. Prohibited Listings &amp; Conduct</h3>
+            <p>You may not list or attempt to sell: counterfeit goods, stolen items, illegal drugs, weapons, counterfeit currency, or any item prohibited by Ghanaian law. You may not use TMF to scam, defraud, or harass other users. TMF actively scans listings for suspicious keywords and pricing anomalies. Reported listings are reviewed and may be removed without notice.</p>
+
+            <h3 style="color: #0A5C36; margin-top: 24px;">6. User Safety</h3>
+            <p>TMF provides seller verification badges, account age display, and price anomaly warnings to help you make informed decisions. However, TMF does not guarantee that any seller is trustworthy. Always exercise caution when meeting strangers, sending money, or sharing personal information. Meet in public market areas during daylight hours when possible.</p>
+
+            <h3 style="color: #0A5C36; margin-top: 24px;">7. Privacy &amp; Data</h3>
+            <p>TMF collects your name, phone number, WhatsApp number, and business location to create listings and facilitate contact with buyers. Your phone number and WhatsApp number are shared with buyers who contact you. TMF does not sell your personal data to third parties. Location data is used only to show directions to your stall or business.</p>
+
+            <h3 style="color: #0A5C36; margin-top: 24px;">8. Liability</h3>
+            <p>TMF is a directory and communication platform. We are not a party to any transaction between buyers and sellers. We are not liable for losses, damages, disputes, or fraudulent activity arising from transactions conducted through the platform. If you experience fraud or a dispute, contact the seller directly and, if necessary, report the matter to Ghana Police Service.</p>
+
+            <h3 style="color: #0A5C36; margin-top: 24px;">9. Reporting &amp; Moderation</h3>
+            <p>You can report any listing using the 🚩 flag button on the listing card. Reports are reviewed by TMF administrators. Repeated violations may result in account suspension. TMF reserves the right to remove any listing or account at its discretion.</p>
+
+            <h3 style="color: #0A5C36; margin-top: 24px;">10. Changes to These Terms</h3>
+            <p>TMF may update these Terms &amp; Conditions at any time. Continued use of the platform after changes constitutes acceptance of the updated terms.</p>
+
+            <p style="margin-top: 30px; color: #6b7280; font-size: 12px;">Last updated: August 2026. For questions about these terms, contact the TMF administrator.</p>
+        </div>
+    </main>
+
     <!-- PAGE 4: USER ACCOUNT & SETTINGS / TRADER DASHBOARD / ADMIN -->
     <main id="page-account" class="page">
         <div class="account-container">
@@ -258,7 +300,7 @@
                 <button class="acc-tab-btn active" data-acctab="profile">⚙️ Profile & Settings</button>
                 <button class="acc-tab-btn" data-acctab="orders">🛍️ My Orders</button>
                 <button class="acc-tab-btn" data-acctab="trader">🏪 Trader Dashboard</button>
-                <button class="acc-tab-btn" data-acctab="admin" id="adminTabBtn">🛡️ Admin Moderation</button>
+                <button class="acc-tab-btn" data-acctab="admin" id="adminTabBtn" style="display:none;">🛡️ Admin Moderation</button>
             </div>
 
             <!-- SUB-TAB 1: USER PROFILE & SETTINGS -->
@@ -410,24 +452,15 @@
                                     <input type="text" id="shopName" placeholder="e.g. Alhassan Grain Store & Produce" required />
                                 </div>
 
-                                <div class="form-row-2">
-                                    <div class="form-group">
-                                        <label for="shopCategory">Primary Category *</label>
-                                        <select id="shopCategory" required>
-                                            <option value="">Select Category</option>
-                                            <option value="Grains & Cereals">🌾 Grains & Cereals</option>
-                                            <option value="Meat & Livestock">🥩 Meat & Livestock</option>
-                                            <option value="Textiles & Smocks">🧵 Textiles & Smocks</option>
-                                            <option value="Electronics & Phones">📱 Electronics & Phones</option>
-                                            <option value="Hardware & Building">🔨 Hardware & Building</option>
-                                            <option value="Fresh Produce">🍎 Fresh Produce</option>
-                                            <option value="Pharmacy & Health">💊 Pharmacy & Health</option>
-                                            <option value="Cooked Food">🍳 Cooked Food</option>
-                                            <option value="Crafts & Artifacts">🎨 Crafts & Artifacts</option>
-                                            <option value="General Goods">📦 General Goods</option>
-                                        </select>
+                                <div class="form-group">
+                                    <label for="shopDescription">What do you sell? *</label>
+                                    <textarea id="shopDescription" rows="2" placeholder="e.g. White maize, millet, sorghum, local rice — wholesale and retail" required></textarea>
+                                    <div id="shopCategoryAutoDetect" style="margin-top:6px; display:none;">
+                                        <span style="font-size:12px; background:#DCFCE7; color:#16A34A; padding:3px 10px; border-radius:12px; font-weight:600;">✓ Detected: <span id="shopDetectedCategory"></span></span>
                                     </div>
+                                </div>
 
+                                <div class="form-row-2">
                                     <div class="form-group">
                                         <label for="shopMarketArea">Market Location *</label>
                                         <select id="shopMarketArea" required>
@@ -440,118 +473,104 @@
                                             <option value="Other">Other Area</option>
                                         </select>
                                     </div>
-                                </div>
-
-                                <!-- Ghana Post GPS Digital Address Integration -->
-                                <div class="card gps-integration-card">
-                                    <div class="gps-card-title">
-                                        <span>🇬🇭 Ghana Post GPS Digital Address</span>
-                                        <span class="gps-badge-tag">Official Location</span>
-                                    </div>
-                                    <p class="form-hint">Enter your stall's digital address (e.g. <strong>NT-092-0621</strong>) or click the GPS button to auto-detect coordinates.</p>
-                                    
                                     <div class="form-group">
-                                        <label for="shopDigitalAddress">Digital Address Code</label>
-                                        <div class="input-with-btn">
-                                            <input type="text" id="shopDigitalAddress" placeholder="e.g. NT-092-0621" uppercase />
-                                            <button type="button" class="btn-secondary" id="lookupDigitalAddressBtn">🔍 Lookup Address</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="gps-action-row">
-                                        <button type="button" class="btn-gps" id="getLocationBtn">
-                                            <span>📍 Use My Device GPS & Auto-Fill Digital Address</span>
-                                        </button>
-                                        <span class="location-status-text" id="locationStatus">GPS Pin: Not Set</span>
-                                    </div>
-
-                                    <div class="form-row-2" style="margin-top: 10px;">
-                                        <div class="form-group">
-                                            <label for="shopLat">Latitude</label>
-                                            <input type="number" step="any" id="shopLat" placeholder="9.4075" readonly />
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="shopLng">Longitude</label>
-                                            <input type="number" step="any" id="shopLng" placeholder="-0.8357" readonly />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="shopAddress">Physical Directions / Stall Number</label>
-                                    <input type="text" id="shopAddress" placeholder="e.g. Shed B-45, Near Aboabo Main Mosque Gate" />
-                                </div>
-
-                                <div class="form-row-2">
-                                    <div class="form-group">
-                                        <label for="shopPhone">Phone Number</label>
-                                        <input type="tel" id="shopPhone" placeholder="0244123456" />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="shopWhatsapp">WhatsApp Contact Number *</label>
+                                        <label for="shopWhatsapp">WhatsApp Number *</label>
                                         <input type="tel" id="shopWhatsapp" placeholder="e.g. 233244123456" required />
-                                        <small class="form-hint">Include country code without + (e.g. 233244123456)</small>
+                                        <small class="form-hint">Include country code without +</small>
                                     </div>
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="shopHours">Opening Hours</label>
-                                    <input type="text" id="shopHours" placeholder="e.g. Mon-Sat: 7:00 AM - 6:00 PM" />
+                                    <label for="shopPhone">Phone Number (if different from WhatsApp)</label>
+                                    <input type="tel" id="shopPhone" placeholder="0244123456" />
                                 </div>
 
-                                <div class="form-group">
-                                    <label for="shopDescription">Stall Description & Specialization</label>
-                                    <textarea id="shopDescription" rows="3" placeholder="Describe the items you sell, wholesale/retail deals, and landmarks..."></textarea>
+                                <!-- Delivery Toggle -->
+                                <div class="card" style="background:#F0FDF4; border:1px solid #BBF7D0; padding:14px; border-radius:10px; margin-bottom:15px;">
+                                    <label class="checkbox-label" style="font-size:14px; cursor:pointer;">
+                                        <input type="checkbox" id="shopOffersDelivery" style="width:18px; height:18px;" />
+                                        <span><strong>🚚 I offer local delivery in Tamale</strong><br><small style="color:#666;">Buyers will see a delivery option when ordering from your stall</small></span>
+                                    </label>
                                 </div>
 
-                                <!-- Ghana Card Verification Section -->
-                                <div class="card ghana-card-section" style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 16px; margin-bottom: 15px; border-radius: 10px;">
-                                    <div class="gps-card-title" style="margin-bottom: 8px;">
-                                        <span>🪪 Ghana Card Verification (Required for Traders)</span>
-                                        <span class="gps-badge-tag" style="background:#16A34A; color:white;">Mandatory</span>
-                                    </div>
-                                    <p class="form-hint" style="margin-bottom: 12px;">All traders must provide a valid Ghana Card for identity verification. Your details are kept confidential and used only for verification purposes.</p>
-
-                                    <div class="form-row-2">
+                                <!-- Location (collapsible) -->
+                                <details style="margin-bottom:15px;">
+                                    <summary style="cursor:pointer; font-weight:600; font-size:14px; color:var(--text-primary); padding:8px 0;">📍 Set your stall location (GPS)</summary>
+                                    <div class="card gps-integration-card" style="margin-top:8px;">
+                                        <p class="form-hint">Enter your digital address or use GPS to auto-detect.</p>
                                         <div class="form-group">
-                                            <label for="ghanaCardNumber">Ghana Card Number *</label>
-                                            <input type="text" id="ghanaCardNumber" placeholder="e.g. GHA-123456789-1" required style="text-transform: uppercase;" />
-                                            <small class="form-hint">Format: GHA-XXXXXXXXX-X</small>
+                                            <label for="shopDigitalAddress">Digital Address Code</label>
+                                            <div class="input-with-btn">
+                                                <input type="text" id="shopDigitalAddress" placeholder="e.g. NT-092-0621" uppercase />
+                                                <button type="button" class="btn-secondary" id="lookupDigitalAddressBtn">🔍 Lookup</button>
+                                            </div>
+                                        </div>
+                                        <div class="gps-action-row">
+                                            <button type="button" class="btn-gps" id="getLocationBtn">
+                                                <span>📍 Use My Device GPS</span>
+                                            </button>
+                                            <span class="location-status-text" id="locationStatus">GPS Pin: Not Set</span>
+                                        </div>
+                                        <input type="hidden" id="shopLat" />
+                                        <input type="hidden" id="shopLng" />
+                                        <div class="form-group" style="margin-top:8px;">
+                                            <label for="shopAddress">Physical Directions / Stall Number</label>
+                                            <input type="text" id="shopAddress" placeholder="e.g. Shed B-45, Near Aboabo Main Mosque Gate" />
+                                        </div>
+                                    </div>
+                                </details>
+
+                                <!-- Optional fields -->
+                                <details style="margin-bottom:15px;">
+                                    <summary style="cursor:pointer; font-weight:600; font-size:14px; color:var(--text-primary); padding:8px 0;">🕒 Opening hours & extra details</summary>
+                                    <div class="form-group" style="margin-top:8px;">
+                                        <label for="shopHours">Opening Hours</label>
+                                        <input type="text" id="shopHours" placeholder="e.g. Mon-Sat: 7:00 AM - 6:00 PM" />
+                                    </div>
+                                </details>
+
+                                <!-- Ghana Card (optional, collapsible) -->
+                                <details style="margin-bottom:15px;">
+                                    <summary style="cursor:pointer; font-weight:600; font-size:14px; color:var(--text-primary); padding:8px 0;">🪪 Verify with Ghana Card <span style="font-size:11px; background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:10px; margin-left:6px;">Optional — get verified badge</span></summary>
+                                    <div class="card ghana-card-section" style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 16px; margin-top:8px; border-radius: 10px;">
+                                        <p class="form-hint" style="margin-bottom: 12px;">Verified traders get a ✓ badge on their stall, building trust with buyers. You can do this now or come back later.</p>
+                                        <div class="form-row-2">
+                                            <div class="form-group">
+                                                <label for="ghanaCardNumber">Ghana Card Number</label>
+                                                <input type="text" id="ghanaCardNumber" placeholder="e.g. GHA-123456789-1" style="text-transform: uppercase;" />
+                                                <small class="form-hint">Format: GHA-XXXXXXXXX-X</small>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="ghanaCardType">Card Type</label>
+                                                <select id="ghanaCardType">
+                                                    <option value="national_id">National ID Card</option>
+                                                    <option value="voter_id">Voter's ID (Legacy)</option>
+                                                    <option value="driving_license">Driving License</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <div class="form-group">
-                                            <label for="ghanaCardType">Card Type</label>
-                                            <select id="ghanaCardType">
-                                                <option value="national_id">National ID Card</option>
-                                                <option value="voter_id">Voter's ID (Legacy)</option>
-                                                <option value="driving_license">Driving License</option>
-                                            </select>
+                                            <label for="ghanaCardFullName">Full Name as on Ghana Card</label>
+                                            <input type="text" id="ghanaCardFullName" placeholder="Enter your full name exactly as on your card" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="ghanaCardPhoto">Upload Ghana Card Photo</label>
+                                            <input type="file" id="ghanaCardPhoto" accept="image/*" capture="environment" />
+                                            <small class="form-hint">Clear photo of front side. Max 5MB.</small>
+                                            <div id="ghanaCardPreview" style="margin-top: 8px; display: none;">
+                                                <img id="ghanaCardPreviewImg" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid #BBF7D0;" alt="Ghana Card Preview" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label class="checkbox-label" style="font-size: 13px;">
+                                                <input type="checkbox" id="ghanaCardConsent" />
+                                                <span>I confirm these details are mine and consent to verification.</span>
+                                            </label>
                                         </div>
                                     </div>
+                                </details>
 
-                                    <div class="form-group">
-                                        <label for="ghanaCardFullName">Full Name as on Ghana Card *</label>
-                                        <input type="text" id="ghanaCardFullName" placeholder="Enter your full name exactly as it appears on your Ghana Card" required />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="ghanaCardPhoto">Upload Ghana Card Photo *</label>
-                                        <input type="file" id="ghanaCardPhoto" accept="image/*" capture="environment" required />
-                                        <small class="form-hint">Take a clear photo of your Ghana Card (front side). Make sure all details are visible.</small>
-                                        <div id="ghanaCardPreview" style="margin-top: 8px; display: none;">
-                                            <img id="ghanaCardPreviewImg" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid #BBF7D0;" alt="Ghana Card Preview" />
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group" style="margin-bottom: 0;">
-                                        <label class="checkbox-label" style="font-size: 13px;">
-                                            <input type="checkbox" id="ghanaCardConsent" required />
-                                            <span>I confirm the Ghana Card details are mine and accurate. I consent to identity verification by Tamale Market Finder.</span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <button type="submit" class="btn-primary" id="saveShopBtn">Save Market Stall Details</button>
+                                <button type="submit" class="btn-primary" id="saveShopBtn" style="width:100%; padding:14px; font-size:16px;">Save Stall & Start Selling</button>
                             </form>
                         </div>
 
@@ -811,8 +830,9 @@
 
                 <div class="form-row-2">
                     <div class="form-group">
-                        <label for="productCategory">Category *</label>
-                        <input type="text" id="productCategory" placeholder="e.g. Grains & Cereals" required />
+                        <label for="productCategory">Category</label>
+                        <input type="text" id="productCategory" placeholder="Auto-detected from product name" readonly style="background:#F9FAFB; cursor:default;" />
+                        <div id="productCategoryHint" style="margin-top:4px; font-size:12px; color:#666;">Start typing the product name — category auto-detects</div>
                     </div>
 
                     <div class="form-group">
@@ -857,8 +877,16 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="productImage">Image URL</label>
-                    <input type="url" id="productImage" placeholder="https://example.com/image.jpg" />
+                    <label for="productImageFile">Product Photo</label>
+                    <input type="file" id="productImageFile" accept="image/*" capture="environment" style="margin-bottom:8px;" />
+                    <div id="productImagePreview" style="display:none; margin-bottom:8px;">
+                        <img id="productImagePreviewImg" style="max-width:100%; max-height:150px; border-radius:8px; border:1px solid #E5E7EB;" alt="Preview" />
+                    </div>
+                    <input type="hidden" id="productImage" />
+                    <details>
+                        <summary style="font-size:12px; color:#666; cursor:pointer;">Or paste an image URL instead</summary>
+                        <input type="url" id="productImageUrl" placeholder="https://example.com/image.jpg" style="margin-top:6px;" />
+                    </details>
                 </div>
 
                 <div class="form-group">
@@ -1070,9 +1098,9 @@
             <span class="bottom-nav-icon">🏠</span>
             <span class="bottom-nav-label">Home</span>
         </a>
-        <a href="#" class="bottom-nav-item" data-nav="map-mobile">
-            <span class="bottom-nav-icon">🗺️</span>
-            <span class="bottom-nav-label">Map</span>
+        <a href="#" class="bottom-nav-item" data-nav="terms">
+            <span class="bottom-nav-icon">📋</span>
+            <span class="bottom-nav-label">Terms</span>
         </a>
         <a href="#" class="bottom-nav-item" data-nav="favorites">
             <span class="bottom-nav-icon">❤️</span>
