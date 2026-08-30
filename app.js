@@ -95,22 +95,27 @@ function checkGpsRateLimit() {
 // AUTO-CATEGORY DETECTION ENGINE
 // ====================================================================
 const CATEGORY_KEYWORD_MAP = {
-    "Grains & Cereals": ["maize", "corn", "millet", "sorghum", "rice", "beans", "cowpea", "soybean", "groundnut", "wheat", "flour", "koko", "porridge", "cereals", "grain", "guinea corn", "yam flour", "bankye"],
-    "Fresh Produce": ["tomato", "onion", "pepper", "okro", "okra", "garden eggs", "cabbage", "lettuce", "carrot", "cucumber", "plantain", "cassava", "yam", "cocoyam", "potato", "vegetable", "fruit", "orange", "mango", "banana", "watermelon", "pineapple", "pawpaw", "shea butter", "sheabutter", "dawadawa", "spices", "pepper", "ginger", "garlic", "fresh produce", "produce", "salad"],
-    "Meat & Livestock": ["meat", "beef", "goat", "sheep", "lamb", "chicken", "poultry", "guinea fowl", "turkey", "duck", "fish", "tilapia", "smoked fish", "catfish", "pork", "sausage", "livestock", "cattle", "cow", "butcher", "meat shop", "frozen chicken", "offal", "liver"],
-    "Cooked Food": ["cooked food", "tuo zaafi", "waakye", "jollof", "rice", "banku", "kenkey", "fufu", "koko", "porridge", "hausa koko", "food", "meals", "buka", "chop bar", "restaurant", "fast food", "snacks", "kelewele", "kose", "koose", "tea", "breakfast", "lunch", "dinner", "catering", "traditional food"],
-    "Textiles & Smocks": ["smock", "batakari", "kente", "fabric", "cloth", "textile", "sewing", "weaving", "kpalongo", "fugu", "dansiki", "agbada", "kapok", "thread", "yarn", "cotton", "smock weaving", "cap", "hat", "ghana fabric", "ankara", "wax print", "tie and dye"],
-    "Electronics & Phones": ["phone", "smartphone", "iphone", "android", "samsung", "techno", "infinix", "itel", "charger", "power bank", "battery", "earphone", "earbud", "speaker", "bluetooth", "laptop", "computer", "tablet", "electronics", "solar", "inverter", "charger", "cable", "usb", "led", "bulb", "tv", "television", "radio"],
-    "Hardware & Building": ["cement", "paint", "nails", "hammer", "screwdriver", "tools", "building", "construction", "hardware", "plumbing", "pipe", "wire", "electrical", "welding", "iron", "steel", "sand", "gravel", "blocks", "tiles", "door", "window", "roofing", "sheet", "carpentry", "wood"],
-    "Pharmacy & Health": ["medicine", "drug", "pharmacy", "tablet", "syrup", "cream", "ointment", "health", "hospital", "clinic", "first aid", "bandage", "herbal", "supplement", "vitamin", "sanitizer", "mask", "medical", "cosmetics", "soap", "detergent"],
-    "Crafts & Artifacts": ["craft", "artifact", "carving", "sculpture", "pottery", "beads", "jewelry", "leather", "sandals", "bag", "handicraft", "art", "painting", "decoration", "gift", "souvenir", "drum", "musical instrument", "calabash", "woven"],
-    "Auto & Mechanics": ["car", "vehicle", "motor", "engine", "tyre", "tire", "battery", "brake", "mechanic", "auto", "spare parts", "motorcycle", "bicycle", "oil", "grease", "repair", "workshop", "garage"],
-    "Fashion & Tailoring": ["tailor", "tailoring", "sewing", "clothing", "dress", "shirt", "trousers", "skirt", "fashion", "boutique", "alteration", "measurement", "fabric", "seamstress", "designer", "apparel", "shoes", "sandals", "fashion"],
-    "Barber & Beauty": ["barber", "haircut", "salon", "beauty", "makeup", "manicure", "pedicure", "hair", "wig", "weave", "nails", "barbing", "styling", "cosmetics", "spa", "barbershop"],
-    "Electrical & Solar": ["solar", "inverter", "battery", "electrical", "wiring", "lighting", "led", "panel", "charge controller", "deep cycle", "off-grid", "power", "electrician", "installation"],
-    "Construction & Plumbing": ["plumber", "plumbing", "construction", "mason", "bricklayer", "tiler", "roofing", "building", "contractor", "renovation", "painting", "fencing", "tiling"],
-    "Logistics & Delivery": ["delivery", "logistics", "transport", "shipping", "courier", "rider", "dispatch", "haulage", "truck", "van", "moving", "relocation", "cargo"],
-    "General Goods": ["general", "provisions", "groceries", "shop", "store", "supplies", "household", "miscellaneous", "various", "assorted"]
+    "Grains & Cereals": ["maize", "corn", "millet", "sorghum", "rice", "beans", "cowpea", "soybean", "groundnut", "peanut", "wheat", "flour", "koko", "porridge", "cereals", "grain", "guinea corn", "yam flour", "bankye", "rice bag", "bag of rice", "local rice", "perfumed rice", "brown rice", "beans bag", "soya", "dawadawa", "groundnut paste", "rice and beans", "waakye", "agushie"],
+    "Fresh Produce": ["tomato", "tomatoe", "onion", "pepper", "okro", "okra", "garden eggs", "cabbage", "lettuce", "carrot", "cucumber", "plantain", "cassava", "yam", "cocoyam", "potato", "sweet potato", "vegetable", "fruit", "orange", "mango", "banana", "watermelon", "pineapple", "pawpaw", "papaya", "shea butter", "sheabutter", "spices", "ginger", "garlic", "fresh produce", "produce", "salad", "avocado", "lime", "lemon", "coconut", "water yam", "puna yam", "yam tuber", "cassava tuber", "plantain bunch", "green pepper", "red pepper", "chili", "hot pepper", "onion bag", "tomato box", "garden egg", "fresh tomato", "spring onion", "coriander", "mint", "bay leaf", "dawadawa seeds", "soumbala", "nettle", "bitter leaf", "kontomire", "ayoyo", "aleefu", "bush okra"],
+    "Meat & Livestock": ["meat", "beef", "goat", "sheep", "lamb", "chicken", "poultry", "guinea fowl", "turkey", "duck", "fish", "tilapia", "smoked fish", "catfish", "pork", "sausage", "livestock", "cattle", "cow", "butcher", "meat shop", "frozen chicken", "offal", "liver", "goat meat", "cow meat", "live chicken", "layers", "broilers", "day old chicks", "grasscutter", "rabbit", "snail", "crab", "prawn", "shrimp", "dried fish", "salted fish", "tilapia fish", "mudfish", "herring", "sardine", "mackerel", "sausage"],
+    "Cooked Food": ["cooked food", "tuo zaafi", "waakye", "jollof", "banku", "kenkey", "fufu", "koko", "hausa koko", "food", "meals", "buka", "chop bar", "restaurant", "fast food", "snacks", "kelewele", "kose", "koose", "tea", "breakfast", "lunch", "dinner", "catering", "traditional food", "banku and tilapia", "fried rice", "plain rice", "shito", "stew", "soup", "light soup", "groundnut soup", "palm nut soup", "okro soup", "knu", "omo tuo", "rice balls", "konkonte", "tz", "t.z.", "sagaa", "wasawasa", "ga kenkey", "fanti kenkey", "porridge", "maasa", "bofrot", " puff puff", "bolo", "meat pie", "sausage roll", "spring roll", "shawarma", "kebab", "nyamo chom", "fried yam", "fried plantain", "atwemo"],
+    "Textiles & Smocks": ["smock", "batakari", "kente", "fabric", "cloth", "textile", "sewing", "weaving", "kpalongo", "fugu", "dansiki", "agbada", "kapok", "thread", "yarn", "cotton", "smock weaving", "cap", "hat", "ghana fabric", "ankara", "wax print", "tie and dye", "batik", "kente cloth", "gonja cloth", "northern cloth", "smock yarn", "strip woven", "kete", "adinkra", "print", "lace", "velvet", "satin", "silk fabric", "wrapper", "pagne", "wrapper cloth", "two yard", "six yard", "yard cloth", "sewing thread", "embroidery"],
+    "Electronics & Phones": ["phone", "smartphone", "iphone", "android", "samsung", "techno", "infinix", "itel", "charger", "power bank", "battery", "earphone", "earbud", "speaker", "bluetooth", "laptop", "computer", "tablet", "electronics", "solar", "inverter", "cable", "usb", "led", "bulb", "tv", "television", "radio", "tablet", "drone", "camera", "printer", "monitor", "keyboard", "mouse", "router", "modem", "sim card", "memory card", "sd card", "flash drive", "hard drive", "headphone", "airpod", "smart watch", "phone case", "screen protector", "phone screen", "phone repair", "phone screen replacement", "charging port"],
+    "Hardware & Building": ["cement", "paint", "nails", "hammer", "screwdriver", "tools", "building", "construction", "hardware", "plumbing", "pipe", "wire", "electrical", "welding", "iron", "steel", "sand", "gravel", "blocks", "tiles", "door", "window", "roofing", "sheet", "carpentry", "wood", "plywood", "cement bag", "ghacem", "diamond cement", "rod iron", "rebar", "binding wire", "hollow blocks", "sandcrete", "lumber", "timber", "plank", "cement board", "corrugated sheet", "aluminium roofing", "gutter", "hinge", "lock", "padlock", "screw", "bolt", "nut", "saw", "drill", "generator", "welder", "welding rod"],
+    "Pharmacy & Health": ["medicine", "drug", "pharmacy", "tablet", "syrup", "cream", "ointment", "health", "hospital", "clinic", "first aid", "bandage", "herbal", "supplement", "vitamin", "sanitizer", "mask", "medical", "cosmetics", "soap", "detergent", "paracetamol", "antibiotic", "antimalarial", "malaria drug", "panadol", "aspirin", "cough syrup", "balm", "insecticide", "mosquito coil", "repellent", "lotion", "body cream", "hair cream", "baby lotion", "diaper", "sanitary pad", "tissue", "toilet roll", "bleach", "dettol", "disinfectant"],
+    "Crafts & Artifacts": ["craft", "artifact", "carving", "sculpture", "pottery", "beads", "jewelry", "leather", "sandals", "bag", "handicraft", "art", "painting", "decoration", "gift", "souvenir", "drum", "musical instrument", "calabash", "woven", "djembe", "talking drum", "wood carving", "wooden bowl", "leather sandal", "leather bag", "beaded jewelry", "necklace", "bracelet", "earring", "ring", "anklet", "mosaic", "sculpture", "clay pot", "clay bowl", "straw basket", "fan", "broom", "local broom", "mat", "woven mat"],
+    "Auto & Mechanics": ["car", "vehicle", "motor", "engine", "tyre", "tire", "battery", "brake", "mechanic", "auto", "spare parts", "motorcycle", "bicycle", "oil", "grease", "repair", "workshop", "garage", "spark plug", "shock absorber", "headlight", "taillight", "side mirror", "bumper", "radiator", "fan belt", "brake pad", "wheel", "hubcap", "tyre repair", "vulcanizer", "car battery", "alternator", "starter", "gear oil", "engine oil", "brake fluid", "coolant", "wiper", "wiper blade", "motor bike", "okada", "tricycle", "aboboyaa", "pragya"],
+    "Fashion & Tailoring": ["tailor", "tailoring", "sewing", "clothing", "dress", "shirt", "trousers", "skirt", "fashion", "boutique", "alteration", "measurement", "fabric", "seamstress", "designer", "apparel", "shoes", "sandals", "slippers", "suit", "jacket", "blouse", "gown", "kaftan", "jalabiya", "thawb", "kurta", "pant", "jeans", "shorts", "singlet", "underwear", "boxer", "socks", "tie", "belt", "wallet", "handbag", "purse", "school uniform", "work uniform", "ready made", "second hand clothes", "bend down boutique", "obroni wawu"],
+    "Barber & Beauty": ["barber", "haircut", "salon", "beauty", "makeup", "manicure", "pedicure", "hair", "wig", "weave", "nails", "barbing", "styling", "spa", "barbershop", "hair dye", "hair cream", "hair extension", "braiding", "cornrows", "hair cut", "fade", "shape up", "beard trim", "shaving", "razor", "clippers", "tongs", "curling iron", "hair straightener", "facial", "scrub", "pedicure", "manicure", "nail polish", "artificial nails", "lashes", "lash extension", "tint", "foundation", "concealer", "lipstick", "eyebrow"],
+    "Electrical & Solar": ["solar", "inverter", "battery", "electrical", "wiring", "lighting", "led", "panel", "charge controller", "deep cycle", "off-grid", "power", "electrician", "installation", "solar panel", "solar battery", "solar light", "solar lantern", "solar charger", "inverter battery", "power inverter", "step up", "step down", "stabilizer", "breaker", "switch", "socket", "extension board", "wire roll", "cable roll", "electrical tape", "junction box", "conduit pipe", "fluorescent", "energy bulb", "ceiling fan", "table fan", "standing fan"],
+    "Construction & Plumbing": ["plumber", "plumbing", "construction", "mason", "bricklayer", "tiler", "roofing", "building", "contractor", "renovation", "painting", "fencing", "tiling", "taps", "shower", "sink", "basin", "water closet", "wc", "septic tank", "manhole", "pipe fitting", "valve", "elbow", "poly tank", "water tank", "overhead tank", "plumbing fitting", "drainage", "gutter", "sewage"],
+    "Logistics & Delivery": ["delivery", "logistics", "transport", "shipping", "courier", "rider", "dispatch", "haulage", "truck", "van", "moving", "relocation", "cargo", "okada delivery", "tricycle delivery", "pick up", "dropping", "errand", "parcel", "package", "courier service", "freight", "truck load", "container"],
+    "Hotels & Lodging": ["hotel", "guest house", "lodge", "lodging", "hostel", "resort", "accommodation", "motel", "inn", "bed and breakfast", "lodge", "room booking", "hotel room", "airbnb", "rental room", "self contained", "single room", "double room", "suite", "presidential suite"],
+    "Eateries & Food": ["restaurant", "eatery", "food joint", "chop bar", "fast food", "cafe", "bar", "pub", "drinking spot", "spot", "container", "joint", "waakye spot", "banku spot", "jollof spot", "kelewele spot", "kiosk", "night club", "lounge", "food vendor", "snack bar", "tea shop", "breakfast spot", "lunch spot"],
+    "Companies & Business": ["company", "business", "agency", "ngo", "organization", "corporate", "office", "enterprise", "firm", "limited", "ltd", "inc", "corporation", "llc", "startup", "tech hub", "innovation hub", "co-working", "agribusiness", "export company", "import export", "trading company", "consultancy", "holdings", "group", "ventures"],
+    "Education & Training": ["school", "tutoring", "tuition", "lesson", "course", "training", "workshop", "seminar", "education", "academy", "institute", "learning", "ict class", "computer training", "driving school", "apprenticeship", "vocation", "vocational", "skills training", "tutorial", "coaching", "mentorship", "examination", "exam prep", "bece", "wassce", "classes", "study"],
+    "Farming & Agriculture": ["farm", "farming", "agriculture", "tractor", "seeds", "seedling", "fertilizer", "pesticide", "herbicide", "agric", "irrigation", "poultry farm", "piggery", "fish farm", "fish pond", "vegetable farm", "crop farm", "farm tools", "sprayer", "knapsack sprayer", "cutlass", "hoe", "farm implement", "feed", "animal feed", "poultry feed", "layer feed", "grower feed", "chicken feed", "day old chick", "agro chemical"],
+    "General Goods": ["general", "provisions", "groceries", "shop", "store", "supplies", "household", "miscellaneous", "various", "assorted", "provisions shop", "mini mart", "corner shop"]
 };
 
 function detectCategory(text) {
@@ -195,15 +200,17 @@ async function fetchDynamicCategories() {
 }
 
 function detectDomainForCategory(category) {
-    const foodCats = ["Grains & Cereals", "Fresh Produce", "Meat & Livestock", "Cooked Food"];
-    const serviceCats = ["Auto & Mechanics", "Fashion & Tailoring", "Electrical & Solar", "Barber & Beauty", "Construction & Plumbing", "Logistics & Delivery"];
-    const hotelCats = ["Hotels", "Guest Houses", "Lodges & Resorts", "Hostels", "Hospitality"];
-    const eateryCats = ["Cooked Food", "Restaurants & Dining", "Fast Food & Snacks", "Tuo Zaafi & Local Buka", "Waakye & Rice Spots"];
-    
-    if (foodCats.includes(category)) return "product";
+    const productCats = ["Grains & Cereals", "Fresh Produce", "Meat & Livestock", "Cooked Food", "Textiles & Smocks", "Electronics & Phones", "Hardware & Building", "Pharmacy & Health", "Crafts & Artifacts", "General Goods", "Farming & Agriculture"];
+    const serviceCats = ["Auto & Mechanics", "Fashion & Tailoring", "Electrical & Solar", "Barber & Beauty", "Construction & Plumbing", "Logistics & Delivery", "Education & Training"];
+    const hotelCats = ["Hotels & Lodging", "Guest Houses", "Lodges & Resorts", "Hostels", "Hospitality"];
+    const eateryCats = ["Eateries & Food", "Restaurants & Dining", "Fast Food & Snacks", "Tuo Zaafi & Local Buka", "Waakye & Rice Spots"];
+    const companyCats = ["Companies & Business", "Agribusiness & Export", "IT & Tech Hubs", "Financial & Rural Banks", "NGOs & Agencies"];
+
+    if (productCats.includes(category)) return "product";
     if (serviceCats.includes(category)) return "service";
     if (hotelCats.includes(category)) return "hotel";
     if (eateryCats.includes(category)) return "eatery";
+    if (companyCats.includes(category)) return "company";
     return "product";
 }
 
@@ -1203,24 +1210,43 @@ function initDomainTabs() {
 
 function renderCategoryPillsForDomain(domain) {
     const pillsContainer = document.getElementById("categoryPills");
-    let categories = [];
+    if (!pillsContainer) return;
 
-    // Base categories per domain
-    const baseCategories = {
-        product: ["All Products", "Grains & Cereals", "Meat & Livestock", "Textiles & Smocks", "Electronics & Phones", "Hardware & Building", "Fresh Produce", "Pharmacy & Health", "Cooked Food", "Crafts & Artifacts", "General Goods"],
-        service: ["All Services", "Auto & Mechanics", "Fashion & Tailoring", "Electrical & Solar", "Barber & Beauty", "Construction & Plumbing", "Logistics & Delivery"],
-        hotel: ["All Lodging", "Luxury Hotels", "Guest Houses", "Lodges & Resorts", "Hostels"],
-        eatery: ["All Food Spots", "Tuo Zaafi & Local Buka", "Restaurants & Dining", "Waakye & Rice Spots", "Fast Food & Snacks"],
-        company: ["All Companies", "Agribusiness & Export", "IT & Tech Hubs", "Financial & Rural Banks", "NGOs & Agencies"]
+    // The "All" label per domain
+    const allLabels = {
+        product: "All Products", service: "All Services",
+        hotel: "All Lodging", eatery: "All Food Spots", company: "All Companies"
     };
 
-    categories = [...(baseCategories[domain] || ["All"])];
-
-    // Merge in dynamic categories from the database that aren't in the base list
+    // Collect categories from two sources:
+    // 1. Dynamic categories fetched from the database (what traders actually listed)
+    // 2. Demo store categories (for demo mode fallback)
+    let categories = [];
     const dynamic = dynamicCategories[domain] || [];
     for (const cat of dynamic) {
-        if (!categories.includes(cat) && cat) categories.push(cat);
+        if (cat && !categories.includes(cat)) categories.push(cat);
     }
+
+    // In demo mode, pull categories from demoStore
+    if (DEMO_MODE || !sbClient) {
+        const demoCats = new Set();
+        if (domain === "product") {
+            demoStore.products.forEach(p => { if (p.category) demoCats.add(p.category); });
+            demoStore.shops.forEach(s => { if (s.category && s.listing_type === "product") demoCats.add(s.category); });
+        } else if (domain === "service") {
+            demoStore.service_listings.forEach(s => { if (s.category) demoCats.add(s.category); });
+        } else if (domain === "hotel" || domain === "eatery" || domain === "company") {
+            const typeMap = { hotel: "hotel", eatery: "restaurant", company: "company" };
+            demoStore.business_listings.filter(b => b.business_type === typeMap[domain])
+                .forEach(b => { if (b.category) demoCats.add(b.category); });
+        }
+        for (const cat of demoCats) {
+            if (!categories.includes(cat)) categories.push(cat);
+        }
+    }
+
+    // Always prepend the "All" option
+    categories = [allLabels[domain] || "All", ...categories.sort()];
 
     pillsContainer.innerHTML = categories.map((cat, idx) => {
         const catVal = idx === 0 ? "" : cat;
