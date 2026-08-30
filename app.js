@@ -8,6 +8,13 @@
 // ====================================================================
 const SUPABASE_URL = "https://djcajmglxkmhbipmweps.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqY2FqbWdseGttaGJpcG13ZXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTE3NDcsImV4cCI6MjA5NjQyNzc0N30.ccaT6pQW8Dbqy1LC97p2hH0Q7CuYtWJwnoDgrOdwAX4";
+const IS_PROD = !location.hostname.includes('localhost') && !location.hostname.includes('127.0.0.1');
+
+// Silence console.log/debug in production to avoid leaking debug info
+if (IS_PROD && window.console) {
+    console.log = function() {};
+    console.debug = function() {};
+}
 
 const DEMO_MODE = SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL");
 
@@ -660,7 +667,7 @@ document.addEventListener("DOMContentLoaded", () => {
     var dbg = document.getElementById("resultsList");
     function showErr(label, e) {
         console.error(label + " error:", e);
-        if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">' + escapeHtml(label + ' ERROR: ' + (e.message || e)) + '</div>';
+        if (IS_PROD) console.error(label + " error:", e);
     }
     try { initSupabase(); } catch(e) { showErr("initSupabase", e); }
     try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
@@ -787,7 +794,7 @@ function initSupabase() {
             if (typeof window.supabase === 'undefined') {
                 console.error("Supabase JS library not loaded! CDN may have failed.");
                 var dbg = document.getElementById("resultsList");
-                if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">Supabase JS library not loaded!</div>';
+                console.error("Supabase JS library not loaded! CDN may have failed.");
                 return;
             }
             sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -796,7 +803,7 @@ function initSupabase() {
         } catch (err) {
             console.warn("Supabase init failed, falling back to Demo Mode:", err);
             var dbg = document.getElementById("resultsList");
-            if (dbg) dbg.innerHTML = '<div style="color:red;padding:10px;">Supabase init failed: ' + escapeHtml(err.message||err) + '</div>';
+            console.error("Supabase init failed:", err.message || err);
         }
     } else {
         // [debug log removed]
