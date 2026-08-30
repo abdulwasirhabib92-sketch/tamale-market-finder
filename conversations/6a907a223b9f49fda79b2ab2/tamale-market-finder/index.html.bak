@@ -68,8 +68,8 @@
             <a href="#" class="drawer-item active" data-nav="home">
                 <span class="drawer-icon">🔍</span> Explore Markets
             </a>
-            <a href="#" class="drawer-item" data-nav="terms">
-                <span class="drawer-icon">📋</span> Terms &amp; Conditions
+            <a href="#" class="drawer-item" data-nav="map-mobile">
+                <span class="drawer-icon">🗺️</span> Interactive Map
             </a>
             <a href="#" class="drawer-item" data-nav="favorites">
                 <span class="drawer-icon">❤️</span> Saved Shops
@@ -218,7 +218,10 @@
             </div>
         </div>
 
-        <!-- Map view toggle removed — directions now in product cards -->
+        <!-- Floating Mobile View Switcher Pill -->
+        <button id="mobileViewToggle" class="floating-view-toggle">
+            <span id="viewToggleIcon">🗺️</span> <span id="viewToggleText">View Map</span>
+        </button>
     </main>
 
     <!-- PAGE 2: SAVED SHOPS / FAVORITES -->
@@ -244,51 +247,6 @@
             <div class="empty-state">
                 <p>📦 You have no order reservations yet. Select a product and tap 'Order Now' to reserve items!</p>
             </div>
-        </div>
-    </main>
-
-
-    <!-- PAGE: TERMS & CONDITIONS -->
-    <main id="page-terms" class="page">
-        <div class="page-header">
-            <h2>📋 Terms &amp; Conditions</h2>
-            <p>How Tamale Market Finder works for buyers and sellers</p>
-        </div>
-        <div style="max-width: 700px; margin: 0 auto; padding: 20px; line-height: 1.7; font-size: 14px; color: #1f2937;">
-
-            <h3 style="color: #0A5C36; margin-top: 24px;">1. What Tamale Market Finder Is</h3>
-            <p>Tamale Market Finder (TMF) is an online marketplace that connects buyers with local traders, service providers, hotels, eateries, and businesses in the Tamale metropolitan area and surrounding communities. TMF lists products and services, enables WhatsApp contact between buyers and sellers, and provides directions to physical stall or business locations.</p>
-
-            <h3 style="color: #0A5C36; margin-top: 24px;">2. Who Can Use TMF</h3>
-            <p>Anyone in or around Tamale can browse listings and contact sellers for free. To list products or services, you must register as a trader and provide accurate information about your business. You must be at least 18 years old to create a trader account.</p>
-
-            <h3 style="color: #0A5C36; margin-top: 24px;">3. Buying on TMF</h3>
-            <p>TMF facilitates contact between buyers and sellers but does not process payments, hold inventory, or guarantee delivery. All transactions — including payment, delivery, and returns — are arranged directly between you and the seller, typically through WhatsApp. TMF's "Order Now" feature sends a reservation message to the seller; it is not a guaranteed purchase.</p>
-            <p>We recommend meeting sellers in person at their verified stall or business location for payment and pickup. Always inspect goods before paying.</p>
-
-            <h3 style="color: #0A5C36; margin-top: 24px;">4. Selling on TMF</h3>
-            <p>As a trader, you are responsible for the accuracy of your listings — including product descriptions, prices, photos, and stock availability. You agree to respond to buyer inquiries promptly and in good faith. Listings that are fraudulent, misleading, or illegal will be removed, and your account may be banned.</p>
-            <p>TMF offers optional Ghana Card verification to display a verified badge on your listings. Verification increases buyer trust but does not constitute an endorsement by TMF.</p>
-
-            <h3 style="color: #0A5C36; margin-top: 24px;">5. Prohibited Listings &amp; Conduct</h3>
-            <p>You may not list or attempt to sell: counterfeit goods, stolen items, illegal drugs, weapons, counterfeit currency, or any item prohibited by Ghanaian law. You may not use TMF to scam, defraud, or harass other users. TMF actively scans listings for suspicious keywords and pricing anomalies. Reported listings are reviewed and may be removed without notice.</p>
-
-            <h3 style="color: #0A5C36; margin-top: 24px;">6. User Safety</h3>
-            <p>TMF provides seller verification badges, account age display, and price anomaly warnings to help you make informed decisions. However, TMF does not guarantee that any seller is trustworthy. Always exercise caution when meeting strangers, sending money, or sharing personal information. Meet in public market areas during daylight hours when possible.</p>
-
-            <h3 style="color: #0A5C36; margin-top: 24px;">7. Privacy &amp; Data</h3>
-            <p>TMF collects your name, phone number, WhatsApp number, and business location to create listings and facilitate contact with buyers. Your phone number and WhatsApp number are shared with buyers who contact you. TMF does not sell your personal data to third parties. Location data is used only to show directions to your stall or business.</p>
-
-            <h3 style="color: #0A5C36; margin-top: 24px;">8. Liability</h3>
-            <p>TMF is a directory and communication platform. We are not a party to any transaction between buyers and sellers. We are not liable for losses, damages, disputes, or fraudulent activity arising from transactions conducted through the platform. If you experience fraud or a dispute, contact the seller directly and, if necessary, report the matter to Ghana Police Service.</p>
-
-            <h3 style="color: #0A5C36; margin-top: 24px;">9. Reporting &amp; Moderation</h3>
-            <p>You can report any listing using the 🚩 flag button on the listing card. Reports are reviewed by TMF administrators. Repeated violations may result in account suspension. TMF reserves the right to remove any listing or account at its discretion.</p>
-
-            <h3 style="color: #0A5C36; margin-top: 24px;">10. Changes to These Terms</h3>
-            <p>TMF may update these Terms &amp; Conditions at any time. Continued use of the platform after changes constitutes acceptance of the updated terms.</p>
-
-            <p style="margin-top: 30px; color: #6b7280; font-size: 12px;">Last updated: August 2026. For questions about these terms, contact the TMF administrator.</p>
         </div>
     </main>
 
@@ -1098,9 +1056,9 @@
             <span class="bottom-nav-icon">🏠</span>
             <span class="bottom-nav-label">Home</span>
         </a>
-        <a href="#" class="bottom-nav-item" data-nav="terms">
-            <span class="bottom-nav-icon">📋</span>
-            <span class="bottom-nav-label">Terms</span>
+        <a href="#" class="bottom-nav-item" data-nav="map-mobile">
+            <span class="bottom-nav-icon">🗺️</span>
+            <span class="bottom-nav-label">Map</span>
         </a>
         <a href="#" class="bottom-nav-item" data-nav="favorites">
             <span class="bottom-nav-icon">❤️</span>
