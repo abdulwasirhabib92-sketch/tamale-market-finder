@@ -68,9 +68,6 @@
             <a href="#" class="drawer-item active" data-nav="home">
                 <span class="drawer-icon">🔍</span> Explore Markets
             </a>
-            <a href="#" class="drawer-item" data-nav="terms">
-                <span class="drawer-icon">📋</span> Terms &amp; Conditions
-            </a>
             <a href="#" class="drawer-item" data-nav="favorites">
                 <span class="drawer-icon">❤️</span> Saved Shops
                 <span class="badge-count" id="favCountBadge">0</span>
@@ -394,6 +391,13 @@
                     <p class="card-subtitle">Log out of your Tamale Market Finder account on this device</p>
                     <button id="accountSignOutBtn" class="btn-danger">Sign Out of Account</button>
                 </div>
+
+                <!-- Legal -->
+                <div class="card settings-card" style="border-color: #e5e7eb;">
+                    <h3>Legal &amp; Policies</h3>
+                    <p class="card-subtitle">Read the rules that govern buying and selling on TMF</p>
+                    <button class="btn-secondary btn-block" id="viewTermsBtn" style="margin-top: 10px;">📋 View Terms &amp; Conditions</button>
+                </div>
             </div>
 
             <!-- SUB-TAB 2: BUYER ORDERS TAB IN ACCOUNT VIEW -->
@@ -412,11 +416,12 @@
                 <!-- Trader Prompt if Shopper -->
                 <div id="trader-upgrade-prompt" class="card settings-card text-center" style="display: none;">
                     <div class="upgrade-icon">🏪</div>
-                    <h3>Become a Registered Trader</h3>
-                    <p>Unlock the Trader Dashboard to list your shop stall, manage product inventory with inline stock counters, process incoming buyer orders, and advertise your business in Tamale.</p>
+                    <h3>Start Selling on TMF</h3>
+                    <p>List your stall, add products, receive orders, and reach buyers across Tamale — all free.</p>
                     <button class="btn-primary btn-large" id="enableTraderRoleBtn" style="margin-top: 15px;">
-                        Enable Trader Role Now
+                        Start Selling Now
                     </button>
+                    <p style="font-size:12px; color:#6b7280; margin-top:10px;">Just fill in your shop name, what you sell, and your WhatsApp — that's it.</p>
                 </div>
 
                 <!-- Active Trader Dashboard -->
@@ -830,50 +835,14 @@
 
                 <div class="form-row-2">
                     <div class="form-group">
-                        <label for="productCategory">Category</label>
-                        <input type="text" id="productCategory" placeholder="Auto-detected — edit if needed" style="background:#F9FAFB;" />
-                        <div id="productCategoryHint" style="margin-top:4px; font-size:12px; color:#666;">Start typing the product name — category auto-detects</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="productPrice">Regular Price (GHS) *</label>
+                        <label for="productPrice">Price (GHS) *</label>
                         <input type="number" step="0.01" id="productPrice" placeholder="e.g. 350.00" required />
                     </div>
-                </div>
-
-                <div class="form-row-2">
                     <div class="form-group">
-                        <label for="productDiscountPrice">Discounted Price (GHS)</label>
-                        <input type="number" step="0.01" id="productDiscountPrice" placeholder="Optional sale price e.g. 310.00" />
+                        <label for="productCategory">Category</label>
+                        <input type="text" id="productCategory" placeholder="Auto-detected — edit if needed" style="background:#F9FAFB;" />
+                        <div id="productCategoryHint" style="margin-top:4px; font-size:12px; color:#666;">Auto-detects as you type</div>
                     </div>
-
-                    <div class="form-group">
-                        <label for="productBadgeTag">Urgency Badge Tag</label>
-                        <select id="productBadgeTag">
-                            <option value="">None</option>
-                            <option value="deal">🔥 DEAL</option>
-                            <option value="hot">⚡ HOT</option>
-                            <option value="new">✨ NEW</option>
-                            <option value="clearance">🏷️ CLEARANCE</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row-2">
-                    <div class="form-group">
-                        <label for="productStockQuantity">Stock Quantity Count *</label>
-                        <input type="number" id="productStockQuantity" value="10" min="0" required />
-                    </div>
-
-                    <div class="form-group">
-                        <label for="productLowStockThreshold">Low Stock Alert Threshold</label>
-                        <input type="number" id="productLowStockThreshold" value="3" min="1" required />
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="productDescription">Product Description</label>
-                    <textarea id="productDescription" rows="2" placeholder="Quality description, unit sizes, or wholesale bulk deals..."></textarea>
                 </div>
 
                 <div class="form-group">
@@ -890,11 +859,49 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="productDescription">Description <span style="font-weight:400; color:#9ca3af;">(optional)</span></label>
+                    <textarea id="productDescription" rows="2" placeholder="Quality, unit sizes, bulk deals..."></textarea>
+                </div>
+
+                <div class="form-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="productInStock" checked />
                         <span>Item is actively in stock</span>
                     </label>
                 </div>
+
+                <!-- Advanced options (collapsible) -->
+                <details style="margin-bottom:15px; border:1px solid #e5e7eb; border-radius:10px; padding:12px;">
+                    <summary style="cursor:pointer; font-weight:600; font-size:14px; color:var(--text-primary);">⚙️ Advanced: discount, stock count, badges</summary>
+                    <div style="margin-top:12px;">
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="productDiscountPrice">Discounted Price (GHS)</label>
+                                <input type="number" step="0.01" id="productDiscountPrice" placeholder="Optional sale price" />
+                            </div>
+                            <div class="form-group">
+                                <label for="productBadgeTag">Urgency Badge</label>
+                                <select id="productBadgeTag">
+                                    <option value="">None</option>
+                                    <option value="deal">🔥 DEAL</option>
+                                    <option value="hot">⚡ HOT</option>
+                                    <option value="new">✨ NEW</option>
+                                    <option value="clearance">🏷️ CLEARANCE</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="productStockQuantity">Stock Quantity</label>
+                                <input type="number" id="productStockQuantity" value="10" min="0" />
+                            </div>
+                            <div class="form-group">
+                                <label for="productLowStockThreshold">Low Stock Alert At</label>
+                                <input type="number" id="productLowStockThreshold" value="3" min="1" />
+                            </div>
+                        </div>
+                    </div>
+                </details>
 
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" id="cancelProductBtn">Cancel</button>
@@ -1097,10 +1104,6 @@
         <a href="#" class="bottom-nav-item active" data-nav="home">
             <span class="bottom-nav-icon">🏠</span>
             <span class="bottom-nav-label">Home</span>
-        </a>
-        <a href="#" class="bottom-nav-item" data-nav="terms">
-            <span class="bottom-nav-icon">📋</span>
-            <span class="bottom-nav-label">Terms</span>
         </a>
         <a href="#" class="bottom-nav-item" data-nav="favorites">
             <span class="bottom-nav-icon">❤️</span>

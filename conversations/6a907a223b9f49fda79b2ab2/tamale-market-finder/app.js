@@ -1020,6 +1020,13 @@ function initNavigation() {
         });
     }
 
+    // View Terms & Conditions button (in Account Settings)
+    const viewTermsBtn = document.getElementById("viewTermsBtn");
+    if (viewTermsBtn) viewTermsBtn.addEventListener("click", () => {
+        navigateToPage("terms");
+        closeDrawer();
+    });
+
     // Product image file upload + preview
     const productImageFile = document.getElementById("productImageFile");
     if (productImageFile) {
