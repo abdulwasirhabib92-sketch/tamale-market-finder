@@ -2,50 +2,8 @@
 <html>
 <head><title>TMF Debug</title></head>
 <body>
-<div id="popularNearCarousel">Loading...</div>
-<div id="newArrivalsCarousel">Loading...</div>
-<div id="spotlightCarousel">Loading...</div>
-<div id="resultsList"></div>
-<div id="map"></div>
-<div id="searchInput"></div>
-<div id="marketFilter"></div>
-<div id="statusFilter"></div>
+<pre id="debugOutput" style="padding:20px;font:14px monospace;">Running...</pre>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script>
-const SUPABASE_URL = "https://djcajmglxkmhbipmweps.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqY2FqbWdseGttaGJpcG13ZXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTE3NDcsImV4cCI6MjA5NjQyNzc0N30.ccaT6pQW8Dbqy1LC97p2hH0Q7CuYtWJwnoDgrOdwAX4";
-const DEMO_MODE = false;
-var sbClient;
-async function test() {
-    sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    document.getElementById("popularNearCarousel").textContent = "sbClient: " + (sbClient ? "OK" : "NULL");
-    
-    try {
-        const { data: shops, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true);
-        if (shopErr) throw shopErr;
-        document.getElementById("popularNearCarousel").textContent += " | shops: " + (shops||[]).length;
-        
-        const { data: products, error: prodErr } = await sbClient.from('products').select('*').eq('in_stock', true);
-        if (prodErr) throw prodErr;
-        document.getElementById("popularNearCarousel").textContent += " | products(in_stock=true): " + (products||[]).length;
-        
-        const { data: allProducts, error: allErr } = await sbClient.from('products').select('*');
-        if (allErr) throw allErr;
-        document.getElementById("newArrivalsCarousel").textContent += " | all products: " + (allProducts||[]).length;
-        
-        // Check if shop_id matching works
-        let matched = 0;
-        (products||[]).forEach(p => {
-            const shop = (shops||[]).find(s => s.id === p.shop_id);
-            if (shop) matched++;
-        });
-        document.getElementById("spotlightCarousel").textContent = "Matched products to shops: " + matched + "/" + (products||[]).length;
-        
-    } catch (err) {
-        document.getElementById("popularNearCarousel").textContent = "ERROR: " + (err.message || err);
-    }
-}
-test();
-</script>
+<script src="debug-test.js"></script>
 </body>
 </html>
