@@ -14,6 +14,8 @@ const IS_PROD = !location.hostname.includes('localhost') && !location.hostname.i
 if (IS_PROD && window.console) {
     console.log = function() {};
     console.debug = function() {};
+    console.warn = function() {};
+    console.error = function() {};
 }
 
 const DEMO_MODE = SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL");
@@ -23,8 +25,8 @@ let sbClient = null;
 // Global Application State
 let currentUser = null;
 let userProfile = {
-    full_name: "Wasir Habib",
-    phone: "0244123456",
+    full_name: null,
+    phone: null,
     account_type: "shopper", // shopper | trader | admin
     verification_tier: "unverified"
 };
@@ -520,8 +522,8 @@ const demoStore = {
             quantity: 2,
             total_amount: 640.00,
             delivery_type: "pickup",
-            buyer_name: "Wasir Habib",
-            buyer_phone: "0244123456",
+            buyer_name: userProfile.full_name || "Guest",
+            buyer_phone: userProfile.phone || "",
             buyer_notes: "Will pick up at Shed B-12 around 2:00 PM",
             status: "accepted", // placed | accepted | ready | completed | cancelled | rejected
             placed_at: "2026-08-25T10:00:00Z",
@@ -539,8 +541,8 @@ const demoStore = {
             total_amount: 390.00,
             delivery_type: "local_delivery",
             delivery_address: "Near Central Hospital, Tamale",
-            buyer_name: "Wasir Habib",
-            buyer_phone: "0244123456",
+            buyer_name: userProfile.full_name || "Guest",
+            buyer_phone: userProfile.phone || "",
             buyer_notes: "Please pack in royal gift wrapper",
             status: "completed",
             placed_at: "2026-08-24T14:30:00Z",
@@ -554,7 +556,7 @@ const demoStore = {
             id: "rev-1",
             order_id: "ord-2",
             buyer_id: "user-shopper-1",
-            buyer_name: "Wasir Habib",
+            buyer_name: userProfile.full_name || "Guest",
             shop_id: "shop-3",
             product_id: "prod-4",
             rating: 5,
@@ -1444,7 +1446,7 @@ function renderMiniProductCard(p, shop) {
         <div class="card ${isOut ? 'card-out-of-stock' : ''}" style="min-width: 200px; max-width: 220px; flex-shrink: 0;">
             <div class="card-img-container" style="height: 110px;">
                 <img src="${escapeAttr(p.image_url)}" class="card-img" alt="${escapeHtml(p.name)}" />
-                ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; top:6px; left:6px;">${p.badge_tag.toUpperCase()}</span>` : ''}
+                ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; top:6px; left:6px;">${escapeHtml(p.badge_tag.toUpperCase())}</span>` : ''}
             </div>
             <h4 class="card-title" style="font-size: 13px; line-height: 1.2;">${escapeHtml(p.name)}</h4>
             <div class="price-row">
@@ -1626,7 +1628,7 @@ function renderProductCard(p) {
                 <button class="fav-btn ${isFav ? 'active' : ''}" data-action="toggleFavorite" data-shop-id="${escapeJs(p.shop_id)}" title="Bookmark Shop">
                     ${isFav ? '❤️' : '🤍'}
                 </button>
-                ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; bottom:8px; left:8px;">${p.badge_tag.toUpperCase()}</span>` : ''}
+                ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; bottom:8px; left:8px;">${escapeHtml(p.badge_tag.toUpperCase())}</span>` : ''}
             </div>
 
             <h3 class="card-title">${escapeHtml(p.name)}</h3>
@@ -1670,14 +1672,14 @@ function renderServiceCard(s) {
             <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${escapeHtml(s.description)}</p>
             
             <div style="font-size:12px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">
-                💰 Rates: GHS ${s.price_min} - GHS ${s.price_max} (${s.price_type.replace('_', ' ')})
+                💰 Rates: GHS ${escapeHtml(String(s.price_min || '?'))} - GHS ${escapeHtml(String(s.price_max || '?'))} (${escapeHtml(String((s.price_type || '').replace('_', ' ')))})
             </div>
             <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">
-                📍 Coverage: ${s.service_area} • 🕐 ${s.availability_hours}
+                📍 Coverage: ${escapeHtml(s.service_area || '')} • 🕐 ${escapeHtml(s.availability_hours || '')}
             </div>
 
             <div class="card-actions-row">
-                <button class="btn-whatsapp btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(s.whatsapp_number || "233244123456")}" data-wa-msg="${escapeJs(s.title)}" data-wa-shop="Service Inquiry">💬 Book / Inquire Service</button>
+                <button class="btn-whatsapp btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(s.whatsapp_number || "")}" data-wa-msg="${escapeJs(s.title)}" data-wa-shop="Service Inquiry">💬 Book / Inquire Service</button>
                 <button class="btn-report" data-action="openReportModal" data-report-type="service" data-report-id="${escapeJs(s.id)}" data-report-name="${escapeJs(s.title)}">🚩</button>
             </div>
         </div>
@@ -1698,12 +1700,12 @@ function renderHotelCard(h) {
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">📍 ${escapeHtml(h.address)} • 🇬🇭 ${escapeHtml(h.digital_address)}</div>
             
             <div class="amenities-row">
-                ${(h.amenities || []).map(a => `<span class="amenity-badge">${a}</span>`).join("")}
+                ${(h.amenities || []).map(a => `<span class="amenity-badge">${escapeHtml(a)}</span>`).join("")}
             </div>
 
             <div class="price-row" style="margin-top:6px;">
-                <span class="price-amount" style="font-size:15px; color:var(--accent);">${h.price_range} Category</span>
-                <span class="star-rating" style="margin-left:auto;">⭐ ${h.rating_avg} (${h.rating_count})</span>
+                <span class="price-amount" style="font-size:15px; color:var(--accent);">${escapeHtml(h.price_range || '?')} Category</span>
+                <span class="star-rating" style="margin-left:auto;">⭐ ${escapeHtml(String(h.rating_avg || 'N/A'))} (${escapeHtml(String(h.rating_count || 0))})</span>
             </div>
 
             <div class="card-actions-row" style="margin-top:10px;">
@@ -3279,7 +3281,11 @@ function closeModal(modalId) {
 }
 
 function openWhatsApp(number, itemName, shopName) {
-    const num = number ? number.replace(/[^0-9]/g, "") : "233244123456";
+    const num = number ? number.replace(/[^0-9]/g, "") : "";
+    if (!num) {
+        showToast("No WhatsApp number available for this listing.", "warning");
+        return;
+    }
     const msg = encodeURIComponent(`Hello! I saw ${itemName} at ${shopName} on Tamale Market Finder and would like to make an inquiry.`);
     window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
 }
