@@ -791,11 +791,9 @@ function initSupabase() {
                 return;
             }
             sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            if (window.__showDiag) window.__showDiag("sbClient=" + (sbClient ? "ok" : "NULL"));
             setupAuthListener();
         } catch (err) {
             console.warn("Supabase init failed, falling back to Demo Mode:", err);
-            if (window.__showDiag) window.__showDiag("init ERR: " + (err.message || err));
         }
     } else {
     }
@@ -1293,21 +1291,16 @@ async function renderSpotlightCarousel() {
     const carousel = document.getElementById("spotlightCarousel");
     if (!carousel) return;
     let spotlightShops = [];
-    if (window.__showDiag) window.__showDiag("spotlight: sb=" + (sbClient?"ok":"null"));
 
     if (!DEMO_MODE && sbClient) {
         try {
             const { data, error } = await sbClient.from('public_shops').select('*').eq('is_active', true).order('rating_avg', { ascending: false }).limit(3);
             if (error) throw error;
-            if (window.__showDiag) window.__showDiag("spotlight data=" + (data||[]).length);
             spotlightShops = (data || []).filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
             if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 2);
         } catch (err) {
             console.error("Spotlight fetch error:", err);
-            var dbgEl = document.createElement("div");
-            dbgEl.style.cssText = "position:fixed;bottom:20px;left:0;right:0;background:#1a0010;color:#f0f;font:11px monospace;padding:4px;z-index:99999;";
-            dbgEl.textContent = "Spotlight ERR: " + (err.message || err);
-            document.body.appendChild(dbgEl);
+
         }
     }
 
@@ -1399,7 +1392,6 @@ function goToSpotlight(idx) {
 async function renderShowcaseSections() {
     const popularContainer = document.getElementById("popularNearCarousel");
     const newContainer = document.getElementById("newArrivalsCarousel");
-    if (window.__showDiag) window.__showDiag("renderShowcase: sb=" + (sbClient?"ok":"null") + " demo=" + DEMO_MODE);
     if (!popularContainer || !newContainer) { return; }
     let products = [];
     let shops = [];
@@ -1411,7 +1403,6 @@ async function renderShowcaseSections() {
             shops = shopData || [];
             const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('in_stock', true);
             if (prodErr) throw prodErr;
-            if (window.__showDiag) window.__showDiag("prods=" + (prodData||[]).length);
             products = (prodData || []).map(p => {
                 const shop = shops.find(s => s.id === p.shop_id) || {};
                 return {
