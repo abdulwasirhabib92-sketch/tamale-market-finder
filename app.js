@@ -14,6 +14,8 @@ const IS_PROD = !location.hostname.includes('localhost') && !location.hostname.i
 if (IS_PROD && window.console) {
     console.log = function() {};
     console.debug = function() {};
+    console.warn = function() {};
+    console.error = function() {};
 }
 
 const DEMO_MODE = SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL");
@@ -23,8 +25,8 @@ let sbClient = null;
 // Global Application State
 let currentUser = null;
 let userProfile = {
-    full_name: "Wasir Habib",
-    phone: "0244123456",
+    full_name: null,
+    phone: null,
     account_type: "shopper", // shopper | trader | admin
     verification_tier: "unverified"
 };
@@ -520,8 +522,8 @@ const demoStore = {
             quantity: 2,
             total_amount: 640.00,
             delivery_type: "pickup",
-            buyer_name: "Wasir Habib",
-            buyer_phone: "0244123456",
+            buyer_name: userProfile.full_name || "Guest",
+            buyer_phone: userProfile.phone || "",
             buyer_notes: "Will pick up at Shed B-12 around 2:00 PM",
             status: "accepted", // placed | accepted | ready | completed | cancelled | rejected
             placed_at: "2026-08-25T10:00:00Z",
@@ -539,8 +541,8 @@ const demoStore = {
             total_amount: 390.00,
             delivery_type: "local_delivery",
             delivery_address: "Near Central Hospital, Tamale",
-            buyer_name: "Wasir Habib",
-            buyer_phone: "0244123456",
+            buyer_name: userProfile.full_name || "Guest",
+            buyer_phone: userProfile.phone || "",
             buyer_notes: "Please pack in royal gift wrapper",
             status: "completed",
             placed_at: "2026-08-24T14:30:00Z",
@@ -554,7 +556,7 @@ const demoStore = {
             id: "rev-1",
             order_id: "ord-2",
             buyer_id: "user-shopper-1",
-            buyer_name: "Wasir Habib",
+            buyer_name: userProfile.full_name || "Guest",
             shop_id: "shop-3",
             product_id: "prod-4",
             rating: 5,
@@ -664,15 +666,20 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
 // 4. APP INITIALIZATION & EVENT LISTENERS
 // ====================================================================
 document.addEventListener("DOMContentLoaded", () => {
-    try { initSupabase(); } catch(e) { console.error("initSupabase", e); }
-    try { initNavigation(); } catch(e) { console.error("initNavigation", e); }
-    try { initDomainTabs(); } catch(e) { console.error("initDomainTabs", e); }
-    try { initMap(); } catch(e) { console.error("initMap", e); }
-    try { renderSpotlightCarousel().catch(e => console.error("renderSpotlightCarousel", e)); } catch(e) { console.error("renderSpotlightCarousel", e); }
-    try { renderShowcaseSections().catch(e => console.error("renderShowcaseSections", e)); } catch(e) { console.error("renderShowcaseSections", e); }
-    try { searchListings(); } catch(e) { console.error("searchListings", e); }
-    try { updateUIForAuthUser(); } catch(e) { console.error("updateUIForAuthUser", e); }
-    try { initInlineHandlers(); } catch(e) { console.error("initInlineHandlers", e); }
+    var dbg = document.getElementById("resultsList");
+    function showErr(label, e) {
+        console.error(label + " error:", e);
+        if (IS_PROD) console.error(label + " error:", e);
+    }
+    try { initSupabase(); } catch(e) { showErr("initSupabase", e); }
+    try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
+    try { initDomainTabs(); } catch(e) { showErr("initDomainTabs", e); }
+    try { initMap(); } catch(e) { showErr("initMap", e); }
+    try { renderSpotlightCarousel().catch(e => showErr("renderSpotlightCarousel", e)); } catch(e) { showErr("renderSpotlightCarousel", e); }
+    try { renderShowcaseSections().catch(e => showErr("renderShowcaseSections", e)); } catch(e) { showErr("renderShowcaseSections", e); }
+    try { searchListings(); } catch(e) { showErr("searchListings", e); }
+    try { updateUIForAuthUser(); } catch(e) { showErr("updateUIForAuthUser", e); }
+    try { initInlineHandlers(); } catch(e) { showErr("initInlineHandlers", e); }
 });
 
 // Migrate all inline event handlers to addEventListener + event delegation (CSP compliance)
@@ -788,14 +795,20 @@ function initSupabase() {
         try {
             if (typeof window.supabase === 'undefined') {
                 console.error("Supabase JS library not loaded! CDN may have failed.");
+                var dbg = document.getElementById("resultsList");
+                console.error("Supabase JS library not loaded! CDN may have failed.");
                 return;
             }
             sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            // [debug log removed]
             setupAuthListener();
         } catch (err) {
             console.warn("Supabase init failed, falling back to Demo Mode:", err);
+            var dbg = document.getElementById("resultsList");
+            console.error("Supabase init failed:", err.message || err);
         }
     } else {
+        // [debug log removed]
     }
 }
 
@@ -809,24 +822,13 @@ function setupAuthListener() {
     sbClient.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
             currentUser = session.user;
-            // Close auth modal if open (fixes modal staying open after login)
-            const authModalEl = document.getElementById('authModal');
-            if (authModalEl) authModalEl.classList.remove('active');
-            loadUserProfile(session.user.id).then(() => {
-                // Re-render showcase data after login (fixes empty homepage for authed users)
-                renderSpotlightCarousel().catch(e => console.error("Spotlight re-render:", e));
-                renderShowcaseSections().catch(e => console.error("Showcase re-render:", e));
-                searchListings().catch(e => console.error("Listings re-render:", e));
-            }).catch(err => console.error("Profile load error:", err));
+            loadUserProfile(session.user.id);
         } else {
             currentUser = null;
             userProfile = { full_name: "Guest User", account_type: "shopper", verification_tier: "unverified" };
             userFavorites = new Set();
             userShop = null;
             updateUIForGuestUser();
-            // Re-render showcase data after logout too
-            renderSpotlightCarousel().catch(e => console.error("Spotlight re-render:", e));
-            renderShowcaseSections().catch(e => console.error("Showcase re-render:", e));
         }
     });
 }
@@ -1289,7 +1291,6 @@ let spotlightTimer = null;
 
 async function renderSpotlightCarousel() {
     const carousel = document.getElementById("spotlightCarousel");
-    if (!carousel) return;
     let spotlightShops = [];
 
     if (!DEMO_MODE && sbClient) {
@@ -1300,7 +1301,6 @@ async function renderSpotlightCarousel() {
             if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 2);
         } catch (err) {
             console.error("Spotlight fetch error:", err);
-
         }
     }
 
@@ -1392,7 +1392,6 @@ function goToSpotlight(idx) {
 async function renderShowcaseSections() {
     const popularContainer = document.getElementById("popularNearCarousel");
     const newContainer = document.getElementById("newArrivalsCarousel");
-    if (!popularContainer || !newContainer) { return; }
     let products = [];
     let shops = [];
 
@@ -1447,7 +1446,7 @@ function renderMiniProductCard(p, shop) {
         <div class="card ${isOut ? 'card-out-of-stock' : ''}" style="min-width: 200px; max-width: 220px; flex-shrink: 0;">
             <div class="card-img-container" style="height: 110px;">
                 <img src="${escapeAttr(p.image_url)}" class="card-img" alt="${escapeHtml(p.name)}" />
-                ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; top:6px; left:6px;">${p.badge_tag.toUpperCase()}</span>` : ''}
+                ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; top:6px; left:6px;">${escapeHtml(p.badge_tag.toUpperCase())}</span>` : ''}
             </div>
             <h4 class="card-title" style="font-size: 13px; line-height: 1.2;">${escapeHtml(p.name)}</h4>
             <div class="price-row">
@@ -1629,7 +1628,7 @@ function renderProductCard(p) {
                 <button class="fav-btn ${isFav ? 'active' : ''}" data-action="toggleFavorite" data-shop-id="${escapeJs(p.shop_id)}" title="Bookmark Shop">
                     ${isFav ? '❤️' : '🤍'}
                 </button>
-                ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; bottom:8px; left:8px;">${p.badge_tag.toUpperCase()}</span>` : ''}
+                ${p.badge_tag ? `<span class="badge-tag ${escapeHtml(p.badge_tag)}" style="position:absolute; bottom:8px; left:8px;">${escapeHtml(p.badge_tag.toUpperCase())}</span>` : ''}
             </div>
 
             <h3 class="card-title">${escapeHtml(p.name)}</h3>
@@ -1673,14 +1672,14 @@ function renderServiceCard(s) {
             <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${escapeHtml(s.description)}</p>
             
             <div style="font-size:12px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">
-                💰 Rates: GHS ${s.price_min} - GHS ${s.price_max} (${s.price_type.replace('_', ' ')})
+                💰 Rates: GHS ${escapeHtml(String(s.price_min || '?'))} - GHS ${escapeHtml(String(s.price_max || '?'))} (${escapeHtml(String((s.price_type || '').replace('_', ' ')))})
             </div>
             <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">
-                📍 Coverage: ${s.service_area} • 🕐 ${s.availability_hours}
+                📍 Coverage: ${escapeHtml(s.service_area || '')} • 🕐 ${escapeHtml(s.availability_hours || '')}
             </div>
 
             <div class="card-actions-row">
-                <button class="btn-whatsapp btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(s.whatsapp_number || "233244123456")}" data-wa-msg="${escapeJs(s.title)}" data-wa-shop="Service Inquiry">💬 Book / Inquire Service</button>
+                <button class="btn-whatsapp btn-sm btn-block" data-action="openWhatsApp" data-wa-num="${escapeJs(s.whatsapp_number || "")}" data-wa-msg="${escapeJs(s.title)}" data-wa-shop="Service Inquiry">💬 Book / Inquire Service</button>
                 <button class="btn-report" data-action="openReportModal" data-report-type="service" data-report-id="${escapeJs(s.id)}" data-report-name="${escapeJs(s.title)}">🚩</button>
             </div>
         </div>
@@ -1701,12 +1700,12 @@ function renderHotelCard(h) {
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">📍 ${escapeHtml(h.address)} • 🇬🇭 ${escapeHtml(h.digital_address)}</div>
             
             <div class="amenities-row">
-                ${(h.amenities || []).map(a => `<span class="amenity-badge">${a}</span>`).join("")}
+                ${(h.amenities || []).map(a => `<span class="amenity-badge">${escapeHtml(a)}</span>`).join("")}
             </div>
 
             <div class="price-row" style="margin-top:6px;">
-                <span class="price-amount" style="font-size:15px; color:var(--accent);">${h.price_range} Category</span>
-                <span class="star-rating" style="margin-left:auto;">⭐ ${h.rating_avg} (${h.rating_count})</span>
+                <span class="price-amount" style="font-size:15px; color:var(--accent);">${escapeHtml(h.price_range || '?')} Category</span>
+                <span class="star-rating" style="margin-left:auto;">⭐ ${escapeHtml(String(h.rating_avg || 'N/A'))} (${escapeHtml(String(h.rating_count || 0))})</span>
             </div>
 
             <div class="card-actions-row" style="margin-top:10px;">
@@ -3248,48 +3247,45 @@ function toggleMobileViewMode() {
     const container = document.getElementById("resultsContainer");
     const icon = document.getElementById("viewToggleIcon");
     const text = document.getElementById("viewToggleText");
-    if (!container) return;
 
     if (mobileViewMode === "list") {
         mobileViewMode = "map";
         container.classList.add("map-active");
-        if (icon) icon.textContent = "\u{1f4cb}";
-        if (text) text.textContent = "View List";
+        icon.textContent = "📋";
+        text.textContent = "View List";
         if (leafletMap) leafletMap.invalidateSize();
     } else {
         mobileViewMode = "list";
         container.classList.remove("map-active");
-        if (icon) icon.textContent = "\u{1f5fa}\u{fe0f}";
-        if (text) text.textContent = "View Map";
+        icon.textContent = "🗺️";
+        text.textContent = "View Map";
     }
 }
 
 function toggleDrawer() {
-    const drawer = document.getElementById("menuDrawer");
-    const backdrop = document.getElementById("drawerBackdrop");
-    if (drawer) drawer.classList.toggle("active");
-    if (backdrop) backdrop.classList.toggle("active");
+    document.getElementById("menuDrawer").classList.toggle("active");
+    document.getElementById("drawerBackdrop").classList.toggle("active");
 }
 
 function closeDrawer() {
-    const drawer = document.getElementById("menuDrawer");
-    const backdrop = document.getElementById("drawerBackdrop");
-    if (drawer) drawer.classList.remove("active");
-    if (backdrop) backdrop.classList.remove("active");
+    document.getElementById("menuDrawer").classList.remove("active");
+    document.getElementById("drawerBackdrop").classList.remove("active");
 }
 
 function openModal(modalId) {
-    const el = document.getElementById(modalId);
-    if (el) el.classList.add("active");
+    document.getElementById(modalId).classList.add("active");
 }
 
 function closeModal(modalId) {
-    const el = document.getElementById(modalId);
-    if (el) el.classList.remove("active");
+    document.getElementById(modalId).classList.remove("active");
 }
 
 function openWhatsApp(number, itemName, shopName) {
-    const num = number ? number.replace(/[^0-9]/g, "") : "233244123456";
+    const num = number ? number.replace(/[^0-9]/g, "") : "";
+    if (!num) {
+        showToast("No WhatsApp number available for this listing.", "warning");
+        return;
+    }
     const msg = encodeURIComponent(`Hello! I saw ${itemName} at ${shopName} on Tamale Market Finder and would like to make an inquiry.`);
     window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
 }
@@ -3322,8 +3318,8 @@ async function toggleDashboardDelivery() {
 }
 
 function updateUIForAuthUser() {
-    const drawerNameEl = document.getElementById("drawerName"); if (drawerNameEl) drawerNameEl.textContent = userProfile.full_name || "User";
-    const drawerEmailEl = document.getElementById("drawerEmail"); if (drawerEmailEl) drawerEmailEl.textContent = currentUser?.email || "Sign in to save shops, order & manage listings";
+    document.getElementById("drawerName").textContent = userProfile.full_name || "User";
+    document.getElementById("drawerEmail").textContent = currentUser?.email || "Sign in to save shops, order & manage listings";
 
     // Toggle trader-mode class on menu button (orange color in trader mode)
     const menuBtn = document.getElementById("menuToggle");
@@ -3342,8 +3338,6 @@ function updateUIForAuthUser() {
         roleBadge.className = "role-badge " + (userProfile.account_type || "shopper");
     }
 
-    // Update nav user name
-    const navUserNameEl2 = document.getElementById("navUserName"); if (navUserNameEl2) navUserNameEl2.textContent = userProfile.full_name || "Account";
     // Update auth button text
     const authBtn = document.getElementById("drawerAuthActionBtn");
     if (authBtn) {
@@ -3415,7 +3409,7 @@ function updateUIForAuthUser() {
 
 function updateUIForGuestUser() {
     document.getElementById("drawerName").textContent = "Guest User";
-    const navUserNameEl = document.getElementById("navUserName"); if (navUserNameEl) navUserNameEl.textContent = "Account";
+    document.getElementById("navUserName").textContent = "Account";
     document.getElementById("drawerEmail").textContent = "Sign in to save shops, order & manage listings";
     const roleBadge = document.getElementById("drawerRoleBadge");
     if (roleBadge) { roleBadge.textContent = "Shopper"; roleBadge.className = "role-badge shopper"; }
@@ -3468,7 +3462,6 @@ async function handleRegister(e) {
     const password = document.getElementById("regPassword").value;
     const role = document.getElementById("regRole").value;
     const btn = document.getElementById("registerBtn");
-    const verificationMethod = document.querySelector('input[name="verificationMethod"]:checked')?.value || "email";
 
     // Validate Ghana phone format: 0XXXXXXXXX (10 digits starting with 0)
     if (!/^0[0-9]{9}$/.test(phone)) {
@@ -3485,136 +3478,26 @@ async function handleRegister(e) {
         showToast("Enter your full name", "error"); return;
     }
 
-    // Convert Ghana phone to international format for SMS/WhatsApp
-    const intlPhone = "+233" + phone.substring(1); // Replace leading 0 with +233
-
     btn.textContent = "Creating account..."; btn.disabled = true;
     try {
-        if (verificationMethod === "sms") {
-            // Phone-based OTP via Supabase
-            const { error: otpError } = await sbClient.auth.signInWithOtp({
-                phone: intlPhone,
-                options: { data: { full_name: fullName, role: role } }
+        const { data, error } = await sbClient.auth.signUp({
+            email, password,
+            options: { data: { full_name: fullName, phone: phone, role: role } }
+        });
+        if (error) throw error;
+        // Create user_profile
+        if (data.user) {
+            await sbClient.from('user_profiles').insert({
+                id: data.user.id, full_name: fullName, phone: phone, account_type: role
             });
-            if (otpError) {
-                // Fallback to email if SMS provider not configured
-                console.warn("SMS OTP failed, falling back to email:", otpError.message);
-                showToast("SMS not yet configured. Using email verification instead.", "info");
-                const { data, error } = await sbClient.auth.signUp({
-                    email, password,
-                    options: { data: { full_name: fullName, phone: phone, role: role, verification_method: "sms" } }
-                });
-                if (error) throw error;
-                if (data.user) {
-                    await sbClient.from('user_profiles').insert({
-                        id: data.user.id, full_name: fullName, phone: phone, account_type: role
-                    });
-                }
-                closeModal("authModal");
-                showToast("Account created! Check your email to confirm.", "success");
-            } else {
-                showToast("Verification code sent via SMS to " + intlPhone, "success");
-                // Show OTP verification UI
-                showOtpVerification(intlPhone, fullName, phone, role, password, email);
-            }
-        } else if (verificationMethod === "whatsapp") {
-            // Generate verification code and send via WhatsApp link
-            const otpCode = String(Math.floor(100000 + Math.random() * 900000));
-            const waMessage = encodeURIComponent(
-                `Tamale Market Finder Verification\n\nYour verification code is: ${otpCode}\n\nDo not share this code with anyone.`
-            );
-            const waLink = `https://wa.me/${intlPhone.replace("+", "")}?text=${waMessage}`;
-
-            // Create account with email first
-            const { data, error } = await sbClient.auth.signUp({
-                email, password,
-                options: { data: { full_name: fullName, phone: phone, role: role, verification_method: "whatsapp", otp_code: otpCode } }
-            });
-            if (error) throw error;
-            if (data.user) {
-                await sbClient.from('user_profiles').insert({
-                    id: data.user.id, full_name: fullName, phone: phone, account_type: role
-                });
-            }
-            // Open WhatsApp with verification code
-            window.open(waLink, "_blank");
-            closeModal("authModal");
-            showToast("Account created! We sent a verification code via WhatsApp. Check your email too.", "success");
-        } else {
-            // Default: Email verification
-            const { data, error } = await sbClient.auth.signUp({
-                email, password,
-                options: { data: { full_name: fullName, phone: phone, role: role } }
-            });
-            if (error) throw error;
-            // Create user_profile
-            if (data.user) {
-                await sbClient.from('user_profiles').insert({
-                    id: data.user.id, full_name: fullName, phone: phone, account_type: role
-                });
-            }
-            closeModal("authModal");
-            showToast("Account created! Check your email to confirm.", "success");
         }
+        closeModal("authModal");
+        showToast("Account created! Check your email to confirm.", "success");
     } catch (err) {
         showToast(err.message || "Registration failed", "error");
     } finally {
         btn.textContent = "Create Free Account"; btn.disabled = false;
     }
-}
-
-// OTP verification modal for SMS-based registration
-function showOtpVerification(phone, fullName, localPhone, role, password, email) {
-    const modal = document.getElementById("authModal");
-    const content = modal.querySelector(".modal-content");
-    content.innerHTML = `
-        <button class="modal-close" onclick="document.getElementById('authModal').classList.remove('active')">&times;</button>
-        <div class="modal-header"><h2>📱 SMS Verification</h2></div>
-        <p style="text-align:center;margin:16px 0;font-size:14px;">Enter the 6-digit code sent to <b>${phone}</b></p>
-        <div class="otp-input-group">
-            <input type="tel" maxlength="1" id="otp1" pattern="[0-9]">
-            <input type="tel" maxlength="1" id="otp2" pattern="[0-9]">
-            <input type="tel" maxlength="1" id="otp3" pattern="[0-9]">
-            <input type="tel" maxlength="1" id="otp4" pattern="[0-9]">
-            <input type="tel" maxlength="1" id="otp5" pattern="[0-9]">
-            <input type="tel" maxlength="1" id="otp6" pattern="[0-9]">
-        </div>
-        <button class="btn-primary btn-block" id="verifyOtpBtn" style="margin-top:12px;">Verify Code</button>
-        <button class="btn-text btn-block" id="resendOtpBtn" style="margin-top:8px;color:var(--brand-primary);background:none;border:none;cursor:pointer;font-size:13px;">Resend Code</button>
-    `;
-    // Auto-advance inputs
-    for (let i = 1; i <= 6; i++) {
-        const input = document.getElementById("otp" + i);
-        input.addEventListener("input", function() {
-            if (this.value && i < 6) document.getElementById("otp" + (i + 1)).focus();
-        });
-    }
-    document.getElementById("verifyOtpBtn").addEventListener("click", async () => {
-        const code = ["otp1","otp2","otp3","otp4","otp5","otp6"].map(i => document.getElementById(i).value).join("");
-        if (code.length !== 6) { showToast("Enter the full 6-digit code", "error"); return; }
-        try {
-            const { error } = await sbClient.auth.verifyOtp({ phone, token: code, type: "sms" });
-            if (error) throw error;
-            // Create profile
-            if (sbClient.auth.getUser()) {
-                const { data: { user } } = await sbClient.auth.getUser();
-                if (user) {
-                    await sbClient.from('user_profiles').insert({
-                        id: user.id, full_name: fullName, phone: localPhone, account_type: role
-                    });
-                }
-            }
-            closeModal("authModal");
-            showToast("Phone verified! Welcome to Tamale Market Finder.", "success");
-        } catch (err) {
-            showToast(err.message || "Invalid code", "error");
-        }
-    });
-    document.getElementById("resendOtpBtn").addEventListener("click", async () => {
-        const { error } = await sbClient.auth.signInWithOtp({ phone });
-        if (error) showToast("Could not resend: " + error.message, "error");
-        else showToast("New code sent!", "success");
-    });
 }
 
 async function handleProfileSave(e) {
