@@ -1425,19 +1425,13 @@ async function renderShowcaseSections() {
         return;
     }
 
-    // 1. Popular Near You Carousel
+    // 1. Popular Near You Carousel (same full card format as All Marketplace Listings, scrolls horizontally)
     const popularProducts = [...products].sort((a, b) => (b.rating_avg || 0) - (a.rating_avg || 0)).slice(0, 5);
-    popularContainer.innerHTML = popularProducts.map(p => {
-        const shop = shops.find(s => s.id === p.shop_id) || {};
-        return renderMiniProductCard(p, shop);
-    }).join("");
+    popularContainer.innerHTML = popularProducts.map(p => renderProductCard(p)).join("");
 
-    // 2. New Arrivals Carousel
+    // 2. New Arrivals Carousel (same full card format as All Marketplace Listings, scrolls horizontally)
     const newProducts = [...products].reverse().slice(0, 5);
-    newContainer.innerHTML = newProducts.map(p => {
-        const shop = shops.find(s => s.id === p.shop_id) || {};
-        return renderMiniProductCard(p, shop);
-    }).join("");
+    newContainer.innerHTML = newProducts.map(p => renderProductCard(p)).join("");
 }
 
 function renderMiniProductCard(p, shop) {
@@ -1555,7 +1549,7 @@ async function searchListings() {
 
     if (items.length === 0) {
         resultsList.innerHTML = `
-            <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 40px 20px;">
+            <div class="empty-state" style="width:100%; text-align: center; padding: 40px 20px;">
                 <p style="font-size: 28px;">🔍</p>
                 <h3>No ${currentDomain} listings found</h3>
                 <p style="color: var(--text-muted); font-size: 13px;">Try adjusting your search keywords, category pills, or market filters.</p>

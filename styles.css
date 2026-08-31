@@ -715,14 +715,22 @@ body {
 
 .showcase-carousel {
     display: flex;
+    flex-wrap: nowrap;
     gap: 12px;
     overflow-x: auto;
     padding-bottom: 8px;
     scrollbar-width: none;
+    scroll-snap-type: x proximity;
 }
 
 .showcase-carousel::-webkit-scrollbar {
     display: none;
+}
+
+.showcase-carousel .card {
+    flex: 0 0 280px;
+    width: 280px;
+    scroll-snap-align: start;
 }
 
 /* ====================================================================
@@ -764,10 +772,29 @@ body {
 }
 
 .results-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     gap: 14px;
     margin-bottom: 20px;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+}
+
+.results-list::-webkit-scrollbar {
+    display: none;
+}
+
+.results-list .card {
+    flex: 0 0 280px;
+    width: 280px;
+    scroll-snap-align: start;
+}
+
+.results-list .empty-state {
+    flex: 1 1 auto;
+    min-width: 100%;
 }
 
 .map-container {
