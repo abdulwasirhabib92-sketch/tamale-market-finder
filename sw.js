@@ -1,7 +1,7 @@
 // Tamale Market Finder — Service Worker
 // Caches app shell for offline use, updates in background
 
-const CACHE_VERSION = 'tmf-v2-20260831';
+const CACHE_VERSION = 'tmf-v3-20260831';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -64,12 +64,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for app shell and static assets
-  if (APP_SHELL.includes(url.pathname) || url.pathname.match(/\.(css|js|png|jpg|svg|ico)$/)) {
+  // Network-first for JS and CSS (always get latest version, fall back to cache offline)
+  if (url.pathname.match(/\.(js|css)$/)) {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => {
+        return caches.match(request).then((cached) => cached || caches.match('/index.html'));
+      })
+    );
+    return;
+  }
+
+  // Cache-first for images and other static assets
+  if (APP_SHELL.includes(url.pathname) || url.pathname.match(/\.(png|jpg|svg|ico)$/)) {
     event.respondWith(
       caches.match(request).then((cached) => {
         return cached || fetch(request).then((response) => {
-          // Cache a copy of new responses
           if (response.ok) {
             const clone = response.clone();
             caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));

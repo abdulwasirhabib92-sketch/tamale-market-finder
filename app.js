@@ -664,24 +664,15 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
 // 4. APP INITIALIZATION & EVENT LISTENERS
 // ====================================================================
 document.addEventListener("DOMContentLoaded", () => {
-    var dbg = document.getElementById("resultsList");
-    function showErr(label, e) {
-        console.error(label + " error:", e);
-        if (IS_PROD) console.error(label + " error:", e);
-        var dbgEl3 = document.createElement("div");
-        dbgEl3.style.cssText = "position:fixed;bottom:60px;left:0;right:0;background:#1a1a00;color:#ff0;font:11px monospace;padding:4px;z-index:99999;";
-        dbgEl3.textContent = "ERR " + label + ": " + (e && e.message || e);
-        document.body.appendChild(dbgEl3);
-    }
-    try { initSupabase(); } catch(e) { showErr("initSupabase", e); }
-    try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
-    try { initDomainTabs(); } catch(e) { showErr("initDomainTabs", e); }
-    try { initMap(); } catch(e) { showErr("initMap", e); }
-    try { renderSpotlightCarousel().catch(e => showErr("renderSpotlightCarousel", e)); } catch(e) { showErr("renderSpotlightCarousel", e); }
-    try { renderShowcaseSections().catch(e => showErr("renderShowcaseSections", e)); } catch(e) { showErr("renderShowcaseSections", e); }
-    try { searchListings(); } catch(e) { showErr("searchListings", e); }
-    try { updateUIForAuthUser(); } catch(e) { showErr("updateUIForAuthUser", e); }
-    try { initInlineHandlers(); } catch(e) { showErr("initInlineHandlers", e); }
+    try { initSupabase(); } catch(e) { console.error("initSupabase", e); }
+    try { initNavigation(); } catch(e) { console.error("initNavigation", e); }
+    try { initDomainTabs(); } catch(e) { console.error("initDomainTabs", e); }
+    try { initMap(); } catch(e) { console.error("initMap", e); }
+    try { renderSpotlightCarousel().catch(e => console.error("renderSpotlightCarousel", e)); } catch(e) { console.error("renderSpotlightCarousel", e); }
+    try { renderShowcaseSections().catch(e => console.error("renderShowcaseSections", e)); } catch(e) { console.error("renderShowcaseSections", e); }
+    try { searchListings(); } catch(e) { console.error("searchListings", e); }
+    try { updateUIForAuthUser(); } catch(e) { console.error("updateUIForAuthUser", e); }
+    try { initInlineHandlers(); } catch(e) { console.error("initInlineHandlers", e); }
 });
 
 // Migrate all inline event handlers to addEventListener + event delegation (CSP compliance)
@@ -793,12 +784,10 @@ function handleDelegatedChange(e) {
 }
 
 function initSupabase() {
-    if (window.__showDiag) window.__showDiag("initSupabase: DEMO=" + DEMO_MODE);
     if (!DEMO_MODE) {
         try {
             if (typeof window.supabase === 'undefined') {
                 console.error("Supabase JS library not loaded! CDN may have failed.");
-                if (window.__showDiag) window.__showDiag("ERR: supabase JS not loaded");
                 return;
             }
             sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -809,7 +798,6 @@ function initSupabase() {
             if (window.__showDiag) window.__showDiag("init ERR: " + (err.message || err));
         }
     } else {
-        if (window.__showDiag) window.__showDiag("DEMO_MODE active");
     }
 }
 
@@ -1412,7 +1400,7 @@ async function renderShowcaseSections() {
     const popularContainer = document.getElementById("popularNearCarousel");
     const newContainer = document.getElementById("newArrivalsCarousel");
     if (window.__showDiag) window.__showDiag("renderShowcase: sb=" + (sbClient?"ok":"null") + " demo=" + DEMO_MODE);
-    if (!popularContainer || !newContainer) { if (window.__showDiag) window.__showDiag("ERR: no containers"); return; }
+    if (!popularContainer || !newContainer) { return; }
     let products = [];
     let shops = [];
 
@@ -1421,7 +1409,6 @@ async function renderShowcaseSections() {
             const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true);
             if (shopErr) throw shopErr;
             shops = shopData || [];
-            if (window.__showDiag) window.__showDiag("shops=" + shops.length);
             const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('in_stock', true);
             if (prodErr) throw prodErr;
             if (window.__showDiag) window.__showDiag("prods=" + (prodData||[]).length);
@@ -1438,13 +1425,12 @@ async function renderShowcaseSections() {
             });
         } catch (err) {
             console.error("Showcase fetch error:", err);
-            if (popularContainer) popularContainer.innerHTML = `<div style="text-align:center;padding:30px;color:red;font-size:13px;">DIAG ERR: ${err.message || err} | sb=${sbClient?"ok":"null"} demo=${DEMO_MODE}</div>`;
         }
     }
 
     // If no products loaded (empty DB or error), show empty states
     if (products.length === 0) {
-        popularContainer.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">DIAG: products=0 shops=${shops.length} sb=${sbClient?"ok":"null"} demo=${DEMO_MODE}<br>No products listed yet. Be the first to sell on Tamale Market Finder!</div>`;
+        popularContainer.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">No products listed yet. Be the first to sell on Tamale Market Finder!</div>`;
         newContainer.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">No new arrivals yet.</div>`;
         return;
     }
