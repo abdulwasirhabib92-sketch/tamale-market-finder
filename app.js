@@ -668,6 +668,10 @@ document.addEventListener("DOMContentLoaded", () => {
     function showErr(label, e) {
         console.error(label + " error:", e);
         if (IS_PROD) console.error(label + " error:", e);
+        var dbgEl3 = document.createElement("div");
+        dbgEl3.style.cssText = "position:fixed;bottom:60px;left:0;right:0;background:#1a1a00;color:#ff0;font:11px monospace;padding:4px;z-index:99999;";
+        dbgEl3.textContent = "ERR " + label + ": " + (e && e.message || e);
+        document.body.appendChild(dbgEl3);
     }
     try { initSupabase(); } catch(e) { showErr("initSupabase", e); }
     try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
@@ -1312,6 +1316,10 @@ async function renderSpotlightCarousel() {
             if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 2);
         } catch (err) {
             console.error("Spotlight fetch error:", err);
+            var dbgEl = document.createElement("div");
+            dbgEl.style.cssText = "position:fixed;bottom:20px;left:0;right:0;background:#1a0010;color:#f0f;font:11px monospace;padding:4px;z-index:99999;";
+            dbgEl.textContent = "Spotlight ERR: " + (err.message || err);
+            document.body.appendChild(dbgEl);
         }
     }
 
@@ -1430,11 +1438,19 @@ async function renderShowcaseSections() {
             });
         } catch (err) {
             console.error("Showcase fetch error:", err);
+            var dbgEl = document.createElement("div");
+            dbgEl.style.cssText = "position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;color:#ff0;font:11px monospace;padding:4px;z-index:99999;";
+            dbgEl.textContent = "Showcase ERR: " + (err.message || err) + " | sb=" + (sbClient?"ok":"null") + " demo=" + DEMO_MODE;
+            document.body.appendChild(dbgEl);
         }
     }
 
     // If no products loaded (empty DB or error), show empty states
     if (products.length === 0) {
+        var dbgEl2 = document.createElement("div");
+        dbgEl2.style.cssText = "position:fixed;bottom:40px;left:0;right:0;background:#001a1a;color:#0ff;font:11px monospace;padding:4px;z-index:99999;";
+        dbgEl2.textContent = "Showcase empty: products=0 shops=" + shops.length + " sb=" + (sbClient?"ok":"null") + " demo=" + DEMO_MODE;
+        document.body.appendChild(dbgEl2);
         popularContainer.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">No products listed yet. Be the first to sell on Tamale Market Finder!</div>`;
         newContainer.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">No new arrivals yet.</div>`;
         return;
