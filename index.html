@@ -12,12 +12,15 @@
     <meta property="og:title" content="Tamale Market Finder — Local Shops & E-Commerce in Tamale, Ghana">
     <meta property="og:description" content="Find shops, products, services, hotels and eateries in Tamale, Ghana with pinpoint map locations.">
     <meta property="og:url" content="https://tamale-market-finder.vercel.app/">
+    <meta property="og:image" content="/icons/icon-512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Tamale Market Finder — Local Shops & E-Commerce">
     <meta name="twitter:description" content="Find shops, products, services, hotels and eateries in Tamale, Ghana with pinpoint map locations.">
     <title>Tamale Market Finder — Local Shops, E-Commerce & Ghana Post GPS Map</title>
-    <link rel="stylesheet" href="styles.css?v=20260831v3">
+    <link rel="stylesheet" href="styles.css?v=20260831sec">
     <!-- Leaflet for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -37,22 +40,6 @@
 
 </head>
 <body>
-<!-- DIAGNOSTIC: Show JS errors visibly for debugging -->
-<div id="__diag" style="position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;color:#0f0;font:11px monospace;padding:4px;z-index:99999;display:none;"></div>
-<script>
-window.__diagLog = [];
-window.__showDiag = function(msg) {
-    window.__diagLog.push(msg);
-    var el = document.getElementById("__diag");
-    if (el) { el.style.display = "block"; el.textContent = window.__diagLog.join(" | "); }
-};
-window.addEventListener("error", function(e) {
-    window.__showDiag("ERR: " + (e.message || "unknown") + " @ " + (e.filename||"").split("/").pop() + ":" + e.lineno);
-});
-window.addEventListener("unhandledrejection", function(e) {
-    window.__showDiag("REJ: " + (e.reason && (e.reason.message || e.reason) || "unknown"));
-});
-</script>
     <!-- Toast Notifications Container -->
     <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
@@ -822,32 +809,6 @@ window.addEventListener("unhandledrejection", function(e) {
                         <option value="trader">🏪 Market Trader (List Stall & Products)</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Verification Method</label>
-                    <div class="verification-method-selector" style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <label class="verification-method-option" style="flex:1;min-width:90px;cursor:pointer;">
-                            <input type="radio" name="verificationMethod" value="email" checked style="display:none;">
-                            <div style="padding:8px 10px;border:2px solid var(--border-color);border-radius:8px;text-align:center;font-size:12px;transition:all 0.2s;">
-                                <span style="font-size:18px;display:block;margin-bottom:2px;">📧</span>
-                                Email
-                            </div>
-                        </label>
-                        <label class="verification-method-option" style="flex:1;min-width:90px;cursor:pointer;">
-                            <input type="radio" name="verificationMethod" value="sms" style="display:none;">
-                            <div style="padding:8px 10px;border:2px solid var(--border-color);border-radius:8px;text-align:center;font-size:12px;transition:all 0.2s;">
-                                <span style="font-size:18px;display:block;margin-bottom:2px;">📱</span>
-                                SMS
-                            </div>
-                        </label>
-                        <label class="verification-method-option" style="flex:1;min-width:90px;cursor:pointer;">
-                            <input type="radio" name="verificationMethod" value="whatsapp" style="display:none;">
-                            <div style="padding:8px 10px;border:2px solid var(--border-color);border-radius:8px;text-align:center;font-size:12px;transition:all 0.2s;">
-                                <span style="font-size:18px;display:block;margin-bottom:2px;">💬</span>
-                                WhatsApp
-                            </div>
-                        </label>
-                    </div>
-                </div>
                 <button type="submit" class="btn-primary btn-block" id="registerBtn">Create Free Account</button>
             </form>
 
@@ -1196,7 +1157,7 @@ window.addEventListener("unhandledrejection", function(e) {
     </nav>
 
     <!-- App Logic Script -->
-    <script src="app.js?v=20260831v3"></script>
+    <script src="app.js?v=20260831sec"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
