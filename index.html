@@ -806,6 +806,32 @@
                         <option value="trader">🏪 Market Trader (List Stall & Products)</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>Verification Method</label>
+                    <div class="verification-method-selector" style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <label class="verification-method-option" style="flex:1;min-width:90px;cursor:pointer;">
+                            <input type="radio" name="verificationMethod" value="email" checked style="display:none;">
+                            <div style="padding:8px 10px;border:2px solid var(--border-color);border-radius:8px;text-align:center;font-size:12px;transition:all 0.2s;">
+                                <span style="font-size:18px;display:block;margin-bottom:2px;">📧</span>
+                                Email
+                            </div>
+                        </label>
+                        <label class="verification-method-option" style="flex:1;min-width:90px;cursor:pointer;">
+                            <input type="radio" name="verificationMethod" value="sms" style="display:none;">
+                            <div style="padding:8px 10px;border:2px solid var(--border-color);border-radius:8px;text-align:center;font-size:12px;transition:all 0.2s;">
+                                <span style="font-size:18px;display:block;margin-bottom:2px;">📱</span>
+                                SMS
+                            </div>
+                        </label>
+                        <label class="verification-method-option" style="flex:1;min-width:90px;cursor:pointer;">
+                            <input type="radio" name="verificationMethod" value="whatsapp" style="display:none;">
+                            <div style="padding:8px 10px;border:2px solid var(--border-color);border-radius:8px;text-align:center;font-size:12px;transition:all 0.2s;">
+                                <span style="font-size:18px;display:block;margin-bottom:2px;">💬</span>
+                                WhatsApp
+                            </div>
+                        </label>
+                    </div>
+                </div>
                 <button type="submit" class="btn-primary btn-block" id="registerBtn">Create Free Account</button>
             </form>
 

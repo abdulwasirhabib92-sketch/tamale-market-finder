@@ -313,7 +313,12 @@ CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 CREATE OR REPLACE FUNCTION update_updated_date()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_date = NOW();
+    -- Handle both updated_at (user_profiles) and updated_date (other tables)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = TG_TABLE_NAME AND column_name = 'updated_at') THEN
+        NEW.updated_at = NOW();
+    ELSEIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = TG_TABLE_NAME AND column_name = 'updated_date') THEN
+        NEW.updated_date = NOW();
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

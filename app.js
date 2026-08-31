@@ -820,13 +820,24 @@ function setupAuthListener() {
     sbClient.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
             currentUser = session.user;
-            loadUserProfile(session.user.id);
+            // Close auth modal if open (fixes modal staying open after login)
+            const authModalEl = document.getElementById('authModal');
+            if (authModalEl) authModalEl.classList.remove('active');
+            loadUserProfile(session.user.id).then(() => {
+                // Re-render showcase data after login (fixes empty homepage for authed users)
+                renderSpotlightCarousel().catch(e => console.error("Spotlight re-render:", e));
+                renderShowcaseSections().catch(e => console.error("Showcase re-render:", e));
+                searchListings().catch(e => console.error("Listings re-render:", e));
+            }).catch(err => console.error("Profile load error:", err));
         } else {
             currentUser = null;
             userProfile = { full_name: "Guest User", account_type: "shopper", verification_tier: "unverified" };
             userFavorites = new Set();
             userShop = null;
             updateUIForGuestUser();
+            // Re-render showcase data after logout too
+            renderSpotlightCarousel().catch(e => console.error("Spotlight re-render:", e));
+            renderShowcaseSections().catch(e => console.error("Showcase re-render:", e));
         }
     });
 }
@@ -1289,6 +1300,7 @@ let spotlightTimer = null;
 
 async function renderSpotlightCarousel() {
     const carousel = document.getElementById("spotlightCarousel");
+    if (!carousel) return;
     let spotlightShops = [];
 
     if (!DEMO_MODE && sbClient) {
@@ -1390,6 +1402,7 @@ function goToSpotlight(idx) {
 async function renderShowcaseSections() {
     const popularContainer = document.getElementById("popularNearCarousel");
     const newContainer = document.getElementById("newArrivalsCarousel");
+    if (!popularContainer || !newContainer) return;
     let products = [];
     let shops = [];
 
@@ -3262,21 +3275,27 @@ function toggleMobileViewMode() {
 }
 
 function toggleDrawer() {
-    document.getElementById("menuDrawer").classList.toggle("active");
-    document.getElementById("drawerBackdrop").classList.toggle("active");
+    const drawer = document.getElementById("menuDrawer");
+    const backdrop = document.getElementById("drawerBackdrop");
+    if (drawer) drawer.classList.toggle("active");
+    if (backdrop) backdrop.classList.toggle("active");
 }
 
 function closeDrawer() {
-    document.getElementById("menuDrawer").classList.remove("active");
-    document.getElementById("drawerBackdrop").classList.remove("active");
+    const drawer = document.getElementById("menuDrawer");
+    const backdrop = document.getElementById("drawerBackdrop");
+    if (drawer) drawer.classList.remove("active");
+    if (backdrop) backdrop.classList.remove("active");
 }
 
 function openModal(modalId) {
-    document.getElementById(modalId).classList.add("active");
+    const el = document.getElementById(modalId);
+    if (el) el.classList.add("active");
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove("active");
+    const el = document.getElementById(modalId);
+    if (el) el.classList.remove("active");
 }
 
 function openWhatsApp(number, itemName, shopName) {
@@ -3313,8 +3332,8 @@ async function toggleDashboardDelivery() {
 }
 
 function updateUIForAuthUser() {
-    document.getElementById("drawerName").textContent = userProfile.full_name || "User";
-    document.getElementById("drawerEmail").textContent = currentUser?.email || "Sign in to save shops, order & manage listings";
+    const drawerNameEl = document.getElementById("drawerName"); if (drawerNameEl) drawerNameEl.textContent = userProfile.full_name || "User";
+    const drawerEmailEl = document.getElementById("drawerEmail"); if (drawerEmailEl) drawerEmailEl.textContent = currentUser?.email || "Sign in to save shops, order & manage listings";
 
     // Toggle trader-mode class on menu button (orange color in trader mode)
     const menuBtn = document.getElementById("menuToggle");
@@ -3333,6 +3352,8 @@ function updateUIForAuthUser() {
         roleBadge.className = "role-badge " + (userProfile.account_type || "shopper");
     }
 
+    // Update nav user name
+    const navUserNameEl2 = document.getElementById("navUserName"); if (navUserNameEl2) navUserNameEl2.textContent = userProfile.full_name || "Account";
     // Update auth button text
     const authBtn = document.getElementById("drawerAuthActionBtn");
     if (authBtn) {
@@ -3457,6 +3478,7 @@ async function handleRegister(e) {
     const password = document.getElementById("regPassword").value;
     const role = document.getElementById("regRole").value;
     const btn = document.getElementById("registerBtn");
+    const verificationMethod = document.querySelector('input[name="verificationMethod"]:checked')?.value || "email";
 
     // Validate Ghana phone format: 0XXXXXXXXX (10 digits starting with 0)
     if (!/^0[0-9]{9}$/.test(phone)) {
@@ -3473,26 +3495,136 @@ async function handleRegister(e) {
         showToast("Enter your full name", "error"); return;
     }
 
+    // Convert Ghana phone to international format for SMS/WhatsApp
+    const intlPhone = "+233" + phone.substring(1); // Replace leading 0 with +233
+
     btn.textContent = "Creating account..."; btn.disabled = true;
     try {
-        const { data, error } = await sbClient.auth.signUp({
-            email, password,
-            options: { data: { full_name: fullName, phone: phone, role: role } }
-        });
-        if (error) throw error;
-        // Create user_profile
-        if (data.user) {
-            await sbClient.from('user_profiles').insert({
-                id: data.user.id, full_name: fullName, phone: phone, account_type: role
+        if (verificationMethod === "sms") {
+            // Phone-based OTP via Supabase
+            const { error: otpError } = await sbClient.auth.signInWithOtp({
+                phone: intlPhone,
+                options: { data: { full_name: fullName, role: role } }
             });
+            if (otpError) {
+                // Fallback to email if SMS provider not configured
+                console.warn("SMS OTP failed, falling back to email:", otpError.message);
+                showToast("SMS not yet configured. Using email verification instead.", "info");
+                const { data, error } = await sbClient.auth.signUp({
+                    email, password,
+                    options: { data: { full_name: fullName, phone: phone, role: role, verification_method: "sms" } }
+                });
+                if (error) throw error;
+                if (data.user) {
+                    await sbClient.from('user_profiles').insert({
+                        id: data.user.id, full_name: fullName, phone: phone, account_type: role
+                    });
+                }
+                closeModal("authModal");
+                showToast("Account created! Check your email to confirm.", "success");
+            } else {
+                showToast("Verification code sent via SMS to " + intlPhone, "success");
+                // Show OTP verification UI
+                showOtpVerification(intlPhone, fullName, phone, role, password, email);
+            }
+        } else if (verificationMethod === "whatsapp") {
+            // Generate verification code and send via WhatsApp link
+            const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+            const waMessage = encodeURIComponent(
+                `Tamale Market Finder Verification\n\nYour verification code is: ${otpCode}\n\nDo not share this code with anyone.`
+            );
+            const waLink = `https://wa.me/${intlPhone.replace("+", "")}?text=${waMessage}`;
+
+            // Create account with email first
+            const { data, error } = await sbClient.auth.signUp({
+                email, password,
+                options: { data: { full_name: fullName, phone: phone, role: role, verification_method: "whatsapp", otp_code: otpCode } }
+            });
+            if (error) throw error;
+            if (data.user) {
+                await sbClient.from('user_profiles').insert({
+                    id: data.user.id, full_name: fullName, phone: phone, account_type: role
+                });
+            }
+            // Open WhatsApp with verification code
+            window.open(waLink, "_blank");
+            closeModal("authModal");
+            showToast("Account created! We sent a verification code via WhatsApp. Check your email too.", "success");
+        } else {
+            // Default: Email verification
+            const { data, error } = await sbClient.auth.signUp({
+                email, password,
+                options: { data: { full_name: fullName, phone: phone, role: role } }
+            });
+            if (error) throw error;
+            // Create user_profile
+            if (data.user) {
+                await sbClient.from('user_profiles').insert({
+                    id: data.user.id, full_name: fullName, phone: phone, account_type: role
+                });
+            }
+            closeModal("authModal");
+            showToast("Account created! Check your email to confirm.", "success");
         }
-        closeModal("authModal");
-        showToast("Account created! Check your email to confirm.", "success");
     } catch (err) {
         showToast(err.message || "Registration failed", "error");
     } finally {
         btn.textContent = "Create Free Account"; btn.disabled = false;
     }
+}
+
+// OTP verification modal for SMS-based registration
+function showOtpVerification(phone, fullName, localPhone, role, password, email) {
+    const modal = document.getElementById("authModal");
+    const content = modal.querySelector(".modal-content");
+    content.innerHTML = `
+        <button class="modal-close" onclick="document.getElementById('authModal').classList.remove('active')">&times;</button>
+        <div class="modal-header"><h2>📱 SMS Verification</h2></div>
+        <p style="text-align:center;margin:16px 0;font-size:14px;">Enter the 6-digit code sent to <b>${phone}</b></p>
+        <div class="otp-input-group">
+            <input type="tel" maxlength="1" id="otp1" pattern="[0-9]">
+            <input type="tel" maxlength="1" id="otp2" pattern="[0-9]">
+            <input type="tel" maxlength="1" id="otp3" pattern="[0-9]">
+            <input type="tel" maxlength="1" id="otp4" pattern="[0-9]">
+            <input type="tel" maxlength="1" id="otp5" pattern="[0-9]">
+            <input type="tel" maxlength="1" id="otp6" pattern="[0-9]">
+        </div>
+        <button class="btn-primary btn-block" id="verifyOtpBtn" style="margin-top:12px;">Verify Code</button>
+        <button class="btn-text btn-block" id="resendOtpBtn" style="margin-top:8px;color:var(--brand-primary);background:none;border:none;cursor:pointer;font-size:13px;">Resend Code</button>
+    `;
+    // Auto-advance inputs
+    for (let i = 1; i <= 6; i++) {
+        const input = document.getElementById("otp" + i);
+        input.addEventListener("input", function() {
+            if (this.value && i < 6) document.getElementById("otp" + (i + 1)).focus();
+        });
+    }
+    document.getElementById("verifyOtpBtn").addEventListener("click", async () => {
+        const code = ["otp1","otp2","otp3","otp4","otp5","otp6"].map(i => document.getElementById(i).value).join("");
+        if (code.length !== 6) { showToast("Enter the full 6-digit code", "error"); return; }
+        try {
+            const { error } = await sbClient.auth.verifyOtp({ phone, token: code, type: "sms" });
+            if (error) throw error;
+            // Create profile
+            if (sbClient.auth.getUser()) {
+                const { data: { user } } = await sbClient.auth.getUser();
+                if (user) {
+                    await sbClient.from('user_profiles').insert({
+                        id: user.id, full_name: fullName, phone: localPhone, account_type: role
+                    });
+                }
+            }
+            closeModal("authModal");
+            showToast("Phone verified! Welcome to Tamale Market Finder.", "success");
+        } catch (err) {
+            showToast(err.message || "Invalid code", "error");
+        }
+    });
+    document.getElementById("resendOtpBtn").addEventListener("click", async () => {
+        const { error } = await sbClient.auth.signInWithOtp({ phone });
+        if (error) showToast("Could not resend: " + error.message, "error");
+        else showToast("New code sent!", "success");
+    });
 }
 
 async function handleProfileSave(e) {

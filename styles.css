@@ -351,9 +351,9 @@ body {
    ==================================================================== */
 .spotlight-section {
     background: linear-gradient(135deg, #991B1B 0%, #B91C1C 50%, #DC2626 100%);
-    padding: 10px 16px;
+    padding: 6px 12px;
     color: #FFFFFF;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
     position: relative;
     overflow: hidden;
 }
@@ -361,8 +361,8 @@ body {
 .spotlight-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 6px;
+    gap: 8px;
+    margin-bottom: 4px;
     flex-wrap: wrap;
 }
 
@@ -384,7 +384,7 @@ body {
 
 .spotlight-carousel {
     position: relative;
-    min-height: 80px;
+    min-height: 60px;
     overflow: hidden;
 }
 
@@ -394,7 +394,7 @@ body {
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: var(--radius-lg);
-    padding: 10px;
+    padding: 8px;
     color: #FFFFFF;
     cursor: pointer;
     transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
@@ -1969,4 +1969,41 @@ body {
 @keyframes popIn {
     from { transform: scale(0); }
     to { transform: scale(1); }
+}
+
+/* ====================================================================
+   VERIFICATION METHOD SELECTOR
+   ==================================================================== */
+.verification-method-option input:checked + div {
+    border-color: var(--brand-primary, #DC2626) !important;
+    background: rgba(220, 38, 38, 0.08);
+    color: var(--brand-primary, #DC2626);
+    font-weight: 600;
+}
+
+.verification-method-option div:hover {
+    border-color: var(--brand-primary, #DC2626);
+}
+
+/* OTP Input */
+.otp-input-group {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 12px 0;
+}
+
+.otp-input-group input {
+    width: 40px;
+    height: 48px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    border: 2px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    outline: none;
+}
+
+.otp-input-group input:focus {
+    border-color: var(--brand-primary, #DC2626);
 }
