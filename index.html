@@ -37,6 +37,22 @@
 
 </head>
 <body>
+<!-- DIAGNOSTIC: Show JS errors visibly for debugging -->
+<div id="__diag" style="position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;color:#0f0;font:11px monospace;padding:4px;z-index:99999;display:none;"></div>
+<script>
+window.__diagLog = [];
+window.__showDiag = function(msg) {
+    window.__diagLog.push(msg);
+    var el = document.getElementById("__diag");
+    if (el) { el.style.display = "block"; el.textContent = window.__diagLog.join(" | "); }
+};
+window.addEventListener("error", function(e) {
+    window.__showDiag("ERR: " + (e.message || "unknown") + " @ " + (e.filename||"").split("/").pop() + ":" + e.lineno);
+});
+window.addEventListener("unhandledrejection", function(e) {
+    window.__showDiag("REJ: " + (e.reason && (e.reason.message || e.reason) || "unknown"));
+});
+</script>
     <!-- Toast Notifications Container -->
     <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 

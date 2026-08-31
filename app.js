@@ -789,24 +789,23 @@ function handleDelegatedChange(e) {
 }
 
 function initSupabase() {
+    if (window.__showDiag) window.__showDiag("initSupabase: DEMO=" + DEMO_MODE);
     if (!DEMO_MODE) {
         try {
             if (typeof window.supabase === 'undefined') {
                 console.error("Supabase JS library not loaded! CDN may have failed.");
-                var dbg = document.getElementById("resultsList");
-                console.error("Supabase JS library not loaded! CDN may have failed.");
+                if (window.__showDiag) window.__showDiag("ERR: supabase JS not loaded");
                 return;
             }
             sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            // [debug log removed]
+            if (window.__showDiag) window.__showDiag("sbClient=" + (sbClient ? "ok" : "NULL"));
             setupAuthListener();
         } catch (err) {
             console.warn("Supabase init failed, falling back to Demo Mode:", err);
-            var dbg = document.getElementById("resultsList");
-            console.error("Supabase init failed:", err.message || err);
+            if (window.__showDiag) window.__showDiag("init ERR: " + (err.message || err));
         }
     } else {
-        // [debug log removed]
+        if (window.__showDiag) window.__showDiag("DEMO_MODE active");
     }
 }
 
@@ -1302,11 +1301,13 @@ async function renderSpotlightCarousel() {
     const carousel = document.getElementById("spotlightCarousel");
     if (!carousel) return;
     let spotlightShops = [];
+    if (window.__showDiag) window.__showDiag("spotlight: sb=" + (sbClient?"ok":"null"));
 
     if (!DEMO_MODE && sbClient) {
         try {
             const { data, error } = await sbClient.from('public_shops').select('*').eq('is_active', true).order('rating_avg', { ascending: false }).limit(3);
             if (error) throw error;
+            if (window.__showDiag) window.__showDiag("spotlight data=" + (data||[]).length);
             spotlightShops = (data || []).filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
             if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 2);
         } catch (err) {
@@ -1402,7 +1403,8 @@ function goToSpotlight(idx) {
 async function renderShowcaseSections() {
     const popularContainer = document.getElementById("popularNearCarousel");
     const newContainer = document.getElementById("newArrivalsCarousel");
-    if (!popularContainer || !newContainer) return;
+    if (window.__showDiag) window.__showDiag("renderShowcase: sb=" + (sbClient?"ok":"null") + " demo=" + DEMO_MODE);
+    if (!popularContainer || !newContainer) { if (window.__showDiag) window.__showDiag("ERR: no containers"); return; }
     let products = [];
     let shops = [];
 
@@ -1411,8 +1413,10 @@ async function renderShowcaseSections() {
             const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true);
             if (shopErr) throw shopErr;
             shops = shopData || [];
+            if (window.__showDiag) window.__showDiag("shops=" + shops.length);
             const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('in_stock', true);
             if (prodErr) throw prodErr;
+            if (window.__showDiag) window.__showDiag("prods=" + (prodData||[]).length);
             products = (prodData || []).map(p => {
                 const shop = shops.find(s => s.id === p.shop_id) || {};
                 return {
