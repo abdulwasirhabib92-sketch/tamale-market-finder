@@ -679,6 +679,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try { renderShowcaseSections().catch(e => showErr("renderShowcaseSections", e)); } catch(e) { showErr("renderShowcaseSections", e); }
     try { searchListings(); } catch(e) { showErr("searchListings", e); }
     try { updateUIForAuthUser(); } catch(e) { showErr("updateUIForAuthUser", e); }
+    setupTwoFactorListeners();
     try { initInlineHandlers(); } catch(e) { showErr("initInlineHandlers", e); }
 });
 
@@ -868,6 +869,7 @@ async function loadUserProfile(userId) {
         await loadUserShop(userId);
         await loadUserFavorites(userId);
         updateUIForAuthUser();
+        loadTwoFactorStatus();
     } catch (err) {
         console.error("Error loading profile:", err);
         showToast("Could not load profile data", "error");
@@ -1425,13 +1427,19 @@ async function renderShowcaseSections() {
         return;
     }
 
-    // 1. Popular Near You Carousel (same full card format as All Marketplace Listings, scrolls horizontally)
+    // 1. Popular Near You Carousel
     const popularProducts = [...products].sort((a, b) => (b.rating_avg || 0) - (a.rating_avg || 0)).slice(0, 5);
-    popularContainer.innerHTML = popularProducts.map(p => renderProductCard(p)).join("");
+    popularContainer.innerHTML = popularProducts.map(p => {
+        const shop = shops.find(s => s.id === p.shop_id) || {};
+        return renderMiniProductCard(p, shop);
+    }).join("");
 
-    // 2. New Arrivals Carousel (same full card format as All Marketplace Listings, scrolls horizontally)
+    // 2. New Arrivals Carousel
     const newProducts = [...products].reverse().slice(0, 5);
-    newContainer.innerHTML = newProducts.map(p => renderProductCard(p)).join("");
+    newContainer.innerHTML = newProducts.map(p => {
+        const shop = shops.find(s => s.id === p.shop_id) || {};
+        return renderMiniProductCard(p, shop);
+    }).join("");
 }
 
 function renderMiniProductCard(p, shop) {
@@ -1549,7 +1557,7 @@ async function searchListings() {
 
     if (items.length === 0) {
         resultsList.innerHTML = `
-            <div class="empty-state" style="width:100%; text-align: center; padding: 40px 20px;">
+            <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 40px 20px;">
                 <p style="font-size: 28px;">🔍</p>
                 <h3>No ${currentDomain} listings found</h3>
                 <p style="color: var(--text-muted); font-size: 13px;">Try adjusting your search keywords, category pills, or market filters.</p>
@@ -3438,8 +3446,18 @@ async function handleLogin(e) {
     try {
         const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        closeModal("authModal");
-        showToast("Signed in successfully!", "success");
+
+        // Check if 2FA/MFA is required
+        const mfaRequired = await checkMFARequired(data.session);
+        if (mfaRequired) {
+            // Don't close authModal yet — show 2FA verification instead
+            closeModal("authModal");
+            showToast("2FA required — enter your verification code", "info");
+            await showMFAChallenge();
+        } else {
+            closeModal("authModal");
+            showToast("Signed in successfully!", "success");
+        }
     } catch (err) {
         showToast(err.message || "Login failed", "error");
     } finally {
@@ -3703,3 +3721,240 @@ async function renderFavoritesPage() {
     `).join("");
 }
 // Latest security update
+
+// ============================================================
+// TWO-FACTOR AUTHENTICATION (TOTP via Supabase MFA)
+// ============================================================
+
+let pendingMFAFactorId = null;
+let pendingMFAChallengeId = null;
+let pendingMFASession = null;
+
+// --- 2FA Login Flow ---
+// After password login, check if user has MFA factors enrolled.
+// If so, show the 2FA verification modal.
+async function checkMFARequired(session) {
+    try {
+        // Check current AAL level
+        const { data, error } = await sbClient.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (error) { console.warn("MFA AAL check error:", error.message); return false; }
+
+        // If currentLevel is aal2, already verified
+        if (data.currentLevel === 'aal2') return false;
+
+        // If nextLevel is aal2, MFA is required
+        if (data.nextLevel === 'aal2') {
+            // List factors to see which ones are verified
+            const { data: factorsData, error: factorsError } = await sbClient.auth.mfa.listFactors();
+            if (factorsError) { console.warn("MFA listFactors error:", factorsError.message); return false; }
+
+            const verifiedTotp = factorsData.totp?.find(f => f.status === 'verified');
+            if (verifiedTotp) {
+                pendingMFAFactorId = verifiedTotp.id;
+                return true;
+            }
+        }
+        return false;
+    } catch (err) {
+        console.warn("MFA check error:", err);
+        return false;
+    }
+}
+
+async function showMFAChallenge() {
+    if (!pendingMFAFactorId) return;
+    try {
+        const { data, error } = await sbClient.auth.mfa.challenge({ factorId: pendingMFAFactorId });
+        if (error) throw error;
+        pendingMFAChallengeId = data.id;
+        openModal("twoFactorAuthModal");
+        setTimeout(() => document.getElementById("twoFactorCode")?.focus(), 300);
+    } catch (err) {
+        showToast("2FA challenge failed: " + (err.message || err), "error");
+    }
+}
+
+async function handleTwoFactorLogin(e) {
+    e.preventDefault();
+    const code = document.getElementById("twoFactorCode").value.trim();
+    const btn = document.getElementById("twoFactorLoginBtn");
+    if (!code || code.length !== 6) { showToast("Enter the 6-digit code", "error"); return; }
+    if (!pendingMFAFactorId || !pendingMFAChallengeId) { showToast("2FA session expired, sign in again", "error"); return; }
+
+    btn.textContent = "Verifying..."; btn.disabled = true;
+    try {
+        const { data, error } = await sbClient.auth.mfa.verify({
+            factorId: pendingMFAFactorId,
+            challengeId: pendingMFAChallengeId,
+            code: code
+        });
+        if (error) throw error;
+
+        // Success — session upgraded to aal2
+        pendingMFAFactorId = null;
+        pendingMFAChallengeId = null;
+        closeModal("twoFactorAuthModal");
+        showToast("2FA verified! Welcome back.", "success");
+
+        // Reload user profile now that we're fully authenticated
+        if (data?.session?.user) {
+            currentUser = data.session.user;
+            loadUserProfile(data.session.user.id);
+        }
+    } catch (err) {
+        showToast(err.message || "Invalid 2FA code", "error");
+    } finally {
+        btn.textContent = "Verify & Continue"; btn.disabled = false;
+        document.getElementById("twoFactorCode").value = "";
+    }
+}
+
+function handleTwoFactorSkip() {
+    // User cancelled — sign them out since they didn't complete 2FA
+    pendingMFAFactorId = null;
+    pendingMFAChallengeId = null;
+    closeModal("twoFactorAuthModal");
+    sbClient.auth.signOut().then(() => {
+        showToast("Sign-in cancelled", "info");
+    });
+}
+
+// --- 2FA Enrollment Flow (from Settings) ---
+async function loadTwoFactorStatus() {
+    if (!currentUser) return;
+    const statusDiv = document.getElementById("twoFactorStatus");
+    const enableBtn = document.getElementById("twoFactorEnableBtn");
+    const disableBtn = document.getElementById("twoFactorDisableBtn");
+    if (!statusDiv) return;
+
+    try {
+        const { data, error } = await sbClient.auth.mfa.listFactors();
+        if (error) throw error;
+
+        const verifiedTotp = data.totp?.find(f => f.status === 'verified');
+        if (verifiedTotp) {
+            statusDiv.innerHTML = '<p style="color:#16a34a; font-weight:600; font-size:14px;">✅ 2FA is enabled (TOTP)</p>';
+            enableBtn.style.display = "none";
+            disableBtn.style.display = "block";
+            disableBtn.dataset.factorId = verifiedTotp.id;
+        } else {
+            statusDiv.innerHTML = '<p style="color:#6b7280; font-size:14px;">⚠️ 2FA is not enabled. Protect your account with an extra layer of security.</p>';
+            enableBtn.style.display = "block";
+            disableBtn.style.display = "none";
+        }
+    } catch (err) {
+        statusDiv.innerHTML = '<p style="color:#dc2626; font-size:13px;">Could not load 2FA status: ' + escapeHtml(err.message||err) + '</p>';
+    }
+}
+
+let enrollFactorId = null;
+
+async function startTwoFactorEnroll() {
+    const enrollDiv = document.getElementById("twoFactorEnroll");
+    const qrDiv = document.getElementById("twoFactorQR");
+    const enableBtn = document.getElementById("twoFactorEnableBtn");
+    const verifyBtn = document.getElementById("twoFactorVerifyBtn");
+
+    if (!enrollDiv || !qrDiv) return;
+
+    enableBtn.style.display = "none";
+    enrollDiv.style.display = "block";
+    qrDiv.innerHTML = '<p style="color:#6b7280; font-size:13px;">Generating QR code...</p>';
+    verifyBtn.disabled = true;
+
+    try {
+        const { data, error } = await sbClient.auth.mfa.enroll({ factorType: 'totp' });
+        if (error) throw error;
+
+        enrollFactorId = data.id;
+
+        // Render QR code using the QR URI (Google Charts API or inline SVG)
+        const qrUri = data.totp.qr_code;
+        qrDiv.innerHTML =
+            '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' +
+            encodeURIComponent(qrUri) + '" alt="2FA QR Code" style="width:200px; height:200px; border-radius:8px;" />' +
+            '<p style="font-size:11px; color:#9ca3af; margin-top:6px;">Or enter this key manually:</p>' +
+            '<code style="font-size:12px; display:block; padding:6px; background:#f3f4f6; border-radius:4px; word-break:break-all;">' +
+            escapeHtml(data.totp.secret) + '</code>';
+
+        verifyBtn.disabled = false;
+    } catch (err) {
+        qrDiv.innerHTML = '<p style="color:#dc2626; font-size:13px;">Failed to start 2FA enrollment: ' + escapeHtml(err.message||err) + '</p>';
+    }
+}
+
+async function verifyTwoFactorEnroll() {
+    const code = document.getElementById("twoFactorVerifyCode").value.trim();
+    const btn = document.getElementById("twoFactorVerifyBtn");
+    if (!code || code.length !== 6) { showToast("Enter the 6-digit code from your app", "error"); return; }
+    if (!enrollFactorId) { showToast("Enrollment session expired, try again", "error"); return; }
+
+    btn.textContent = "Verifying..."; btn.disabled = true;
+    try {
+        // Create challenge and verify
+        const { data: challengeData, error: challengeError } = await sbClient.auth.mfa.challenge({ factorId: enrollFactorId });
+        if (challengeError) throw challengeError;
+
+        const { error: verifyError } = await sbClient.auth.mfa.verify({
+            factorId: enrollFactorId,
+            challengeId: challengeData.id,
+            code: code
+        });
+        if (verifyError) throw verifyError;
+
+        // Success — 2FA is now enabled
+        enrollFactorId = null;
+        document.getElementById("twoFactorEnroll").style.display = "none";
+        document.getElementById("twoFactorVerifyCode").value = "";
+        showToast("2FA enabled successfully! 🔒", "success");
+        loadTwoFactorStatus();
+    } catch (err) {
+        showToast(err.message || "Invalid code, try again", "error");
+    } finally {
+        btn.textContent = "Verify & Enable 2FA"; btn.disabled = false;
+    }
+}
+
+async function disableTwoFactor() {
+    const factorId = document.getElementById("twoFactorDisableBtn").dataset.factorId;
+    if (!factorId) return;
+    if (!confirm("Are you sure you want to disable 2FA? Your account will be less secure.")) return;
+
+    try {
+        const { error } = await sbClient.auth.mfa.unenroll({ factorId });
+        if (error) throw error;
+        showToast("2FA disabled", "info");
+        loadTwoFactorStatus();
+    } catch (err) {
+        showToast("Failed to disable 2FA: " + (err.message||err), "error");
+    }
+}
+
+function cancelTwoFactorEnroll() {
+    enrollFactorId = null;
+    document.getElementById("twoFactorEnroll").style.display = "none";
+    document.getElementById("twoFactorVerifyCode").value = "";
+    document.getElementById("twoFactorEnableBtn").style.display = "block";
+    document.getElementById("twoFactorQR").innerHTML = "";
+}
+
+// --- Wire up 2FA event listeners ---
+function setupTwoFactorListeners() {
+    // 2FA login form
+    const tfLoginForm = document.getElementById("twoFactorLoginForm");
+    if (tfLoginForm) tfLoginForm.addEventListener("submit", handleTwoFactorLogin);
+    const tfSkipBtn = document.getElementById("twoFactorSkipBtn");
+    if (tfSkipBtn) tfSkipBtn.addEventListener("click", handleTwoFactorSkip);
+
+    // 2FA enrollment
+    const enableBtn = document.getElementById("twoFactorEnableBtn");
+    if (enableBtn) enableBtn.addEventListener("click", startTwoFactorEnroll);
+    const verifyBtn = document.getElementById("twoFactorVerifyBtn");
+    if (verifyBtn) verifyBtn.addEventListener("click", verifyTwoFactorEnroll);
+    const cancelBtn = document.getElementById("twoFactorCancelBtn");
+    if (cancelBtn) cancelBtn.addEventListener("click", cancelTwoFactorEnroll);
+    const disableBtn = document.getElementById("twoFactorDisableBtn");
+    if (disableBtn) disableBtn.addEventListener("click", disableTwoFactor);
+}
+
+

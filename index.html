@@ -417,6 +417,27 @@
                     </form>
                 </div>
 
+                <!-- Two-Factor Authentication (2FA) -->
+                <div class="card settings-card" style="border-color: #dbeafe;">
+                    <h3>🔒 Two-Factor Authentication (2FA)</h3>
+                    <p class="card-subtitle">Add an extra layer of security with a 6-digit code from Google Authenticator or Authy</p>
+                    <div id="twoFactorStatus">
+                        <p style="color: #6b7280; font-size: 13px; margin: 8px 0;">Checking 2FA status...</p>
+                    </div>
+                    <div id="twoFactorEnroll" style="display:none; margin-top: 12px;">
+                        <div id="twoFactorQR" style="text-align:center; margin: 12px 0;"></div>
+                        <p style="font-size:12px; color:#6b7280; margin:8px 0;">1. Scan the QR code with Google Authenticator or Authy</p>
+                        <p style="font-size:12px; color:#6b7280; margin:4px 0;">2. Enter the 6-digit code from your app:</p>
+                        <div class="form-group" style="margin-top: 8px;">
+                            <input type="text" id="twoFactorVerifyCode" placeholder="e.g. 123456" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" style="text-align:center; letter-spacing:4px; font-size:18px;" />
+                        </div>
+                        <button type="button" class="btn-primary" id="twoFactorVerifyBtn" style="width:100%; margin-top:8px;">Verify &amp; Enable 2FA</button>
+                        <button type="button" class="btn-secondary" id="twoFactorCancelBtn" style="width:100%; margin-top:6px;">Cancel</button>
+                    </div>
+                    <button type="button" class="btn-secondary" id="twoFactorEnableBtn" style="width:100%; margin-top:8px;">Enable 2FA</button>
+                    <button type="button" class="btn-danger" id="twoFactorDisableBtn" style="width:100%; margin-top:8px; display:none;">Disable 2FA</button>
+                </div>
+
                 <!-- Sign Out -->
                 <div class="card settings-card" style="border-color: #fee2e2;">
                     <h3>Sign Out</h3>
@@ -820,6 +841,25 @@
                     <input type="email" id="forgotEmail" placeholder="your.email@example.com" required />
                 </div>
                 <button type="submit" class="btn-primary btn-block" id="forgotBtn">Send Reset Link</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2FA VERIFICATION MODAL (shown after password login if 2FA enabled) -->
+    <div id="twoFactorAuthModal" class="modal">
+        <div class="modal-backdrop" data-close-modal="twoFactorAuthModal"></div>
+        <div class="modal-content card" style="max-width: 380px;">
+            <button class="modal-close" data-close-modal="twoFactorAuthModal">&times;</button>
+            <div class="auth-header">
+                <h2>🔒 Two-Factor Verification</h2>
+                <p>Enter the 6-digit code from your authenticator app</p>
+            </div>
+            <form id="twoFactorLoginForm">
+                <div class="form-group">
+                    <input type="text" id="twoFactorCode" placeholder="123456" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" required style="text-align:center; letter-spacing:6px; font-size:22px; padding:12px;" />
+                </div>
+                <button type="submit" class="btn-primary btn-block" id="twoFactorLoginBtn">Verify &amp; Continue</button>
+                <button type="button" class="btn-secondary btn-block" id="twoFactorSkipBtn" style="margin-top:6px;">Cancel Sign In</button>
             </form>
         </div>
     </div>
