@@ -2199,6 +2199,10 @@ async function openOrderModal(productId, shopId) {
         </form>
     `;
 
+    // Re-attach submit listener since innerHTML replaces the form element
+    const orderForm = document.getElementById("expressOrderForm");
+    if (orderForm) orderForm.addEventListener("submit", handleOrderSubmit);
+
     openModal("orderModal");
     // Set initial radio card highlight
     setTimeout(() => {
