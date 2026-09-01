@@ -910,6 +910,13 @@ function initNavigation() {
     if (mToggle) mToggle.addEventListener("click", toggleDrawer);
     const logoGrp = document.getElementById("logoGroup");
     if (logoGrp) logoGrp.addEventListener("click", () => navigateToPage("home"));
+
+    // Back to Market button (trader dashboard -> home)
+    const backToMarketBtn = document.getElementById("backToMarketBtn");
+    if (backToMarketBtn) backToMarketBtn.addEventListener("click", () => {
+        navigateToPage("home");
+        closeDrawer();
+    });
     const cDrawer = document.getElementById("closeDrawer");
     if (cDrawer) cDrawer.addEventListener("click", closeDrawer);
     const dBackdrop = document.getElementById("drawerBackdrop");
@@ -3357,7 +3364,11 @@ async function enableTraderRole() {
         } catch (err) { console.error("Error updating role:", err); }
     }
     updateUIForAuthUser();
-    showToast("Trader role enabled! Fill in your stall details below.", "success");
+    showToast("Welcome to your store! Set up your stall to start selling.", "success");
+    setTimeout(() => {
+        navigateToPage("account-trader");
+        closeDrawer();
+    }, 500);
 }
 
 // Dashboard delivery toggle - quick toggle for delivery
@@ -3502,6 +3513,20 @@ async function handleLogin(e) {
         const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
         closeModal("authModal");
+        // Fetch user profile to check role
+        if (sbClient && data.user) {
+            try {
+                const { data: profile } = await sbClient.from('user_profiles').select('account_type').eq('id', data.user.id).single();
+                if (profile && profile.account_type === "trader") {
+                    showToast("Welcome back to your store!", "success");
+                    setTimeout(() => {
+                        navigateToPage("account-trader");
+                        closeDrawer();
+                    }, 600);
+                    return;
+                }
+            } catch (e) { console.error("Profile fetch on login:", e); }
+        }
         showToast("Signed in successfully!", "success");
     } catch (err) {
         showToast(err.message || "Login failed", "error");
@@ -3549,7 +3574,15 @@ async function handleRegister(e) {
             });
         }
         closeModal("authModal");
-        showToast("Account created! Check your email to confirm.", "success");
+        if (role === "trader") {
+            showToast("Welcome to your store! Set up your stall details to start selling.", "success");
+            setTimeout(() => {
+                navigateToPage("account-trader");
+                closeDrawer();
+            }, 600);
+        } else {
+            showToast("Account created! Check your email to confirm.", "success");
+        }
     } catch (err) {
         showToast(err.message || "Registration failed", "error");
     } finally {
