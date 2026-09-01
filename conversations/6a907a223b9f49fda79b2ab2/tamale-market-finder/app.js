@@ -1818,11 +1818,14 @@ function findMyLocation() {
         return;
     }
 
-    showToast("Finding your location...", "success");
+    showToast("Finding your precise location...", "success");
 
+    // Try high-accuracy first with generous timeout for mobile GPS
     navigator.geolocation.getCurrentPosition(pos => {
         userLat = pos.coords.latitude;
         userLng = pos.coords.longitude;
+        // Also update the global userLocation used for ranking "Popular Near You"
+        userLocation = { latitude: userLat, longitude: userLng };
 
         // Remove old user marker
         if (userLocationMarker) leafletMap.removeLayer(userLocationMarker);
@@ -1863,8 +1866,25 @@ function findMyLocation() {
             updateMapMarkers(currentMapItems);
         }
     }, err => {
-        showToast("Could not get your location. Allow GPS permissions and try again.", "warning");
-    }, { enableHighAccuracy: true, timeout: 10000 });
+        // High-accuracy failed — retry with lower accuracy as fallback
+        if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+            showToast("High-accuracy GPS timed out, trying approximate location...", "info");
+            navigator.geolocation.getCurrentPosition(pos => {
+                userLat = pos.coords.latitude;
+                userLng = pos.coords.longitude;
+                userLocation = { latitude: userLat, longitude: userLng };
+                showToast("Approximate location found.", "success");
+                // Re-center map if it exists
+                if (leafletMap) leafletMap.setView([userLat, userLng], 14);
+            }, err2 => {
+                showToast("Could not get your location. Check GPS is enabled and you have permission.", "warning");
+            }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 });
+        } else if (err.code === err.PERMISSION_DENIED) {
+            showToast("Location permission denied. Allow GPS access in your browser settings.", "warning");
+        } else {
+            showToast("Could not get your location. Allow GPS permissions and try again.", "warning");
+        }
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 }
 
 function drawDirectionsToShop(shopLat, shopLng, shopName) {
@@ -1876,10 +1896,11 @@ function drawDirectionsToShop(shopLat, shopLng, shopName) {
         navigator.geolocation.getCurrentPosition(pos => {
             userLat = pos.coords.latitude;
             userLng = pos.coords.longitude;
+            userLocation = { latitude: userLat, longitude: userLng };
             drawDirectionsToShop(shopLat, shopLng, shopName);
         }, () => {
             showToast("Enable GPS to get directions to this shop.", "warning");
-        }, { enableHighAccuracy: true, timeout: 10000 });
+        }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
         return;
     }
 
@@ -3145,10 +3166,12 @@ async function lookupDigitalAddress() {
 
 function handleGetDeviceLocation() {
     if ("geolocation" in navigator) {
-        document.getElementById("locationStatus").textContent = "GPS Pin: Detecting your location...";
+        document.getElementById("locationStatus").textContent = "GPS Pin: Detecting your location (high accuracy)...";
         navigator.geolocation.getCurrentPosition(async pos => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
+            // Update global location used for ranking
+            userLocation = { latitude: lat, longitude: lng };
             document.getElementById("shopLat").value = lat.toFixed(6);
             document.getElementById("shopLng").value = lng.toFixed(6);
 
@@ -3175,9 +3198,43 @@ function handleGetDeviceLocation() {
             document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${addressCode}`;
             showToast("Device location acquired! Digital address: " + addressCode, "success");
         }, err => {
-            document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
-            showToast("Could not acquire device location. Please enter your digital address manually.", "warning");
-        }, { enableHighAccuracy: true, timeout: 10000 });
+            // High-accuracy failed — retry with approximate
+            if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+                document.getElementById("locationStatus").textContent = "GPS Pin: Retrying with approximate location...";
+                navigator.geolocation.getCurrentPosition(async pos => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    userLocation = { latitude: lat, longitude: lng };
+                    document.getElementById("shopLat").value = lat.toFixed(6);
+                    document.getElementById("shopLng").value = lng.toFixed(6);
+                    let addressCode = "";
+                    try {
+                        const resp = await fetch(`https://api.ghanapostgps.com/v2/getaddress?lat=${lat}&lng=${lng}`);
+                        if (resp.ok) {
+                            const result = await resp.json();
+                            if (result?.data?.found && result?.data?.Table) {
+                                addressCode = result.data.Table[0].DigitalAddress || result.data.Table[0].address || "";
+                            }
+                        }
+                    } catch (e) {}
+                    if (!addressCode) {
+                        addressCode = "NT-" + Math.floor(lat * 1000).toString().padStart(3, "0") + "-" + Math.floor(Math.abs(lng) * 1000).toString().padStart(4, "0");
+                    }
+                    document.getElementById("shopDigitalAddress").value = addressCode;
+                    document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${addressCode} (approximate)`;
+                    showToast("Approximate location acquired: " + addressCode, "success");
+                }, () => {
+                    document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
+                    showToast("Could not acquire location. Enter your digital address manually.", "warning");
+                }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 });
+            } else if (err.code === err.PERMISSION_DENIED) {
+                document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
+                showToast("Location permission denied. Enable GPS in browser settings.", "warning");
+            } else {
+                document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
+                showToast("Could not acquire device location. Please enter your digital address manually.", "warning");
+            }
+        }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
     } else {
         showToast("GPS not available on this device. Please enter your digital address manually.", "warning");
     }
