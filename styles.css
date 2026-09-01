@@ -2193,3 +2193,58 @@ body {
 .changelog-changes li {
     margin-bottom: 2px;
 }
+
+/* ====================================================================
+   TRADER QUICK STATS OVERVIEW
+   ==================================================================== */
+.trader-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.trader-stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 4px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.trader-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.trader-stat-card .stat-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.trader-stat-card .stat-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0A5C36;
+    line-height: 1.1;
+}
+
+.trader-stat-card .stat-label {
+    font-size: 10px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-top: 2px;
+}
+
+@media (max-width: 380px) {
+    .trader-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

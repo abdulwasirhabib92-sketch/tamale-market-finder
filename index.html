@@ -488,6 +488,31 @@
                         <button class="btn-primary back-to-market-btn" id="backToMarketBtn" style="margin-top: 12px; width: 100%;">
                             🏪 Back to Market
                         </button>
+
+                        <!-- Trader Quick Stats Overview -->
+                        <div class="trader-stats-grid" id="traderStatsGrid">
+                            <div class="trader-stat-card">
+                                <span class="stat-icon">📦</span>
+                                <span class="stat-value" id="statTotalProducts">0</span>
+                                <span class="stat-label">Products</span>
+                            </div>
+                            <div class="trader-stat-card">
+                                <span class="stat-icon">📑</span>
+                                <span class="stat-value" id="statPendingOrders">0</span>
+                                <span class="stat-label">Pending Orders</span>
+                            </div>
+                            <div class="trader-stat-card">
+                                <span class="stat-icon">👀</span>
+                                <span class="stat-value" id="statProfileViews">0</span>
+                                <span class="stat-label">Shop Views</span>
+                            </div>
+                            <div class="trader-stat-card">
+                                <span class="stat-icon">⭐</span>
+                                <span class="stat-value" id="statAvgRating">0.0</span>
+                                <span class="stat-label">Rating</span>
+                            </div>
+                        </div>
+
                         <div class="trader-dash-subtabs">
                             <button class="trader-subtab-btn active" data-tradersub="shop">📦 Shop & Products</button>
                             <button class="trader-subtab-btn" data-tradersub="orders">📑 Incoming Orders <span class="badge-count-inline" id="traderOrdersBadge">0</span></button>
