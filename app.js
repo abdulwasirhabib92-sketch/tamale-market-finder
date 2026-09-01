@@ -3766,3 +3766,189 @@ async function renderFavoritesPage() {
     `).join("");
 }
 // Latest security update
+
+
+// ====================================================================
+// SPOTLIGHT POPUP MODAL (Ad-style, auto-dismiss, video support)
+// ====================================================================
+let spotlightPopupTimer = null;
+let spotlightPopupCountdown = 8;
+let spotlightPopupShown = false;
+
+async function showSpotlightPopup() {
+    // Only show once per session
+    if (spotlightPopupShown) return;
+    if (sessionStorage.getItem('spotlightPopupSeen')) return;
+
+    let spotlightShops = [];
+
+    if (!DEMO_MODE && sbClient) {
+        try {
+            const { data, error } = await sbClient.from('public_shops').select('*').eq('is_active', true).order('rating_avg', { ascending: false }).limit(5);
+            if (error) throw error;
+            spotlightShops = (data || []).filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
+            if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 1);
+        } catch (err) {
+            console.error("Spotlight popup fetch error:", err);
+        }
+    }
+
+    // Don't show popup if no spotlight shops
+    if (spotlightShops.length === 0) return;
+
+    const shop = spotlightShops[0];
+    spotlightPopupShown = true;
+    sessionStorage.setItem('spotlightPopupSeen', '1');
+
+    const content = document.getElementById('spotlightPopupContent');
+
+    // Check if shop has a video (motion video for ad)
+    const videoUrl = shop.cover_video_url || shop.ad_video_url || '';
+    const imageUrl = shop.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e';
+
+    let mediaHTML = '';
+    if (videoUrl) {
+        mediaHTML = `<video class="spotlight-popup-video" autoplay muted loop playsinline>
+            <source src="${escapeAttr(videoUrl)}" type="video/mp4">
+        </video>`;
+    } else {
+        mediaHTML = `<img src="${escapeAttr(imageUrl)}" class="spotlight-popup-img" alt="${escapeHtml(shop.shop_name)}" />`;
+    }
+
+    content.innerHTML = `
+        ${mediaHTML}
+        <div class="spotlight-popup-body">
+            <span class="spotlight-popup-badge">🔥 Spotlight Featured</span>
+            <h3 class="spotlight-popup-title">${escapeHtml(shop.shop_name)}</h3>
+            <p class="spotlight-popup-area">📍 ${escapeHtml(shop.market_area)} • 🇬🇭 ${escapeHtml(shop.digital_address || 'Tamale')}</p>
+            <p class="spotlight-popup-desc">${escapeHtml(shop.description || '')}</p>
+            <div class="spotlight-popup-meta">
+                <span>⭐ ${shop.rating_avg || 0} (${shop.rating_count || 0})</span>
+                <button class="spotlight-popup-btn" data-action="showShopDetail" data-shop-id="${escapeJs(shop.id)}">Visit Stall ➔</button>
+            </div>
+        </div>
+    `;
+
+    // Show the popup
+    const modal = document.getElementById('spotlightPopupModal');
+    modal.style.display = 'flex';
+
+    // Start countdown timer
+    spotlightPopupCountdown = 8;
+    document.getElementById('spotlightPopupCountdown').textContent = spotlightPopupCountdown;
+    const timerBar = document.getElementById('spotlightPopupTimerBar');
+    timerBar.style.width = '100%';
+
+    // Animate timer bar shrink
+    setTimeout(() => { timerBar.style.transition = 'width 8s linear'; timerBar.style.width = '0%'; }, 100);
+
+    spotlightPopupTimer = setInterval(() => {
+        spotlightPopupCountdown--;
+        const cdEl = document.getElementById('spotlightPopupCountdown');
+        if (cdEl) cdEl.textContent = spotlightPopupCountdown;
+        if (spotlightPopupCountdown <= 0) {
+            closeSpotlightPopup();
+        }
+    }, 1000);
+}
+
+function closeSpotlightPopup() {
+    const modal = document.getElementById('spotlightPopupModal');
+    if (modal) modal.style.display = 'none';
+    if (spotlightPopupTimer) {
+        clearInterval(spotlightPopupTimer);
+        spotlightPopupTimer = null;
+    }
+}
+
+// Wire up close button and overlay click
+document.getElementById('spotlightPopupClose')?.addEventListener('click', closeSpotlightPopup);
+document.getElementById('spotlightPopupModal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeSpotlightPopup();
+});
+
+// Click on content navigates to shop
+document.getElementById('spotlightPopupContent')?.addEventListener('click', (e) => {
+    const shopId = e.target.closest('[data-shop-id]')?.dataset.shopId;
+    if (shopId) {
+        closeSpotlightPopup();
+        showShopDetail(shopId);
+    } else {
+        const sid = document.querySelector('#spotlightPopupContent [data-shop-id]')?.dataset.shopId;
+        if (sid) { closeSpotlightPopup(); showShopDetail(sid); }
+    }
+});
+
+// ====================================================================
+// APP UPDATES & CHANGELOG
+// ====================================================================
+const APP_CHANGELOG = [
+    {
+        version: "v2.0",
+        date: "September 1, 2026",
+        changes: [
+            "Added Two-Factor Authentication (2FA) for account security",
+            "Spotlight popup with video support and auto-dismiss",
+            "Improved GPS location accuracy with fallback retry",
+            "App Updates section in settings",
+            "Branding corrected to TechMarketVulture"
+        ]
+    },
+    {
+        version: "v1.5",
+        date: "August 31, 2026",
+        changes: [
+            "Horizontal scroll layout for product cards",
+            "PWA icons fixed for mobile install",
+            "Security headers and CSP policies implemented",
+            "PWA manifest configured for Android TWA"
+        ]
+    },
+    {
+        version: "v1.0",
+        date: "August 2026",
+        changes: [
+            "Initial release of Tamale Market Finder",
+            "Product, service, hotel, eatery, and company listings",
+            "Ghana Post GPS integration",
+            "WhatsApp contact and directions to stalls"
+        ]
+    }
+];
+
+function renderAppUpdates() {
+    const container = document.getElementById('appChangelogList');
+    if (!container) return;
+
+    container.innerHTML = APP_CHANGELOG.map(entry => `
+        <div class="changelog-item">
+            <div class="changelog-version">${entry.version}</div>
+            <div class="changelog-date">${entry.date}</div>
+            <div class="changelog-changes">
+                <ul>
+                    ${entry.changes.map(c => `<li>${escapeHtml(c)}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+    `).join('');
+}
+
+document.getElementById('checkUpdatesBtn')?.addEventListener('click', () => {
+    showToast("You're on the latest version of Tamale Market Finder!", "success");
+});
+
+// Render updates when settings page loads
+const _origNavigateToPage = navigateToPage;
+navigateToPage = function(pageId) {
+    _origNavigateToPage(pageId);
+    if (pageId === 'account-settings') {
+        setTimeout(renderAppUpdates, 200);
+    }
+};
+
+// Show spotlight popup after page loads (delayed)
+setTimeout(() => {
+    if (document.getElementById('spotlightPopupModal')) {
+        showSpotlightPopup();
+    }
+}, 3000);
