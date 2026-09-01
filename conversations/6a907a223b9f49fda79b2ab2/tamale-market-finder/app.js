@@ -3426,6 +3426,7 @@ function updateUIForAuthUser() {
     if (userProfile.account_type === "trader") {
         if (upgradePrompt) upgradePrompt.style.display = "none";
         if (dashContent) dashContent.style.display = "block";
+        loadTraderStats();
     } else {
         if (upgradePrompt) upgradePrompt.style.display = "block";
         if (dashContent) dashContent.style.display = "none";
@@ -3800,6 +3801,52 @@ async function renderFavoritesPage() {
 }
 // Latest security update
 
+
+// ====================================================================
+// TRADER QUICK STATS OVERVIEW
+// ====================================================================
+async function loadTraderStats() {
+    if (!sbClient || !userShop) {
+        // Reset stats to 0
+        const ids = ['statTotalProducts', 'statPendingOrders', 'statProfileViews', 'statAvgRating'];
+        ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '0'; });
+        const ratingEl = document.getElementById('statAvgRating');
+        if (ratingEl) ratingEl.textContent = '0.0';
+        return;
+    }
+
+    try {
+        // Fetch product count
+        const { count: productCount, error: pErr } = await sbClient
+            .from('products').select('*', { count: 'exact', head: true })
+            .eq('shop_id', userShop.id);
+
+        // Fetch pending orders count
+        const { count: orderCount, error: oErr } = await sbClient
+            .from('orders').select('*', { count: 'exact', head: true })
+            .eq('shop_id', userShop.id)
+            .eq('status', 'pending');
+
+        // Profile views (from shop data if available, fallback to 0)
+        const views = userShop.view_count || userShop.profile_views || 0;
+
+        // Average rating
+        const rating = userShop.rating_avg || 0;
+
+        // Update DOM
+        const elProducts = document.getElementById('statTotalProducts');
+        const elOrders = document.getElementById('statPendingOrders');
+        const elViews = document.getElementById('statProfileViews');
+        const elRating = document.getElementById('statAvgRating');
+
+        if (elProducts) elProducts.textContent = productCount || 0;
+        if (elOrders) elOrders.textContent = orderCount || 0;
+        if (elViews) elViews.textContent = views;
+        if (elRating) elRating.textContent = (rating > 0 ? rating.toFixed(1) : '0.0');
+    } catch (err) {
+        console.error("Error loading trader stats:", err);
+    }
+}
 
 // ====================================================================
 // SPOTLIGHT POPUP MODAL (Ad-style, auto-dismiss, video support)
