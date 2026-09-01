@@ -3398,6 +3398,20 @@ async function toggleDashboardDelivery() {
     }
 }
 
+function updateShopStatusBadge() {
+    const badge = document.getElementById("shopStatusBadge");
+    if (!badge) return;
+    if (userShop && userShop.id) {
+        badge.textContent = "Configured";
+        badge.style.background = "#DCFCE7";
+        badge.style.color = "#16A34A";
+    } else {
+        badge.textContent = "Not Configured";
+        badge.style.background = "#FEE2E2";
+        badge.style.color = "#DC2626";
+    }
+}
+
 function updateUIForAuthUser() {
     document.getElementById("drawerName").textContent = userProfile.full_name || "User";
     document.getElementById("drawerEmail").textContent = currentUser?.email || "Sign in to save shops, order & manage listings";
@@ -3488,6 +3502,7 @@ function updateUIForAuthUser() {
     renderTraderOrders();
     renderTraderReviews();
     updateFavoritesBadge();
+    updateShopStatusBadge();
 }
 
 function updateUIForGuestUser() {
@@ -3503,6 +3518,8 @@ function updateUIForGuestUser() {
     // Hide admin tab for guests
     const adminTabBtn = document.getElementById("adminTabBtn");
     if (adminTabBtn) adminTabBtn.style.display = "none";
+
+    updateShopStatusBadge();
 }
 
 function showToast(msg, type = "success") {
@@ -3708,6 +3725,7 @@ async function handleSaveShop(e) {
             if (error) throw error;
             userShop = data;
         }
+        updateShopStatusBadge();
         showToast("Market stall details saved! Ghana Card pending verification.", "success");
     } catch (err) {
         showToast(err.message || "Could not save shop details", "error");
