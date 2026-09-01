@@ -418,6 +418,23 @@
                     </form>
                 </div>
 
+
+                <!-- App Updates & Changelog -->
+                <div class="card settings-card" style="border-color: #d1fae5;">
+                    <h3>🔄 App Updates</h3>
+                    <p class="card-subtitle">Current version and recent changes</p>
+                    <div id="appUpdatesSection" style="margin-top: 12px;">
+                        <div class="app-version-badge">
+                            <span class="version-label">Current Version</span>
+                            <span class="version-number" id="currentAppVersion">v2.0</span>
+                        </div>
+                        <div class="app-changelog" id="appChangelogList">
+                            <!-- Dynamically populated -->
+                        </div>
+                        <button class="btn-secondary btn-block" id="checkUpdatesBtn" style="margin-top: 12px;">🔄 Check for Updates</button>
+                    </div>
+                </div>
+
                 <!-- Sign Out -->
                 <div class="card settings-card" style="border-color: #fee2e2;">
                     <h3>Sign Out</h3>
@@ -1173,5 +1190,18 @@
             });
         }
     </script>
-</body>
+
+        <!-- Spotlight Popup Modal (ad-style, auto-dismiss) -->
+        <div id="spotlightPopupModal" class="spotlight-popup-overlay" style="display:none;">
+            <div class="spotlight-popup" id="spotlightPopupCard">
+                <button class="spotlight-popup-close" id="spotlightPopupClose" aria-label="Close spotlight">&times;</button>
+                <div class="spotlight-popup-content" id="spotlightPopupContent">
+                    <!-- Dynamically populated -->
+                </div>
+                <div class="spotlight-popup-timer-bar" id="spotlightPopupTimerBar"></div>
+                <p class="spotlight-popup-skip">Tap anywhere to visit • Auto-closes in <span id="spotlightPopupCountdown">8</span>s</p>
+            </div>
+        </div>
+
+    </body>
 </html>
