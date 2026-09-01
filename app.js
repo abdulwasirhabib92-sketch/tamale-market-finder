@@ -679,7 +679,6 @@ document.addEventListener("DOMContentLoaded", () => {
     try { renderShowcaseSections().catch(e => showErr("renderShowcaseSections", e)); } catch(e) { showErr("renderShowcaseSections", e); }
     try { searchListings(); } catch(e) { showErr("searchListings", e); }
     try { updateUIForAuthUser(); } catch(e) { showErr("updateUIForAuthUser", e); }
-    setupTwoFactorListeners();
     try { initInlineHandlers(); } catch(e) { showErr("initInlineHandlers", e); }
 });
 
@@ -869,7 +868,6 @@ async function loadUserProfile(userId) {
         await loadUserShop(userId);
         await loadUserFavorites(userId);
         updateUIForAuthUser();
-        loadTwoFactorStatus();
     } catch (err) {
         console.error("Error loading profile:", err);
         showToast("Could not load profile data", "error");
@@ -1820,11 +1818,14 @@ function findMyLocation() {
         return;
     }
 
-    showToast("Finding your location...", "success");
+    showToast("Finding your precise location...", "success");
 
+    // Try high-accuracy first with generous timeout for mobile GPS
     navigator.geolocation.getCurrentPosition(pos => {
         userLat = pos.coords.latitude;
         userLng = pos.coords.longitude;
+        // Also update the global userLocation used for ranking "Popular Near You"
+        userLocation = { latitude: userLat, longitude: userLng };
 
         // Remove old user marker
         if (userLocationMarker) leafletMap.removeLayer(userLocationMarker);
@@ -1865,8 +1866,25 @@ function findMyLocation() {
             updateMapMarkers(currentMapItems);
         }
     }, err => {
-        showToast("Could not get your location. Allow GPS permissions and try again.", "warning");
-    }, { enableHighAccuracy: true, timeout: 10000 });
+        // High-accuracy failed — retry with lower accuracy as fallback
+        if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+            showToast("High-accuracy GPS timed out, trying approximate location...", "info");
+            navigator.geolocation.getCurrentPosition(pos => {
+                userLat = pos.coords.latitude;
+                userLng = pos.coords.longitude;
+                userLocation = { latitude: userLat, longitude: userLng };
+                showToast("Approximate location found.", "success");
+                // Re-center map if it exists
+                if (leafletMap) leafletMap.setView([userLat, userLng], 14);
+            }, err2 => {
+                showToast("Could not get your location. Check GPS is enabled and you have permission.", "warning");
+            }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 });
+        } else if (err.code === err.PERMISSION_DENIED) {
+            showToast("Location permission denied. Allow GPS access in your browser settings.", "warning");
+        } else {
+            showToast("Could not get your location. Allow GPS permissions and try again.", "warning");
+        }
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 }
 
 function drawDirectionsToShop(shopLat, shopLng, shopName) {
@@ -1878,10 +1896,11 @@ function drawDirectionsToShop(shopLat, shopLng, shopName) {
         navigator.geolocation.getCurrentPosition(pos => {
             userLat = pos.coords.latitude;
             userLng = pos.coords.longitude;
+            userLocation = { latitude: userLat, longitude: userLng };
             drawDirectionsToShop(shopLat, shopLng, shopName);
         }, () => {
             showToast("Enable GPS to get directions to this shop.", "warning");
-        }, { enableHighAccuracy: true, timeout: 10000 });
+        }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
         return;
     }
 
@@ -3147,10 +3166,12 @@ async function lookupDigitalAddress() {
 
 function handleGetDeviceLocation() {
     if ("geolocation" in navigator) {
-        document.getElementById("locationStatus").textContent = "GPS Pin: Detecting your location...";
+        document.getElementById("locationStatus").textContent = "GPS Pin: Detecting your location (high accuracy)...";
         navigator.geolocation.getCurrentPosition(async pos => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
+            // Update global location used for ranking
+            userLocation = { latitude: lat, longitude: lng };
             document.getElementById("shopLat").value = lat.toFixed(6);
             document.getElementById("shopLng").value = lng.toFixed(6);
 
@@ -3177,9 +3198,43 @@ function handleGetDeviceLocation() {
             document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${addressCode}`;
             showToast("Device location acquired! Digital address: " + addressCode, "success");
         }, err => {
-            document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
-            showToast("Could not acquire device location. Please enter your digital address manually.", "warning");
-        }, { enableHighAccuracy: true, timeout: 10000 });
+            // High-accuracy failed — retry with approximate
+            if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+                document.getElementById("locationStatus").textContent = "GPS Pin: Retrying with approximate location...";
+                navigator.geolocation.getCurrentPosition(async pos => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    userLocation = { latitude: lat, longitude: lng };
+                    document.getElementById("shopLat").value = lat.toFixed(6);
+                    document.getElementById("shopLng").value = lng.toFixed(6);
+                    let addressCode = "";
+                    try {
+                        const resp = await fetch(`https://api.ghanapostgps.com/v2/getaddress?lat=${lat}&lng=${lng}`);
+                        if (resp.ok) {
+                            const result = await resp.json();
+                            if (result?.data?.found && result?.data?.Table) {
+                                addressCode = result.data.Table[0].DigitalAddress || result.data.Table[0].address || "";
+                            }
+                        }
+                    } catch (e) {}
+                    if (!addressCode) {
+                        addressCode = "NT-" + Math.floor(lat * 1000).toString().padStart(3, "0") + "-" + Math.floor(Math.abs(lng) * 1000).toString().padStart(4, "0");
+                    }
+                    document.getElementById("shopDigitalAddress").value = addressCode;
+                    document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${addressCode} (approximate)`;
+                    showToast("Approximate location acquired: " + addressCode, "success");
+                }, () => {
+                    document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
+                    showToast("Could not acquire location. Enter your digital address manually.", "warning");
+                }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 });
+            } else if (err.code === err.PERMISSION_DENIED) {
+                document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
+                showToast("Location permission denied. Enable GPS in browser settings.", "warning");
+            } else {
+                document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
+                showToast("Could not acquire device location. Please enter your digital address manually.", "warning");
+            }
+        }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
     } else {
         showToast("GPS not available on this device. Please enter your digital address manually.", "warning");
     }
@@ -3446,18 +3501,8 @@ async function handleLogin(e) {
     try {
         const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
-        // Check if 2FA/MFA is required
-        const mfaRequired = await checkMFARequired(data.session);
-        if (mfaRequired) {
-            // Don't close authModal yet — show 2FA verification instead
-            closeModal("authModal");
-            showToast("2FA required — enter your verification code", "info");
-            await showMFAChallenge();
-        } else {
-            closeModal("authModal");
-            showToast("Signed in successfully!", "success");
-        }
+        closeModal("authModal");
+        showToast("Signed in successfully!", "success");
     } catch (err) {
         showToast(err.message || "Login failed", "error");
     } finally {
@@ -3721,240 +3766,3 @@ async function renderFavoritesPage() {
     `).join("");
 }
 // Latest security update
-
-// ============================================================
-// TWO-FACTOR AUTHENTICATION (TOTP via Supabase MFA)
-// ============================================================
-
-let pendingMFAFactorId = null;
-let pendingMFAChallengeId = null;
-let pendingMFASession = null;
-
-// --- 2FA Login Flow ---
-// After password login, check if user has MFA factors enrolled.
-// If so, show the 2FA verification modal.
-async function checkMFARequired(session) {
-    try {
-        // Check current AAL level
-        const { data, error } = await sbClient.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (error) { console.warn("MFA AAL check error:", error.message); return false; }
-
-        // If currentLevel is aal2, already verified
-        if (data.currentLevel === 'aal2') return false;
-
-        // If nextLevel is aal2, MFA is required
-        if (data.nextLevel === 'aal2') {
-            // List factors to see which ones are verified
-            const { data: factorsData, error: factorsError } = await sbClient.auth.mfa.listFactors();
-            if (factorsError) { console.warn("MFA listFactors error:", factorsError.message); return false; }
-
-            const verifiedTotp = factorsData.totp?.find(f => f.status === 'verified');
-            if (verifiedTotp) {
-                pendingMFAFactorId = verifiedTotp.id;
-                return true;
-            }
-        }
-        return false;
-    } catch (err) {
-        console.warn("MFA check error:", err);
-        return false;
-    }
-}
-
-async function showMFAChallenge() {
-    if (!pendingMFAFactorId) return;
-    try {
-        const { data, error } = await sbClient.auth.mfa.challenge({ factorId: pendingMFAFactorId });
-        if (error) throw error;
-        pendingMFAChallengeId = data.id;
-        openModal("twoFactorAuthModal");
-        setTimeout(() => document.getElementById("twoFactorCode")?.focus(), 300);
-    } catch (err) {
-        showToast("2FA challenge failed: " + (err.message || err), "error");
-    }
-}
-
-async function handleTwoFactorLogin(e) {
-    e.preventDefault();
-    const code = document.getElementById("twoFactorCode").value.trim();
-    const btn = document.getElementById("twoFactorLoginBtn");
-    if (!code || code.length !== 6) { showToast("Enter the 6-digit code", "error"); return; }
-    if (!pendingMFAFactorId || !pendingMFAChallengeId) { showToast("2FA session expired, sign in again", "error"); return; }
-
-    btn.textContent = "Verifying..."; btn.disabled = true;
-    try {
-        const { data, error } = await sbClient.auth.mfa.verify({
-            factorId: pendingMFAFactorId,
-            challengeId: pendingMFAChallengeId,
-            code: code
-        });
-        if (error) throw error;
-
-        // Success — session upgraded to aal2
-        pendingMFAFactorId = null;
-        pendingMFAChallengeId = null;
-        closeModal("twoFactorAuthModal");
-        showToast("2FA verified! Welcome back.", "success");
-
-        // Reload user profile now that we're fully authenticated
-        if (data?.session?.user) {
-            currentUser = data.session.user;
-            loadUserProfile(data.session.user.id);
-        }
-    } catch (err) {
-        showToast(err.message || "Invalid 2FA code", "error");
-    } finally {
-        btn.textContent = "Verify & Continue"; btn.disabled = false;
-        document.getElementById("twoFactorCode").value = "";
-    }
-}
-
-function handleTwoFactorSkip() {
-    // User cancelled — sign them out since they didn't complete 2FA
-    pendingMFAFactorId = null;
-    pendingMFAChallengeId = null;
-    closeModal("twoFactorAuthModal");
-    sbClient.auth.signOut().then(() => {
-        showToast("Sign-in cancelled", "info");
-    });
-}
-
-// --- 2FA Enrollment Flow (from Settings) ---
-async function loadTwoFactorStatus() {
-    if (!currentUser) return;
-    const statusDiv = document.getElementById("twoFactorStatus");
-    const enableBtn = document.getElementById("twoFactorEnableBtn");
-    const disableBtn = document.getElementById("twoFactorDisableBtn");
-    if (!statusDiv) return;
-
-    try {
-        const { data, error } = await sbClient.auth.mfa.listFactors();
-        if (error) throw error;
-
-        const verifiedTotp = data.totp?.find(f => f.status === 'verified');
-        if (verifiedTotp) {
-            statusDiv.innerHTML = '<p style="color:#16a34a; font-weight:600; font-size:14px;">✅ 2FA is enabled (TOTP)</p>';
-            enableBtn.style.display = "none";
-            disableBtn.style.display = "block";
-            disableBtn.dataset.factorId = verifiedTotp.id;
-        } else {
-            statusDiv.innerHTML = '<p style="color:#6b7280; font-size:14px;">⚠️ 2FA is not enabled. Protect your account with an extra layer of security.</p>';
-            enableBtn.style.display = "block";
-            disableBtn.style.display = "none";
-        }
-    } catch (err) {
-        statusDiv.innerHTML = '<p style="color:#dc2626; font-size:13px;">Could not load 2FA status: ' + escapeHtml(err.message||err) + '</p>';
-    }
-}
-
-let enrollFactorId = null;
-
-async function startTwoFactorEnroll() {
-    const enrollDiv = document.getElementById("twoFactorEnroll");
-    const qrDiv = document.getElementById("twoFactorQR");
-    const enableBtn = document.getElementById("twoFactorEnableBtn");
-    const verifyBtn = document.getElementById("twoFactorVerifyBtn");
-
-    if (!enrollDiv || !qrDiv) return;
-
-    enableBtn.style.display = "none";
-    enrollDiv.style.display = "block";
-    qrDiv.innerHTML = '<p style="color:#6b7280; font-size:13px;">Generating QR code...</p>';
-    verifyBtn.disabled = true;
-
-    try {
-        const { data, error } = await sbClient.auth.mfa.enroll({ factorType: 'totp' });
-        if (error) throw error;
-
-        enrollFactorId = data.id;
-
-        // Render QR code using the QR URI (Google Charts API or inline SVG)
-        const qrUri = data.totp.qr_code;
-        qrDiv.innerHTML =
-            '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' +
-            encodeURIComponent(qrUri) + '" alt="2FA QR Code" style="width:200px; height:200px; border-radius:8px;" />' +
-            '<p style="font-size:11px; color:#9ca3af; margin-top:6px;">Or enter this key manually:</p>' +
-            '<code style="font-size:12px; display:block; padding:6px; background:#f3f4f6; border-radius:4px; word-break:break-all;">' +
-            escapeHtml(data.totp.secret) + '</code>';
-
-        verifyBtn.disabled = false;
-    } catch (err) {
-        qrDiv.innerHTML = '<p style="color:#dc2626; font-size:13px;">Failed to start 2FA enrollment: ' + escapeHtml(err.message||err) + '</p>';
-    }
-}
-
-async function verifyTwoFactorEnroll() {
-    const code = document.getElementById("twoFactorVerifyCode").value.trim();
-    const btn = document.getElementById("twoFactorVerifyBtn");
-    if (!code || code.length !== 6) { showToast("Enter the 6-digit code from your app", "error"); return; }
-    if (!enrollFactorId) { showToast("Enrollment session expired, try again", "error"); return; }
-
-    btn.textContent = "Verifying..."; btn.disabled = true;
-    try {
-        // Create challenge and verify
-        const { data: challengeData, error: challengeError } = await sbClient.auth.mfa.challenge({ factorId: enrollFactorId });
-        if (challengeError) throw challengeError;
-
-        const { error: verifyError } = await sbClient.auth.mfa.verify({
-            factorId: enrollFactorId,
-            challengeId: challengeData.id,
-            code: code
-        });
-        if (verifyError) throw verifyError;
-
-        // Success — 2FA is now enabled
-        enrollFactorId = null;
-        document.getElementById("twoFactorEnroll").style.display = "none";
-        document.getElementById("twoFactorVerifyCode").value = "";
-        showToast("2FA enabled successfully! 🔒", "success");
-        loadTwoFactorStatus();
-    } catch (err) {
-        showToast(err.message || "Invalid code, try again", "error");
-    } finally {
-        btn.textContent = "Verify & Enable 2FA"; btn.disabled = false;
-    }
-}
-
-async function disableTwoFactor() {
-    const factorId = document.getElementById("twoFactorDisableBtn").dataset.factorId;
-    if (!factorId) return;
-    if (!confirm("Are you sure you want to disable 2FA? Your account will be less secure.")) return;
-
-    try {
-        const { error } = await sbClient.auth.mfa.unenroll({ factorId });
-        if (error) throw error;
-        showToast("2FA disabled", "info");
-        loadTwoFactorStatus();
-    } catch (err) {
-        showToast("Failed to disable 2FA: " + (err.message||err), "error");
-    }
-}
-
-function cancelTwoFactorEnroll() {
-    enrollFactorId = null;
-    document.getElementById("twoFactorEnroll").style.display = "none";
-    document.getElementById("twoFactorVerifyCode").value = "";
-    document.getElementById("twoFactorEnableBtn").style.display = "block";
-    document.getElementById("twoFactorQR").innerHTML = "";
-}
-
-// --- Wire up 2FA event listeners ---
-function setupTwoFactorListeners() {
-    // 2FA login form
-    const tfLoginForm = document.getElementById("twoFactorLoginForm");
-    if (tfLoginForm) tfLoginForm.addEventListener("submit", handleTwoFactorLogin);
-    const tfSkipBtn = document.getElementById("twoFactorSkipBtn");
-    if (tfSkipBtn) tfSkipBtn.addEventListener("click", handleTwoFactorSkip);
-
-    // 2FA enrollment
-    const enableBtn = document.getElementById("twoFactorEnableBtn");
-    if (enableBtn) enableBtn.addEventListener("click", startTwoFactorEnroll);
-    const verifyBtn = document.getElementById("twoFactorVerifyBtn");
-    if (verifyBtn) verifyBtn.addEventListener("click", verifyTwoFactorEnroll);
-    const cancelBtn = document.getElementById("twoFactorCancelBtn");
-    if (cancelBtn) cancelBtn.addEventListener("click", cancelTwoFactorEnroll);
-    const disableBtn = document.getElementById("twoFactorDisableBtn");
-    if (disableBtn) disableBtn.addEventListener("click", disableTwoFactor);
-}
-
-
