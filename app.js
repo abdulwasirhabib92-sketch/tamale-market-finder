@@ -956,6 +956,8 @@ function initNavigation() {
     // Auth form submissions
     const loginForm = document.getElementById('loginForm');
     if (loginForm) loginForm.addEventListener('submit', handleLogin);
+    const googleBtn = document.getElementById("googleSignInBtn");
+    if (googleBtn) googleBtn.addEventListener("click", handleGoogleSignIn);
     const registerForm = document.getElementById('registerForm');
     if (registerForm) registerForm.addEventListener('submit', handleRegister);
     const forgotForm = document.getElementById('forgotForm');
@@ -3572,6 +3574,22 @@ async function handleLogin(e) {
 }
 
 async function handleRegister(e) {
+
+// --- Google Sign-In ---
+async function handleGoogleSignIn() {
+    if (!sbClient) { showToast("Demo mode - auth not available", "error"); return; }
+    try {
+        const { data, error } = await sbClient.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+                redirectTo: window.location.origin + window.location.pathname
+            }
+        });
+        if (error) throw error;
+    } catch (err) {
+        showToast(err.message || "Google sign-in failed", "error");
+    }
+}
     e.preventDefault();
     if (!sbClient) { showToast("Demo mode - auth not available", "error"); return; }
     const fullName = document.getElementById("regName").value.trim();
