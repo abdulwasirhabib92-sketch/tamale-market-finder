@@ -2383,7 +2383,35 @@ async function handleOrderSubmit(e) {
     }
 
     closeModal("orderModal");
-    showToast(`Order ${orderNumber} placed successfully! Trader notified.`, "success");
+
+    // --- INSTANT TRADER NOTIFICATION ---
+    const shop = activeOrderProduct.shop;
+    const productName = activeOrderProduct.product.name;
+    const traderWa = shop.whatsapp_number || "";
+    const traderPhone = shop.phone_number || shop.whatsapp_number || "";
+
+    // 1. Open WhatsApp to trader with order details (fastest, free)
+    if (traderWa) {
+        const waMsg = `🔔 NEW ORDER ${orderNumber}\n\n📦 ${productName} x${orderQty}\n💰 GHS ${totalAmount.toFixed(2)}\n👤 ${buyerName} (${buyerPhone})\n🚚 ${deliveryType}\n${buyerNotes ? '📝 ' + buyerNotes : ''}\n\nRespond to buyer: ${buyerPhone}`;
+        window.open(`https://wa.me/${traderWa}?text=${encodeURIComponent(waMsg)}`, "_blank");
+    }
+
+    // 2. Send SMS if trader opted in (via backend function)
+    if (!DEMO_MODE && shop.sms_alerts_enabled && traderPhone) {
+        try {
+            const smsResp = await fetch('/api/notify-trader-sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: traderPhone,
+                    message: `TMF: New order ${orderNumber} - ${productName} x${orderQty}, GHS ${totalAmount.toFixed(2)} from ${buyerName} (${buyerPhone}). Respond soon!`
+                })
+            });
+            console.log("SMS notification sent:", smsResp.status);
+        } catch (smsErr) { console.error("SMS send error:", smsErr); }
+    }
+
+    showToast(`Order ${orderNumber} placed! Trader notified via WhatsApp${shop.sms_alerts_enabled ? ' + SMS' : ''}.`, "success");
     navigateToPage("my-orders");
     renderBuyerOrders();
 }
@@ -3427,6 +3455,7 @@ function updateUIForAuthUser() {
         if (upgradePrompt) upgradePrompt.style.display = "none";
         if (dashContent) dashContent.style.display = "block";
         loadTraderStats();
+        updateTraderNotificationBadge();
     } else {
         if (upgradePrompt) upgradePrompt.style.display = "block";
         if (dashContent) dashContent.style.display = "none";
@@ -3455,6 +3484,7 @@ function updateUIForAuthUser() {
         const sa = document.getElementById("shopAddress"); if (sa) sa.value = userShop.address || "";
         const sp = document.getElementById("shopPhone"); if (sp) sp.value = userShop.phone || "";
         const sw = document.getElementById("shopWhatsapp"); if (sw) sw.value = userShop.whatsapp_number || "";
+        const smsChk = document.getElementById("shopSmsAlerts"); if (smsChk) smsChk.checked = userShop.sms_alerts_enabled || false;
         const slat = document.getElementById("shopLat"); if (slat) slat.value = userShop.latitude || "";
         const slng = document.getElementById("shopLng"); if (slng) slng.value = userShop.longitude || "";
 
@@ -3682,6 +3712,8 @@ async function handleSaveShop(e) {
         ghana_card_photo_url: ghanaCardPhotoUrl,
         ghana_card_verified: false,
         is_active: true,
+        sms_alerts_enabled: document.getElementById("shopSmsAlerts")?.checked || false,
+        offers_delivery: document.getElementById("shopOffersDelivery")?.checked || false,
         updated_date: new Date().toISOString()
     };
     try {
@@ -3847,6 +3879,49 @@ async function loadTraderStats() {
         console.error("Error loading trader stats:", err);
     }
 }
+
+// ====================================================================
+// TRADER NOTIFICATION BADGE — live pending order count on drawer
+// ====================================================================
+async function updateTraderNotificationBadge() {
+    if (!sbClient || !userShop || userProfile.account_type !== "trader") {
+        const badge = document.getElementById("traderBadgeText");
+        if (badge) badge.textContent = "Trader Dashboard";
+        return;
+    }
+    try {
+        const { count, error } = await sbClient
+            .from('orders').select('*', { count: 'exact', head: true })
+            .eq('shop_id', userShop.id)
+            .in('status', ['placed', 'accepted']);
+        const badge = document.getElementById("traderBadgeText");
+        if (badge) {
+            if (count && count > 0) {
+                badge.innerHTML = `🔔 ${count} new order${count > 1 ? 's' : ''}`;
+                badge.style.background = '#FEF3C7';
+                badge.style.color = '#92400E';
+                badge.style.fontWeight = '700';
+            } else {
+                badge.textContent = "Trader Dashboard";
+                badge.style.background = '';
+                badge.style.color = '';
+                badge.style.fontWeight = '';
+            }
+        }
+        // Also update the orders badge inside the dashboard
+        const ordersBadge = document.getElementById('traderOrdersBadge');
+        if (ordersBadge) ordersBadge.textContent = count || 0;
+    } catch (err) {
+        console.error("Error updating trader badge:", err);
+    }
+}
+
+// Poll for new orders every 30 seconds when trader is logged in
+setInterval(() => {
+    if (sbClient && userShop && userProfile.account_type === "trader") {
+        updateTraderNotificationBadge();
+    }
+}, 30000);
 
 // ====================================================================
 // SPOTLIGHT POPUP MODAL (Ad-style, auto-dismiss, video support)
