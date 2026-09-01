@@ -2396,22 +2396,7 @@ async function handleOrderSubmit(e) {
         window.open(`https://wa.me/${traderWa}?text=${encodeURIComponent(waMsg)}`, "_blank");
     }
 
-    // 2. Send SMS if trader opted in (via backend function)
-    if (!DEMO_MODE && shop.sms_alerts_enabled && traderPhone) {
-        try {
-            const smsResp = await fetch('/api/notify-trader-sms', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone: traderPhone,
-                    message: `TMF: New order ${orderNumber} - ${productName} x${orderQty}, GHS ${totalAmount.toFixed(2)} from ${buyerName} (${buyerPhone}). Respond soon!`
-                })
-            });
-            console.log("SMS notification sent:", smsResp.status);
-        } catch (smsErr) { console.error("SMS send error:", smsErr); }
-    }
-
-    showToast(`Order ${orderNumber} placed! Trader notified via WhatsApp${shop.sms_alerts_enabled ? ' + SMS' : ''}.`, "success");
+    showToast(`Order ${orderNumber} placed! Trader notified via WhatsApp.`, "success");
     navigateToPage("my-orders");
     renderBuyerOrders();
 }
@@ -3484,7 +3469,6 @@ function updateUIForAuthUser() {
         const sa = document.getElementById("shopAddress"); if (sa) sa.value = userShop.address || "";
         const sp = document.getElementById("shopPhone"); if (sp) sp.value = userShop.phone || "";
         const sw = document.getElementById("shopWhatsapp"); if (sw) sw.value = userShop.whatsapp_number || "";
-        const smsChk = document.getElementById("shopSmsAlerts"); if (smsChk) smsChk.checked = userShop.sms_alerts_enabled || false;
         const slat = document.getElementById("shopLat"); if (slat) slat.value = userShop.latitude || "";
         const slng = document.getElementById("shopLng"); if (slng) slng.value = userShop.longitude || "";
 
@@ -3712,7 +3696,6 @@ async function handleSaveShop(e) {
         ghana_card_photo_url: ghanaCardPhotoUrl,
         ghana_card_verified: false,
         is_active: true,
-        sms_alerts_enabled: document.getElementById("shopSmsAlerts")?.checked || false,
         offers_delivery: document.getElementById("shopOffersDelivery")?.checked || false,
         updated_date: new Date().toISOString()
     };
