@@ -1,13 +1,13 @@
 /* ====================================================================
-   TAMALE MARKET FINDER (TMF) - PHASE 2 JAVASCRIPT ENGINE
+   MARKET FINDER - MULTI-CITY E-COMMERCE ENGINE
    Target: Vanilla JS (ES6+), Leaflet.js, Supabase JS v2, Manual address entry + map picker
    ==================================================================== */
 
 // ====================================================================
 // 1. CONFIGURATION & CONSTANTS
 // ====================================================================
-const SUPABASE_URL = "https://djcajmglxkmhbipmweps.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqY2FqbWdseGttaGJpcG13ZXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTE3NDcsImV4cCI6MjA5NjQyNzc0N30.ccaT6pQW8Dbqy1LC97p2hH0Q7CuYtWJwnoDgrOdwAX4";
+const SUPABASE_URL = CITY_CONFIG.supabaseUrl;
+const SUPABASE_ANON_KEY = CITY_CONFIG.supabaseAnonKey;
 const IS_PROD = !location.hostname.includes('localhost') && !location.hostname.includes('127.0.0.1');
 
 // Silence console.log/debug in production to avoid leaking debug info
@@ -39,7 +39,7 @@ let currentCategory = "";
 let currentSearchQuery = "";
 let currentMarketFilter = "";
 let currentStatusFilter = "";
-let userLocation = { latitude: 9.4075, longitude: -0.8357 }; // Tamale Central default
+let userLocation = { latitude: CITY_CONFIG.coords.lat, longitude: CITY_CONFIG.coords.lng };
 
 // View State
 let mobileViewMode = "list"; // list | map
@@ -189,7 +189,7 @@ async function fetchDynamicCategories() {
     try {
         const { data: shopCats, error: e1 } = await sbClient.from('public_shops').select('category').not('category', 'is', null);
         if (e1) throw e1;
-        const { data: prodCats, error: e2 } = await sbClient.from('products').select('category').not('category', 'is', null);
+        const { data: prodCats, error: e2 } = await sbClient.from('products').select('category').eq('city', CITY_CONFIG.slug).not('category', 'is', null);
         if (e2) throw e2;
         
         const allCats = new Set();
@@ -862,7 +862,8 @@ async function loadUserProfile(userId) {
                 id: userId,
                 full_name: userProfile.full_name,
                 phone: userProfile.phone,
-                account_type: userProfile.account_type
+                account_type: userProfile.account_type,
+                city: CITY_CONFIG.slug
             });
         }
         await loadUserShop(userId);
@@ -1302,7 +1303,7 @@ async function renderSpotlightCarousel() {
 
     if (!DEMO_MODE && sbClient) {
         try {
-            const { data, error } = await sbClient.from('public_shops').select('*').eq('is_active', true).order('rating_avg', { ascending: false }).limit(3);
+            const { data, error } = await sbClient.from('public_shops').select('*').eq('is_active', true).eq('city', CITY_CONFIG.slug).order('rating_avg', { ascending: false }).limit(3);
             if (error) throw error;
             spotlightShops = (data || []).filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
             if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 2);
@@ -1404,10 +1405,10 @@ async function renderShowcaseSections() {
 
     if (!DEMO_MODE && sbClient) {
         try {
-            const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true);
+            const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true).eq('city', CITY_CONFIG.slug);
             if (shopErr) throw shopErr;
             shops = shopData || [];
-            const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('in_stock', true);
+            const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug).eq('in_stock', true).eq('city', CITY_CONFIG.slug);
             if (prodErr) throw prodErr;
             products = (prodData || []).map(p => {
                 const shop = shops.find(s => s.id === p.shop_id) || {};
@@ -1460,7 +1461,7 @@ function renderMiniProductCard(p, shop) {
                 <span class="price-amount ${p.discount_price ? 'discount-price' : ''}">GHS ${(p.discount_price || p.price).toFixed(2)}</span>
                 ${p.discount_price ? `<span class="original-price">GHS ${p.price.toFixed(2)}</span>` : ''}
             </div>
-            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">🏪 ${escapeHtml(shop.shop_name || 'Tamale Trader')}</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">🏪 ${escapeHtml(shop.shop_name || CITY_CONFIG.name + ' Trader')}</div>
             <button class="btn-primary btn-sm btn-order" ${isOut ? 'disabled' : ''} data-action="openOrderModal" data-pid="${escapeJs(p.id)}" data-sid="${escapeJs(p.shop_id)}">
                 ${isOut ? 'Out of Stock' : '🛒 Order Now'}
             </button>
@@ -1495,7 +1496,7 @@ async function searchListings() {
                 };
             });
         } else if (currentDomain === "service") {
-            items = demoStore.service_listings.map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: "Tamale Metro" }));
+            items = demoStore.service_listings.map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: CITY_CONFIG.name + ' Metro' }));
         } else if (currentDomain === "hotel" || currentDomain === "eatery" || currentDomain === "company") {
             const typeMap = { hotel: "hotel", eatery: "restaurant", company: "company" };
             items = demoStore.business_listings.filter(b => b.business_type === typeMap[currentDomain]).map(b => ({ ...b, item_type: currentDomain, shop_name: b.business_name, market_area: b.address }));
@@ -1504,9 +1505,9 @@ async function searchListings() {
         // Fetch from Supabase
         try {
             if (currentDomain === "product") {
-                const { data: shops, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true);
+                const { data: shops, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true).eq('city', CITY_CONFIG.slug);
                 if (shopErr) throw shopErr;
-                const { data: products, error: prodErr } = await sbClient.from('products').select('*');
+                const { data: products, error: prodErr } = await sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug);
                 if (prodErr) throw prodErr;
                 items = products.map(p => {
                     const shop = shops.find(s => s.id === p.shop_id) || {};
@@ -1520,12 +1521,12 @@ async function searchListings() {
                     };
                 });
             } else if (currentDomain === "service") {
-                const { data: services, error: srvErr } = await sbClient.from('service_listings').select('*,shops(*)').eq('is_available', true);
+                const { data: services, error: srvErr } = await sbClient.from('service_listings').select('*,shops(*)').eq('is_available', true).eq('city', CITY_CONFIG.slug);
                 if (srvErr) throw srvErr;
-                items = (services || []).map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: s.service_area || "Tamale Metro" }));
+                items = (services || []).map(s => ({ ...s, item_type: "service", shop_name: s.title, market_area: s.service_area || CITY_CONFIG.name + ' Metro' }));
             } else if (currentDomain === "hotel" || currentDomain === "eatery" || currentDomain === "company") {
                 const typeMap = { hotel: "hotel", eatery: "restaurant", company: "company" };
-                const { data: businesses, error: bizErr } = await sbClient.from('business_listings').select('*').eq('business_type', typeMap[currentDomain]);
+                const { data: businesses, error: bizErr } = await sbClient.from('business_listings').select('*').eq('business_type', typeMap[currentDomain]).eq('city', CITY_CONFIG.slug);
                 if (bizErr) throw bizErr;
                 items = (businesses || []).map(b => ({ ...b, item_type: currentDomain, shop_name: b.business_name, market_area: b.address }));
             }
@@ -1791,7 +1792,7 @@ function initMap() {
     leafletMap = L.map("map", {
         zoomControl: true,
         attributionControl: true
-    }).setView([9.4075, -0.8357], 14); // Tamale Central
+    }).setView([CITY_CONFIG.coords.lat, CITY_CONFIG.coords.lng], CITY_CONFIG.zoom);
 
     // Use a more detailed tile layer
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -2025,7 +2026,7 @@ async function openOrderModal(productId, shopId) {
         return;
     }
     try {
-        const { data: prod, error: prodErr } = await sbClient.from('products').select('*').eq('id', productId).single();
+        const { data: prod, error: prodErr } = await sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug).eq('id', productId).single();
         if (prodErr) throw prodErr;
         product = prod;
         const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('id', shopId).single();
@@ -2345,7 +2346,7 @@ async function handleOrderSubmit(e) {
         buyer_notes: buyerNotes,
         status: "placed",
         placed_at: new Date().toISOString()
-    };
+    , city: CITY_CONFIG.slug };
 
 
 
@@ -2408,7 +2409,7 @@ async function updateProductStockInline(productId, delta) {
     if (!sbClient) { showToast("Database not connected", "error"); return; }
 
     try {
-        const { data: product, error } = await sbClient.from('products').select('*').eq('id', productId).single();
+        const { data: product, error } = await sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug).eq('id', productId).single();
         if (error || !product) { showToast("Product not found", "error"); return; }
 
         let newCount = (product.stock_quantity || 0) + delta;
@@ -2436,7 +2437,7 @@ async function renderTraderProductsList() {
     let myProducts = [];
     if (sbClient && userShop) {
         try {
-            const { data, error } = await sbClient.from('products').select('*').eq('shop_id', userShop.id).order('created_date', { ascending: false });
+            const { data, error } = await sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug).eq('shop_id', userShop.id).order('created_date', { ascending: false });
             if (error) throw error;
             myProducts = data || [];
         } catch (err) { console.error("Error loading products:", err); }
@@ -2474,7 +2475,7 @@ async function renderTraderOrders() {
     let shopOrders = [];
     if (sbClient && userShop) {
         try {
-            const { data, error } = await sbClient.from('orders').select('*').eq('shop_id', userShop.id).order('created_date', { ascending: false });
+            const { data, error } = await sbClient.from('orders').select('*').eq('shop_id', userShop.id).eq('city', CITY_CONFIG.slug).order('created_date', { ascending: false });
             if (error) throw error;
             shopOrders = data || [];
         } catch (err) { console.error("Error loading orders:", err); }
@@ -2555,7 +2556,7 @@ async function renderBuyerOrders() {
         try {
             const buyerId = currentUser ? currentUser.id : null;
             if (buyerId) {
-                const { data, error } = await sbClient.from('orders').select('*').eq('buyer_id', buyerId).order('created_date', { ascending: false });
+                const { data, error } = await sbClient.from('orders').select('*').eq('buyer_id', buyerId).eq('city', CITY_CONFIG.slug).order('created_date', { ascending: false });
                 if (error) throw error;
                 orders = data || [];
             }
@@ -2646,7 +2647,8 @@ async function handleReviewSubmit(e) {
                 shop_id: newReview.shop_id,
                 product_id: newReview.product_id,
                 rating: newReview.rating,
-                comment: newReview.comment
+                comment: newReview.comment,
+                city: CITY_CONFIG.slug
             });
         } catch (err) { console.error("Error saving review to Supabase:", err); }
     }
@@ -2672,7 +2674,7 @@ async function renderTraderReviews() {
     let reviews = [];
     if (!DEMO_MODE && sbClient && userShop) {
         try {
-            const { data, error } = await sbClient.from('reviews').select('*').eq('shop_id', userShop.id).order('created_date', { ascending: false });
+            const { data, error } = await sbClient.from('reviews').select('*').eq('shop_id', userShop.id).eq('city', CITY_CONFIG.slug).order('created_date', { ascending: false });
             if (error) throw error;
             reviews = data || [];
         } catch (err) { console.error("Error loading reviews:", err); }
@@ -2772,8 +2774,9 @@ async function handleReportSubmit(e) {
                 target_id: newReport.target_id,
                 reason_category: newReport.reason_category,
                 description: newReport.description,
-                status: "pending"
-            });
+                status: "pending",
+                    city: CITY_CONFIG.slug
+                });
         } catch (err) { console.error("Error saving report to Supabase:", err); }
     }
 
@@ -3010,8 +3013,9 @@ async function handleAdBookingSubmit(e) {
                 ad_tier: newAd.ad_tier,
                 fee_paid_ghs: newAd.fee_paid_ghs,
                 payment_reference: newAd.payment_reference,
-                status: "pending"
-            });
+                status: "pending",
+                    city: CITY_CONFIG.slug
+                });
         } catch (err) { console.error("Error saving ad to Supabase:", err); }
     }
 
@@ -3073,7 +3077,7 @@ async function showShopDetailModal(shopId) {
         if (deliveryLabel) {
             deliveryLabel.style.display = shop?.offers_delivery ? "" : "none";
         }
-        const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('shop_id', shopId).eq('in_stock', true);
+        const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug).eq('shop_id', shopId).eq('in_stock', true);
         if (prodErr) throw prodErr;
         if (prodData) shopProducts = prodData;
         const { data: reviewData, error: revErr } = await sbClient.from('reviews').select('*').eq('shop_id', shopId).order('created_date', { ascending: false }).limit(10);
@@ -3587,7 +3591,7 @@ async function handleRegister(e) {
         // Create user_profile
         if (data.user) {
             await sbClient.from('user_profiles').insert({
-                id: data.user.id, full_name: fullName, phone: phone, account_type: role
+                id: data.user.id, full_name: fullName, phone: phone, account_type: role, city: CITY_CONFIG.slug
             });
         }
         closeModal("authModal");
@@ -3695,8 +3699,9 @@ async function handleSaveShop(e) {
         ghana_card_verified: false,
         is_active: true,
         offers_delivery: document.getElementById("shopOffersDelivery")?.checked || false,
-        updated_date: new Date().toISOString()
-    };
+        updated_date: new Date().toISOString(),
+                city: CITY_CONFIG.slug
+            };
     try {
         if (userShop) {
             const { error } = await sbClient.from('shops').update(shopData).eq('id', userShop.id);
@@ -3752,8 +3757,9 @@ async function handleSaveProduct(e) {
         description: document.getElementById("productDescription").value.trim(),
         image_url: productImageUrl,
         in_stock: document.getElementById("productInStock").checked,
-        listing_type: "product"
-    };
+        listing_type: "product",
+                city: CITY_CONFIG.slug
+            };
     try {
         if (productId) {
             const { error } = await sbClient.from('products').update(productData).eq('id', productId);
@@ -3920,7 +3926,7 @@ async function showSpotlightPopup() {
 
     if (!DEMO_MODE && sbClient) {
         try {
-            const { data, error } = await sbClient.from('public_shops').select('*').eq('is_active', true).order('rating_avg', { ascending: false }).limit(5);
+            const { data, error } = await sbClient.from('public_shops').select('*').eq('is_active', true).eq('city', CITY_CONFIG.slug).order('rating_avg', { ascending: false }).limit(5);
             if (error) throw error;
             spotlightShops = (data || []).filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
             if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 1);
@@ -4088,3 +4094,104 @@ setTimeout(() => {
         showSpotlightPopup();
     }
 }, 3000);
+
+// ====================================================================
+// CITY SWITCHER LOGIC
+// ====================================================================
+function initCitySwitcher() {
+    const btn = document.getElementById('citySwitchBtn');
+    const dropdown = document.getElementById('cityDropdown');
+    const label = document.getElementById('currentCityLabel');
+    const logoTitle = document.getElementById('cityLogoTitle');
+    const pageTitle = document.getElementById('pageTitle');
+
+    if (!btn || !dropdown) return;
+
+    // Set current city label
+    if (label && typeof CITY_CONFIG !== 'undefined') {
+        label.textContent = CITY_CONFIG.name;
+    }
+    if (logoTitle && typeof CITY_CONFIG !== 'undefined') {
+        logoTitle.textContent = CITY_CONFIG.name + ' Market Finder';
+    }
+    if (pageTitle && typeof CITY_CONFIG !== 'undefined') {
+        pageTitle.textContent = CITY_CONFIG.name + ' Market Finder — Local Shops & E-Commerce';
+    }
+
+    // Update manifest dynamically for this city
+    if (typeof CITY_CONFIG !== 'undefined') {
+        const manifest = document.querySelector('link[rel="manifest"]');
+        if (manifest) {
+            const blob = new Blob([JSON.stringify({
+                name: CITY_CONFIG.name + ' Market Finder',
+                short_name: CITY_CONFIG.name.substring(0, 4) + 'MF',
+                description: CITY_CONFIG.description,
+                start_url: '/',
+                display: 'standalone',
+                orientation: 'portrait',
+                background_color: '#0A5C36',
+                theme_color: '#0A5C36',
+                scope: '/',
+                lang: 'en',
+                categories: ['shopping', 'business', 'lifestyle'],
+                icons: [
+                    { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                    { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+                    { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+                ]
+            })], { type: 'application/json' });
+            manifest.href = URL.createObjectURL(blob);
+        }
+
+        // Update market area dropdown options with city-specific markets
+        const marketSelect = document.getElementById('shopMarketArea');
+        if (marketSelect && CITY_CONFIG.markets) {
+            marketSelect.innerHTML = CITY_CONFIG.markets.map(m => `<option value="${m}">${m}</option>`).join('');
+        }
+    }
+
+    // Build dropdown from registry
+    if (typeof CITY_REGISTRY !== 'undefined') {
+        dropdown.innerHTML = CITY_REGISTRY.map(city => {
+            const isActive = typeof CITY_CONFIG !== 'undefined' && city.slug === CITY_CONFIG.slug;
+            return `<div class="city-dropdown-item ${isActive ? 'active' : ''}" data-url="${city.url}">
+                <div>
+                    <div class="city-name">${city.name}</div>
+                    <div class="city-region">${city.region}</div>
+                </div>
+                <span class="city-check">✓</span>
+            </div>`;
+        }).join('');
+
+        // Handle city selection
+        dropdown.querySelectorAll('.city-dropdown-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const url = item.dataset.url;
+                if (url && !item.classList.contains('active')) {
+                    window.location.href = url;
+                }
+            });
+        });
+    }
+
+    // Toggle dropdown
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isVisible = dropdown.style.display === 'block';
+        dropdown.style.display = isVisible ? 'none' : 'block';
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.city-switcher')) {
+            dropdown.style.display = 'none';
+        }
+    });
+}
+
+// Initialize city switcher after DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCitySwitcher);
+} else {
+    initCitySwitcher();
+}

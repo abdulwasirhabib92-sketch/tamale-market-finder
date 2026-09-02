@@ -1,7 +1,7 @@
 // Tamale Market Finder — Service Worker
 // Caches app shell for offline use, updates in background
 
-const CACHE_VERSION = 'tmf-v2-20260902';
+const CACHE_VERSION = 'tmf-mc-v1-20260902';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -12,6 +12,10 @@ const APP_SHELL = [
   '/app.js',
   '/styles.css',
   '/manifest.json',
+  '/cities/registry.js',
+  '/cities/tamale.js',
+  '/cities/accra.js',
+  '/cities/kumasi.js',
   '/icons/icon-192.png',
   '/icons/icon-256.png',
   '/icons/icon-512.png',

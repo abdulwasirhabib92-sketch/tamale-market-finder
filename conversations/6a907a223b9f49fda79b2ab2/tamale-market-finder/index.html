@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Find shops, products, services, hotels and eateries in Tamale, Ghana. Pinpoint map locations with Ghana Post GPS. Traders can list products and reach customers.">
+    <meta name="description" content="Find shops, products, services, hotels and eateries in your city, Ghana. Traders can list products and reach customers.">
     <meta name="theme-color" content="#0A5C36">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://tamale-market-finder.vercel.app/">
     <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Tamale Market Finder — Local Shops & E-Commerce in Tamale, Ghana">
+    <meta property="og:title" content="Tamale Market Finder — Local Shops & E-Commerce">
     <meta property="og:description" content="Find shops, products, services, hotels and eateries in Tamale, Ghana with pinpoint map locations.">
     <meta property="og:url" content="https://tamale-market-finder.vercel.app/">
     <meta property="og:image" content="/icons/icon-512.png">
@@ -19,7 +19,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Tamale Market Finder — Local Shops & E-Commerce">
     <meta name="twitter:description" content="Find shops, products, services, hotels and eateries in Tamale, Ghana with pinpoint map locations.">
-    <title>Tamale Market Finder — Local Shops, E-Commerce & Ghana Post GPS Map</title>
+    <title id="pageTitle">Tamale Market Finder — Local Shops & E-Commerce in Ghana</title>
     <link rel="stylesheet" href="styles.css?v=20260831sec">
     <!-- Leaflet for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -49,10 +49,18 @@
             <div class="logo-group" id="logoGroup" style="cursor: pointer;">
                 <span class="logo-icon">🛒</span>
                 <div class="logo-text">
-                    <h1 class="logo-title">Tamale Market Finder</h1>
+                    <h1 class="logo-title" id="cityLogoTitle">Tamale Market Finder</h1>
                 </div>
             </div>
             
+            <!-- City Switcher -->
+            <div class="city-switcher" id="citySwitcher">
+                <button class="city-switch-btn" id="citySwitchBtn" aria-label="Switch City">
+                    <span id="currentCityLabel">Tamale</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="city-dropdown" id="cityDropdown" style="display:none;"></div>
+            </div>
             <div class="header-actions">
                 <button class="menu-btn" id="menuToggle" aria-label="Toggle Navigation Menu">
                     <span class="avatar-circle" id="headerAvatar">👤</span>
@@ -1218,7 +1226,31 @@
     </nav>
 
     <!-- App Logic Script -->
-    <script src="app.js?v=20260902sec"></script>
+    <!-- City config (auto-selected by build, falls back to URL path) -->
+    <script src="cities/registry.js"></script>
+    <script src="cities/tamale.js"></script>
+    <script>
+        // Auto-detect city from URL or use default
+        (function() {
+            var hostname = location.hostname;
+            var cityScripts = {
+                'accra-market-finder': 'cities/accra.js',
+                'kumasi-market-finder': 'cities/kumasi.js',
+                'tamale-market-finder': 'cities/tamale.js'
+            };
+            for (var prefix in cityScripts) {
+                if (hostname.includes(prefix)) {
+                    var s = document.createElement('script');
+                    s.src = cityScripts[prefix];
+                    s.onload = function() { window.CITY_CONFIG_READY = true; };
+                    document.head.appendChild(s);
+                    return;
+                }
+            }
+            window.CITY_CONFIG_READY = true; // default (tamale) already loaded
+        })();
+    </script>
+    <script src="app.js?v=20260902mc"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
