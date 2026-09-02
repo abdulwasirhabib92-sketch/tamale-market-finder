@@ -1,6 +1,6 @@
 /* ====================================================================
    TAMALE MARKET FINDER (TMF) - PHASE 2 JAVASCRIPT ENGINE
-   Target: Vanilla JS (ES6+), Leaflet.js, Supabase JS v2, Ghana Post GPS
+   Target: Vanilla JS (ES6+), Leaflet.js, Supabase JS v2, Manual address entry + map picker
    ==================================================================== */
 
 // ====================================================================
@@ -3155,7 +3155,7 @@ async function lookupDigitalAddress() {
         return;
     }
 
-    // Ghana Post GPS has no public API — open the map picker so traders can
+    // Manual address entry + map picker has no public API — open the map picker so traders can
     // manually set their pin. No fake coordinates.
     showToast("Enter your GPS coordinates manually or use the map picker below", "info");
     openMapPicker();
@@ -3219,7 +3219,7 @@ function handleGetDeviceLocation() {
             document.getElementById("shopLat").value = lat.toFixed(6);
             document.getElementById("shopLng").value = lng.toFixed(6);
 
-            // Ghana Post GPS has no public API — just use coordinates from device GPS
+            // Manual address entry + map picker has no public API — just use coordinates from device GPS
             document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(6)}, ${lng.toFixed(6)} (device GPS)`;
             showToast("Device GPS location set. Enter your digital address manually if you have one.", "success");
         }, err => {
@@ -3232,22 +3232,9 @@ function handleGetDeviceLocation() {
                     userLocation = { latitude: lat, longitude: lng };
                     document.getElementById("shopLat").value = lat.toFixed(6);
                     document.getElementById("shopLng").value = lng.toFixed(6);
-                    let addressCode = "";
-                    try {
-                        const resp = await fetch(`https://api.ghanapostgps.com/v2/getaddress?lat=${lat}&lng=${lng}`);
-                        if (resp.ok) {
-                            const result = await resp.json();
-                            if (result?.data?.found && result?.data?.Table) {
-                                addressCode = result.data.Table[0].DigitalAddress || result.data.Table[0].address || "";
-                            }
-                        }
-                    } catch (e) {}
-                    if (!addressCode) {
-                        addressCode = "NT-" + Math.floor(lat * 1000).toString().padStart(3, "0") + "-" + Math.floor(Math.abs(lng) * 1000).toString().padStart(4, "0");
-                    }
-                    document.getElementById("shopDigitalAddress").value = addressCode;
-                    document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${addressCode} (approximate)`;
-                    showToast("Approximate location acquired: " + addressCode, "success");
+                    // Manual address entry + map picker has no public API — just use device GPS coordinates
+                    document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(6)}, ${lng.toFixed(6)} (device GPS — approximate)`;
+                    showToast("Approximate GPS location set. Enter your digital address manually if you have one.", "success");
                 }, () => {
                     document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
                     showToast("Could not acquire location. Enter your digital address manually.", "warning");
@@ -4059,7 +4046,7 @@ const APP_CHANGELOG = [
         changes: [
             "Initial release of Tamale Market Finder",
             "Product, service, hotel, eatery, and company listings",
-            "Ghana Post GPS integration",
+            "Manual address entry + map picker integration",
             "WhatsApp contact and directions to stalls"
         ]
     }

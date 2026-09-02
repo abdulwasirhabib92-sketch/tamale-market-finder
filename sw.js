@@ -1,7 +1,7 @@
 // Tamale Market Finder — Service Worker
 // Caches app shell for offline use, updates in background
 
-const CACHE_VERSION = 'tmf-v2-20260902';
+const CACHE_VERSION = 'tmf-v2-20260831';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -76,7 +76,8 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         }).catch(() => cached);
-      })
+        });
+      )
     );
     return;
   }
@@ -103,4 +104,3 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
-// Deploy: Wed Sep  2 13:13:46 UTC 2026
