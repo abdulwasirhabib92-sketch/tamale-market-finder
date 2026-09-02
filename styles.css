@@ -2262,21 +2262,3 @@ body {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.05); }
 }
-
-/* Google Sign-In Button */
-.btn-google {
-    padding: 10px 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #fff;
-    color: #333;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s, box-shadow 0.2s;
-    width: 100%;
-}
-.btn-google:hover {
-    background: #f8f8f8;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
