@@ -1552,7 +1552,6 @@ async function searchListings() {
         return matchQuery && matchCategory && matchMarket && matchStatus;
     });
 
-
     // Apply Ranking Score & Sort
     items.forEach(item => {
         item._rankScore = calculateSearchRankScore(item, userLocation.latitude, userLocation.longitude);

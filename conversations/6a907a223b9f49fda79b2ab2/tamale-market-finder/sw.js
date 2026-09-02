@@ -1,7 +1,7 @@
 // Tamale Market Finder — Service Worker
-// Caches app shell for offline use, updates in background
+// Network-first for code (JS/CSS/HTML), cache-first for images
 
-const CACHE_VERSION = 'tmf-v2-20260831';
+const CACHE_VERSION = 'tmf-v3-20260902';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -19,6 +19,12 @@ const APP_SHELL = [
   '/icons/maskable-512.png',
   '/cdn-checks.js'
 ];
+
+// Files that should always fetch from network first (so updates are picked up)
+const NETWORK_FIRST = /\.(html|js|css)$/;
+
+// Files that are safe to cache-first (rarely change)
+const CACHE_FIRST = /\.(png|jpg|jpeg|svg|ico|webp|woff|woff2|ttf)$/;
 
 // Install — pre-cache app shell
 self.addEventListener('install', (event) => {
@@ -46,7 +52,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — cache-first for static, network-first for API
+// Fetch handler
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -55,34 +61,48 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   // Skip Supabase API calls — always go to network
-  if (url.hostname.includes('supabase.co')) {
-    return;
-  }
+  if (url.hostname.includes('supabase.co')) return;
 
   // Skip cross-origin requests (Leaflet CDN etc) — let browser handle
   if (url.origin !== self.location.origin && !url.hostname.includes('unpkg.com') && !url.hostname.includes('jsdelivr.net')) {
     return;
   }
 
-  // Cache-first for app shell and static assets
-  if (APP_SHELL.includes(url.pathname) || url.pathname.match(/\.(css|js|png|jpg|svg|ico)$/)) {
+  // Network-first for HTML, JS, CSS — ensures users always get latest code
+  if (NETWORK_FIRST.test(url.pathname) || url.pathname === '/') {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok && url.origin === self.location.origin) {
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => {
+        return caches.match(request).then((cached) => {
+          return cached || caches.match('/index.html');
+        });
+      })
+    );
+    return;
+  }
+
+  // Cache-first for images, icons, fonts
+  if (CACHE_FIRST.test(url.pathname) || APP_SHELL.includes(url.pathname)) {
     event.respondWith(
       caches.match(request).then((cached) => {
         return cached || fetch(request).then((response) => {
-          // Cache a copy of new responses
           if (response.ok) {
             const clone = response.clone();
             caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
           }
           return response;
         }).catch(() => cached);
-        });
-      )
+      })
     );
     return;
   }
 
-  // Network-first for everything else (HTML pages etc)
+  // Network-first for everything else
   event.respondWith(
     fetch(request).then((response) => {
       if (response.ok && url.origin === self.location.origin) {

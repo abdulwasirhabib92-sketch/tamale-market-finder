@@ -110,6 +110,7 @@
 
         <div class="drawer-footer">
             <p>🇬🇭 Tamale Market Finder v2.0</p>
+            <p style="font-size: 11px; margin-top: 2px;">Powered by TechMarketVulture</p>
             <p style="font-size: 11px; margin-top: 2px;">Integrated with Ghana Post GPS API</p>
         </div>
     </aside>
@@ -267,7 +268,7 @@
         <div style="max-width: 700px; margin: 0 auto; padding: 20px; line-height: 1.7; font-size: 14px; color: #1f2937;">
 
             <h3 style="color: #0A5C36; margin-top: 24px;">1. About Tamale Market Finder</h3>
-            <p>Tamale Market Finder ("TMF", "we", "the platform") is a digital marketplace operated by <strong>TeckMarketVulture</strong> that connects buyers with local traders, service providers, hotels, eateries, and businesses in the Tamale metropolitan area and surrounding communities. TMF lists products and services, enables WhatsApp contact between buyers and sellers, provides directions to physical stall or business locations, and offers optional delivery arrangements between parties.</p>
+            <p>Tamale Market Finder ("TMF", "we", "the platform") is a digital marketplace operated by <strong>TechMarketVulture</strong> that connects buyers with local traders, service providers, hotels, eateries, and businesses in the Tamale metropolitan area and surrounding communities. TMF lists products and services, enables WhatsApp contact between buyers and sellers, provides directions to physical stall or business locations, and offers optional delivery arrangements between parties.</p>
 
             <h3 style="color: #0A5C36; margin-top: 24px;">2. Who Can Use TMF</h3>
             <p>Anyone in or around Tamale can browse listings and contact sellers for free — no account required. To list products or services, you must register as a trader and provide accurate information about your business. You must be at least 18 years old to create a trader account. By using TMF, you confirm that all information you provide is truthful and current.</p>
@@ -281,7 +282,7 @@
             <h3 style="color: #0A5C36; margin-top: 24px;">4. Selling on TMF</h3>
             <p>As a trader, you are responsible for the accuracy of your listings — including product descriptions, prices, photos, stock availability, and business location. You agree to respond to buyer inquiries promptly and in good faith. Listings that are fraudulent, misleading, or illegal will be removed, and your account may be banned.</p>
             <p>You can create listings via the standard onboarding flow or the "Quick List" mode for faster posting. Regardless of the method used, all listings are subject to the same accuracy and quality standards.</p>
-            <p>TMF offers optional Ghana Card verification to display a verified badge on your listings. Verification increases buyer trust but does not constitute an endorsement by TMF or TeckMarketVulture. You are responsible for providing genuine verification documents; submitting falsified documents will result in permanent account ban.</p>
+            <p>TMF offers optional Ghana Card verification to display a verified badge on your listings. Verification increases buyer trust but does not constitute an endorsement by TMF or TechMarketVulture. You are responsible for providing genuine verification documents; submitting falsified documents will result in permanent account ban.</p>
             <p>If you enable delivery as a trader, you are solely responsible for fulfilling deliveries you have agreed to. TMF does not employ, vet, or guarantee delivery personnel.</p>
 
             <h3 style="color: #0A5C36; margin-top: 24px;">5. Prohibited Listings &amp; Conduct</h3>
@@ -304,8 +305,8 @@
             <p>Offline access is limited — previously viewed listings may be available from cache, but creating listings, contacting sellers, and loading new content require an internet connection.</p>
 
             <h3 style="color: #0A5C36; margin-top: 24px;">9. Liability</h3>
-            <p>TMF is a directory and communication platform operated by TeckMarketVulture. We are <strong>not</strong> a party to any transaction between buyers and sellers. We are not liable for losses, damages, disputes, or fraudulent activity arising from transactions conducted through the platform.</p>
-            <p>TeckMarketVulture and TMF are provided "as is" without warranty of any kind. We do not guarantee uninterrupted access, error-free operation, or the accuracy of listings.</p>
+            <p>TMF is a directory and communication platform operated by TechMarketVulture. We are <strong>not</strong> a party to any transaction between buyers and sellers. We are not liable for losses, damages, disputes, or fraudulent activity arising from transactions conducted through the platform.</p>
+            <p>TechMarketVulture and TMF are provided "as is" without warranty of any kind. We do not guarantee uninterrupted access, error-free operation, or the accuracy of listings.</p>
             <p>If you experience fraud or a dispute, contact the seller directly first. If the matter cannot be resolved, you may report it to TMF administrators and, if necessary, to the Ghana Police Service.</p>
 
             <h3 style="color: #0A5C36; margin-top: 24px;">10. Reporting &amp; Moderation</h3>
@@ -315,9 +316,9 @@
             <p>You may delete your trader account at any time through Account Settings. Upon deletion, your active listings will be removed, but your data may be retained for a reasonable period for dispute resolution and legal compliance purposes. TMF may terminate or suspend your account if you violate these Terms.</p>
 
             <h3 style="color: #0A5C36; margin-top: 24px;">12. Changes to These Terms</h3>
-            <p>TeckMarketVulture may update these Terms &amp; Conditions at any time. Significant changes will be highlighted in the app. Continued use of the platform after changes constitutes acceptance of the updated terms.</p>
+            <p>TechMarketVulture may update these Terms &amp; Conditions at any time. Significant changes will be highlighted in the app. Continued use of the platform after changes constitutes acceptance of the updated terms.</p>
 
-            <p style="margin-top: 30px; color: #6b7280; font-size: 12px;">Last updated: August 2026. Operated by TeckMarketVulture. For questions about these terms, contact the TMF administrator through the in-app help or report form.</p>
+            <p style="margin-top: 30px; color: #6b7280; font-size: 12px;">Last updated: August 2026. Operated by TechMarketVulture. For questions about these terms, contact the TMF administrator through the in-app help or report form.</p>
         </div>
     </main>
 
@@ -417,6 +418,23 @@
                     </form>
                 </div>
 
+
+                <!-- App Updates & Changelog -->
+                <div class="card settings-card" style="border-color: #d1fae5;">
+                    <h3>🔄 App Updates</h3>
+                    <p class="card-subtitle">Current version and recent changes</p>
+                    <div id="appUpdatesSection" style="margin-top: 12px;">
+                        <div class="app-version-badge">
+                            <span class="version-label">Current Version</span>
+                            <span class="version-number" id="currentAppVersion">v2.0</span>
+                        </div>
+                        <div class="app-changelog" id="appChangelogList">
+                            <!-- Dynamically populated -->
+                        </div>
+                        <button class="btn-secondary btn-block" id="checkUpdatesBtn" style="margin-top: 12px;">🔄 Check for Updates</button>
+                    </div>
+                </div>
+
                 <!-- Sign Out -->
                 <div class="card settings-card" style="border-color: #fee2e2;">
                     <h3>Sign Out</h3>
@@ -467,6 +485,34 @@
                                 <span class="trader-rating-score" id="traderRatingHeader">⭐ 0.0 (0 reviews)</span>
                             </div>
                         </div>
+                        <button class="btn-primary back-to-market-btn" id="backToMarketBtn" style="margin-top: 12px; width: 100%;">
+                            🏪 Back to Market
+                        </button>
+
+                        <!-- Trader Quick Stats Overview -->
+                        <div class="trader-stats-grid" id="traderStatsGrid">
+                            <div class="trader-stat-card">
+                                <span class="stat-icon">📦</span>
+                                <span class="stat-value" id="statTotalProducts">0</span>
+                                <span class="stat-label">Products</span>
+                            </div>
+                            <div class="trader-stat-card">
+                                <span class="stat-icon">📑</span>
+                                <span class="stat-value" id="statPendingOrders">0</span>
+                                <span class="stat-label">Pending Orders</span>
+                            </div>
+                            <div class="trader-stat-card">
+                                <span class="stat-icon">👀</span>
+                                <span class="stat-value" id="statProfileViews">0</span>
+                                <span class="stat-label">Shop Views</span>
+                            </div>
+                            <div class="trader-stat-card">
+                                <span class="stat-icon">⭐</span>
+                                <span class="stat-value" id="statAvgRating">0.0</span>
+                                <span class="stat-label">Rating</span>
+                            </div>
+                        </div>
+
                         <div class="trader-dash-subtabs">
                             <button class="trader-subtab-btn active" data-tradersub="shop">📦 Shop & Products</button>
                             <button class="trader-subtab-btn" data-tradersub="orders">📑 Incoming Orders <span class="badge-count-inline" id="traderOrdersBadge">0</span></button>
@@ -529,6 +575,7 @@
                                         <span><strong>🚚 I offer local delivery in Tamale</strong><br><small style="color:#666;">Buyers will see a delivery option when ordering from your stall</small></span>
                                     </label>
                                 </div>
+
 
                                 <!-- Location (collapsible) -->
                                 <details style="margin-bottom:15px;">
@@ -1157,14 +1204,23 @@
     </nav>
 
     <!-- App Logic Script -->
-    <script src="app.js?v=20260831sec"></script>
+    <script src="app.js?v=20260902fix"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js', { scope: '/' })
                     .then(function(reg) {
-                        console.log('SW registered:', reg.scope);
+                        reg.addEventListener('updatefound', function() {
+                            var nw = reg.installing;
+                            if (nw) {
+                                nw.addEventListener('statechange', function() {
+                                    if (nw.state === 'activated' && !navigator.serviceWorker.controller) {
+                                        window.location.reload();
+                                    }
+                                });
+                            }
+                        });
                     })
                     .catch(function(err) {
                         console.warn('SW registration failed:', err);
@@ -1172,5 +1228,18 @@
             });
         }
     </script>
-</body>
+
+        <!-- Spotlight Popup Modal (ad-style, auto-dismiss) -->
+        <div id="spotlightPopupModal" class="spotlight-popup-overlay" style="display:none;">
+            <div class="spotlight-popup" id="spotlightPopupCard">
+                <button class="spotlight-popup-close" id="spotlightPopupClose" aria-label="Close spotlight">&times;</button>
+                <div class="spotlight-popup-content" id="spotlightPopupContent">
+                    <!-- Dynamically populated -->
+                </div>
+                <div class="spotlight-popup-timer-bar" id="spotlightPopupTimerBar"></div>
+                <p class="spotlight-popup-skip">Tap anywhere to visit • Auto-closes in <span id="spotlightPopupCountdown">8</span>s</p>
+            </div>
+        </div>
+
+    </body>
 </html>
