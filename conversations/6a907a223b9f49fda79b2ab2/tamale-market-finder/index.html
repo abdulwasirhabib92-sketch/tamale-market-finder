@@ -1226,28 +1226,24 @@
     </nav>
 
     <!-- App Logic Script -->
-    <!-- City config (auto-selected by build, falls back to URL path) -->
+    <!-- City config — synchronously loaded based on hostname -->
     <script src="cities/registry.js"></script>
-    <script src="cities/tamale.js"></script>
     <script>
-        // Auto-detect city from URL or use default
         (function() {
             var hostname = location.hostname;
-            var cityScripts = {
+            var cityMap = {
                 'accra-market-finder': 'cities/accra.js',
                 'kumasi-market-finder': 'cities/kumasi.js',
                 'tamale-market-finder': 'cities/tamale.js'
             };
-            for (var prefix in cityScripts) {
-                if (hostname.includes(prefix)) {
-                    var s = document.createElement('script');
-                    s.src = cityScripts[prefix];
-                    s.onload = function() { window.CITY_CONFIG_READY = true; };
-                    document.head.appendChild(s);
-                    return;
+            var cityFile = 'cities/tamale.js';
+            for (var prefix in cityMap) {
+                if (hostname.indexOf(prefix) !== -1) {
+                    cityFile = cityMap[prefix];
+                    break;
                 }
             }
-            window.CITY_CONFIG_READY = true; // default (tamale) already loaded
+            document.write('<script src="' + cityFile + '"><\/script>');
         })();
     </script>
     <script src="app.js?v=20260902mc"></script>

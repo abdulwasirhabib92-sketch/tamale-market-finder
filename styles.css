@@ -2262,3 +2262,102 @@ body {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.05); }
 }
+
+/* ====================================================================
+   CITY SWITCHER
+   ==================================================================== */
+.city-switcher {
+    position: relative;
+    margin-left: auto;
+    margin-right: 8px;
+}
+
+.city-switch-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.city-switch-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.city-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 6px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    min-width: 220px;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.city-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.city-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.city-dropdown-item:hover {
+    background: #f8fafc;
+}
+
+.city-dropdown-item.active {
+    background: #ecfdf5;
+    color: #0A5C36;
+    font-weight: 700;
+}
+
+.city-dropdown-item .city-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.city-dropdown-item.active .city-name {
+    color: #0A5C36;
+}
+
+.city-dropdown-item .city-region {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.city-dropdown-item .city-check {
+    color: #0A5C36;
+    font-size: 16px;
+    opacity: 0;
+}
+
+.city-dropdown-item.active .city-check {
+    opacity: 1;
+}
+
+@media (max-width: 480px) {
+    .city-switch-btn {
+        font-size: 11px;
+        padding: 5px 8px;
+    }
+}
