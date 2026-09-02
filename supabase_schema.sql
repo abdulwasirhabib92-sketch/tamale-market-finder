@@ -86,7 +86,8 @@ ALTER TABLE shops
   ADD COLUMN IF NOT EXISTS ghana_card_full_name TEXT,
   ADD COLUMN IF NOT EXISTS ghana_card_type TEXT DEFAULT 'national_id',
   ADD COLUMN IF NOT EXISTS ghana_card_photo_url TEXT,
-  ADD COLUMN IF NOT EXISTS ghana_card_verified BOOLEAN DEFAULT false;
+  ADD COLUMN IF NOT EXISTS ghana_card_verified BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS offers_delivery BOOLEAN DEFAULT false;
 
 
 -- ----------------------------------------------------------------------------
@@ -313,12 +314,7 @@ CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 CREATE OR REPLACE FUNCTION update_updated_date()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Handle both updated_at (user_profiles) and updated_date (other tables)
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = TG_TABLE_NAME AND column_name = 'updated_at') THEN
-        NEW.updated_at = NOW();
-    ELSEIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = TG_TABLE_NAME AND column_name = 'updated_date') THEN
-        NEW.updated_date = NOW();
-    END IF;
+    NEW.updated_date = NOW();
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -478,7 +474,7 @@ SELECT id, created_by, owner_name, shop_name, category, description,
        latitude, longitude, address, digital_address, whatsapp_number, phone,
        opening_hours, market_area, is_verified, cover_image_url, listing_type,
        rating_avg, rating_count, verification_tier, is_active, is_flagged,
-       ad_tier, created_date, ghana_card_verified, updated_date
+       ad_tier, created_date, ghana_card_verified, updated_date, offers_delivery
 FROM shops
 WHERE is_active = true;
 
@@ -519,9 +515,12 @@ CREATE POLICY "Users can read own profile" ON user_profiles
         OR EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin')
     );
 DROP POLICY IF EXISTS "Users can insert own profile" ON user_profiles;
-CREATE POLICY "Users can insert own profile" ON user_profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can insert own profile" ON user_profiles 
+    FOR INSERT WITH CHECK (auth.uid() = id AND account_type IN ('shopper', 'trader'));
 DROP POLICY IF EXISTS "Users can update own profile" ON user_profiles;
-CREATE POLICY "Users can update own profile" ON user_profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON user_profiles
+    FOR UPDATE USING (auth.uid() = id)
+    WITH CHECK (auth.uid() = id AND account_type IN ('shopper', 'trader'));
 
 -- Admins can update any user profile (verification tiers, bans, flags)
 DROP POLICY IF EXISTS "Admins can manage user profiles" ON user_profiles;
@@ -530,7 +529,26 @@ CREATE POLICY "Admins can manage user profiles" ON user_profiles
         EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin')
     );
 
--- Favorites Policies
+
+-- Admin escalation prevention trigger (belt-and-suspenders with RLS)
+CREATE OR REPLACE FUNCTION prevent_admin_escalation()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.account_type = 'admin' AND OLD.account_type IS DISTINCT FROM 'admin' THEN
+        IF NOT EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin') THEN
+            RAISE EXCEPTION 'Cannot escalate to admin role';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS prevent_admin_escalation_trigger ON user_profiles;
+CREATE TRIGGER prevent_admin_escalation_trigger
+    BEFORE INSERT OR UPDATE ON user_profiles
+    FOR EACH ROW EXECUTE FUNCTION prevent_admin_escalation();
+
+-- -- Favorites Policies
 DROP POLICY IF EXISTS "Users can view own favorites" ON favorites;
 CREATE POLICY "Users can view own favorites" ON favorites FOR SELECT USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Users can insert own favorites" ON favorites;
@@ -562,7 +580,8 @@ CREATE POLICY "Traders can view orders for their shop" ON orders FOR SELECT USIN
     EXISTS (SELECT 1 FROM shops WHERE shops.id = orders.shop_id AND shops.created_by = auth.uid())
 );
 DROP POLICY IF EXISTS "Buyers can insert orders" ON orders;
-CREATE POLICY "Buyers can insert orders" ON orders FOR INSERT WITH CHECK (auth.uid() = buyer_id);
+CREATE POLICY "Buyers can insert orders" ON orders 
+    FOR INSERT WITH CHECK (auth.uid() = buyer_id AND status = 'placed');
 -- Buyers can cancel their own orders; traders can update status for their shop orders
 DROP POLICY IF EXISTS "Buyers can cancel own orders" ON orders;
 CREATE POLICY "Buyers can cancel own orders" ON orders FOR UPDATE 
@@ -647,16 +666,43 @@ ON CONFLICT (id) DO NOTHING;
 
 DROP POLICY IF EXISTS "Authenticated users can upload product images" ON storage.objects;
 CREATE POLICY "Authenticated users can upload product images" 
-    ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'product-images');
+    ON storage.objects FOR INSERT TO authenticated 
+    WITH CHECK (bucket_id = 'product-images' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 DROP POLICY IF EXISTS "Public can read product images" ON storage.objects;
 CREATE POLICY "Public can read product images" 
     ON storage.objects FOR SELECT USING (bucket_id = 'product-images');
 
--- Shop images (Ghana Card photos, cover images)
+-- Ghana Card photos (PRIVATE bucket — PII)
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('ghana-cards', 'ghana-cards', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
+
+DROP POLICY IF EXISTS "Owners can upload own Ghana Card photos" ON storage.objects;
+CREATE POLICY "Owners can upload own Ghana Card photos" 
+    ON storage.objects FOR INSERT TO authenticated 
+    WITH CHECK (bucket_id = 'ghana-cards' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+DROP POLICY IF EXISTS "Owners can read own Ghana Card photos" ON storage.objects;
+CREATE POLICY "Owners can read own Ghana Card photos" 
+    ON storage.objects FOR SELECT TO authenticated 
+    USING (bucket_id = 'ghana-cards' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+DROP POLICY IF EXISTS "Admins can read all Ghana Card photos" ON storage.objects;
+CREATE POLICY "Admins can read all Ghana Card photos" 
+    ON storage.objects FOR SELECT TO authenticated 
+    USING (bucket_id = 'ghana-cards' AND EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND account_type = 'admin'));
+
+DROP POLICY IF EXISTS "Owners can delete own Ghana Card photos" ON storage.objects;
+CREATE POLICY "Owners can delete own Ghana Card photos" 
+    ON storage.objects FOR DELETE TO authenticated 
+    USING (bucket_id = 'ghana-cards' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Shop images (cover images only — Ghana Card photos go to private ghana-cards bucket)
 DROP POLICY IF EXISTS "Authenticated users can upload shop images" ON storage.objects;
 CREATE POLICY "Authenticated users can upload shop images" 
-    ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'shop-images');
+    ON storage.objects FOR INSERT TO authenticated 
+    WITH CHECK (bucket_id = 'shop-images' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 DROP POLICY IF EXISTS "Public can read shop images" ON storage.objects;
 CREATE POLICY "Public can read shop images" 
@@ -664,7 +710,13 @@ CREATE POLICY "Public can read shop images"
 
 DROP POLICY IF EXISTS "Users can delete own product images" ON storage.objects;
 CREATE POLICY "Users can delete own product images" 
-    ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'product-images' OR bucket_id = 'shop-images');
+    ON storage.objects FOR DELETE TO authenticated 
+    USING (bucket_id = 'product-images' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+DROP POLICY IF EXISTS "Users can delete own shop images" ON storage.objects;
+CREATE POLICY "Users can delete own shop images" 
+    ON storage.objects FOR DELETE TO authenticated 
+    USING (bucket_id = 'shop-images' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 
 -- ----------------------------------------------------------------------------

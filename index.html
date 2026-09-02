@@ -597,6 +597,20 @@
                                         </div>
                                         <input type="hidden" id="shopLat" />
                                         <input type="hidden" id="shopLng" />
+                                        <div id="manualCoordsRow" style="display:flex; gap:8px; margin-top:8px;">
+                                            <div class="form-group" style="flex:1; margin:0;">
+                                                <label for="manualLat" style="font-size:12px;">Latitude</label>
+                                                <input type="number" id="manualLat" step="0.000001" placeholder="9.4030" oninput="document.getElementById('shopLat').value=this.value; document.getElementById('locationStatus').textContent='GPS Pin: '+this.value+', '+document.getElementById('manualLng').value+' (manual)'" />
+                                            </div>
+                                            <div class="form-group" style="flex:1; margin:0;">
+                                                <label for="manualLng" style="font-size:12px;">Longitude</label>
+                                                <input type="number" id="manualLng" step="0.000001" placeholder="-0.8357" oninput="document.getElementById('shopLng').value=this.value; document.getElementById('locationStatus').textContent='GPS Pin: '+document.getElementById('manualLat').value+', '+this.value+' (manual)'" />
+                                            </div>
+                                        </div>
+                                        <div id="mapPickerContainer" style="display:none; margin-top:10px;">
+                                            <p class="form-hint" style="margin:4px 0;">Click the map to drop your pin:</p>
+                                            <div id="shopMapPicker" style="height:250px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:8px;"></div>
+                                        </div>
                                         <div class="form-group" style="margin-top:8px;">
                                             <label for="shopAddress">Physical Directions / Stall Number</label>
                                             <input type="text" id="shopAddress" placeholder="e.g. Shed B-45, Near Aboabo Main Mosque Gate" />
@@ -1204,7 +1218,7 @@
     </nav>
 
     <!-- App Logic Script -->
-    <script src="app.js?v=20260831sec"></script>
+    <script src="app.js?v=20260902sec"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
