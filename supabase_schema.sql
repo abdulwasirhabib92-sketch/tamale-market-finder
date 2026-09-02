@@ -193,6 +193,10 @@ CREATE TABLE IF NOT EXISTS orders (
     order_number TEXT NOT NULL UNIQUE,
     buyer_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     shop_id UUID REFERENCES shops(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id) ON DELETE SET NULL,
+    product_name TEXT,
+    unit_price NUMERIC(10,2) DEFAULT 0.00,
+    quantity INT DEFAULT 1,
     status TEXT NOT NULL DEFAULT 'placed' CHECK (status IN ('placed', 'accepted', 'rejected', 'ready', 'picked_up', 'delivered', 'completed', 'cancelled')),
     total_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00,
     delivery_type TEXT DEFAULT 'pickup' CHECK (delivery_type IN ('pickup', 'local_delivery')),
@@ -313,7 +317,12 @@ CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 CREATE OR REPLACE FUNCTION update_updated_date()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_date = NOW();
+    -- Handle both updated_at (user_profiles) and updated_date (other tables)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = TG_TABLE_NAME AND column_name = 'updated_at') THEN
+        NEW.updated_at = NOW();
+    ELSEIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = TG_TABLE_NAME AND column_name = 'updated_date') THEN
+        NEW.updated_date = NOW();
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

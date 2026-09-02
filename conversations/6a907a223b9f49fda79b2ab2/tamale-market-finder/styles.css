@@ -1970,3 +1970,295 @@ body {
     from { transform: scale(0); }
     to { transform: scale(1); }
 }
+
+/* ====================================================================
+   SPOTLIGHT POPUP MODAL (Ad-style, auto-dismiss)
+   ==================================================================== */
+.spotlight-popup-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: popupFadeIn 0.4s ease;
+    padding: 20px;
+}
+
+@keyframes popupFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes popupSlideUp {
+    from { transform: translateY(40px) scale(0.95); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.spotlight-popup {
+    background: linear-gradient(135deg, #991B1B 0%, #B91C1C 50%, #DC2626 100%);
+    border-radius: 16px;
+    max-width: 420px;
+    width: 100%;
+    max-height: 85vh;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    animation: popupSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.spotlight-popup-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+.spotlight-popup-close:hover {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.spotlight-popup-content {
+    color: #fff;
+    cursor: pointer;
+}
+
+.spotlight-popup-video {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    display: block;
+    background: #1a1a1a;
+}
+
+.spotlight-popup-img {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    display: block;
+}
+
+.spotlight-popup-body {
+    padding: 18px 20px;
+}
+
+.spotlight-popup-badge {
+    background: #FCD34D;
+    color: #7F1D1D;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 12px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.spotlight-popup-title {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 6px;
+}
+
+.spotlight-popup-area {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.spotlight-popup-desc {
+    font-size: 14px;
+    opacity: 0.95;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.spotlight-popup-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.spotlight-popup-btn {
+    background: #fff;
+    color: #B91C1C;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.spotlight-popup-btn:hover {
+    background: #FEF3C7;
+}
+
+.spotlight-popup-timer-bar {
+    height: 3px;
+    background: #FCD34D;
+    width: 100%;
+    transition: width 1s linear;
+}
+
+.spotlight-popup-skip {
+    text-align: center;
+    font-size: 12px;
+    opacity: 0.7;
+    padding: 8px;
+    background: rgba(0,0,0,0.2);
+}
+
+/* ====================================================================
+   APP UPDATES & CHANGELOG
+   ==================================================================== */
+.app-version-badge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #f0fdf4;
+    border: 1px solid #d1fae5;
+    border-radius: 12px;
+    margin-bottom: 14px;
+}
+
+.version-label {
+    font-size: 13px;
+    color: #065f46;
+    font-weight: 600;
+}
+
+.version-number {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0A5C36;
+}
+
+.app-changelog {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.changelog-item {
+    padding: 10px 14px;
+    background: #f9fafb;
+    border-left: 3px solid #0A5C36;
+    border-radius: 0 8px 8px 0;
+}
+
+.changelog-version {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0A5C36;
+    margin-bottom: 4px;
+}
+
+.changelog-date {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+.changelog-changes {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.5;
+}
+
+.changelog-changes ul {
+    margin: 0;
+    padding-left: 16px;
+}
+
+.changelog-changes li {
+    margin-bottom: 2px;
+}
+
+/* ====================================================================
+   TRADER QUICK STATS OVERVIEW
+   ==================================================================== */
+.trader-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.trader-stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 4px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.trader-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.trader-stat-card .stat-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.trader-stat-card .stat-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0A5C36;
+    line-height: 1.1;
+}
+
+.trader-stat-card .stat-label {
+    font-size: 10px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-top: 2px;
+}
+
+@media (max-width: 380px) {
+    .trader-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Trader notification badge */
+.trader-indicator {
+    transition: all 0.3s ease;
+}
+
+.trader-indicator.has-notifications {
+    animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}

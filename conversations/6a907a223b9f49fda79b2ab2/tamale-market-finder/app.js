@@ -910,6 +910,13 @@ function initNavigation() {
     if (mToggle) mToggle.addEventListener("click", toggleDrawer);
     const logoGrp = document.getElementById("logoGroup");
     if (logoGrp) logoGrp.addEventListener("click", () => navigateToPage("home"));
+
+    // Back to Market button (trader dashboard -> home)
+    const backToMarketBtn = document.getElementById("backToMarketBtn");
+    if (backToMarketBtn) backToMarketBtn.addEventListener("click", () => {
+        navigateToPage("home");
+        closeDrawer();
+    });
     const cDrawer = document.getElementById("closeDrawer");
     if (cDrawer) cDrawer.addEventListener("click", closeDrawer);
     const dBackdrop = document.getElementById("drawerBackdrop");
@@ -1821,11 +1828,14 @@ function findMyLocation() {
         return;
     }
 
-    showToast("Finding your location...", "success");
+    showToast("Finding your precise location...", "success");
 
+    // Try high-accuracy first with generous timeout for mobile GPS
     navigator.geolocation.getCurrentPosition(pos => {
         userLat = pos.coords.latitude;
         userLng = pos.coords.longitude;
+        // Also update the global userLocation used for ranking "Popular Near You"
+        userLocation = { latitude: userLat, longitude: userLng };
 
         // Remove old user marker
         if (userLocationMarker) leafletMap.removeLayer(userLocationMarker);
@@ -1866,8 +1876,25 @@ function findMyLocation() {
             updateMapMarkers(currentMapItems);
         }
     }, err => {
-        showToast("Could not get your location. Allow GPS permissions and try again.", "warning");
-    }, { enableHighAccuracy: true, timeout: 10000 });
+        // High-accuracy failed — retry with lower accuracy as fallback
+        if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+            showToast("High-accuracy GPS timed out, trying approximate location...", "info");
+            navigator.geolocation.getCurrentPosition(pos => {
+                userLat = pos.coords.latitude;
+                userLng = pos.coords.longitude;
+                userLocation = { latitude: userLat, longitude: userLng };
+                showToast("Approximate location found.", "success");
+                // Re-center map if it exists
+                if (leafletMap) leafletMap.setView([userLat, userLng], 14);
+            }, err2 => {
+                showToast("Could not get your location. Check GPS is enabled and you have permission.", "warning");
+            }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 });
+        } else if (err.code === err.PERMISSION_DENIED) {
+            showToast("Location permission denied. Allow GPS access in your browser settings.", "warning");
+        } else {
+            showToast("Could not get your location. Allow GPS permissions and try again.", "warning");
+        }
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 }
 
 function drawDirectionsToShop(shopLat, shopLng, shopName) {
@@ -1879,10 +1906,11 @@ function drawDirectionsToShop(shopLat, shopLng, shopName) {
         navigator.geolocation.getCurrentPosition(pos => {
             userLat = pos.coords.latitude;
             userLng = pos.coords.longitude;
+            userLocation = { latitude: userLat, longitude: userLng };
             drawDirectionsToShop(shopLat, shopLng, shopName);
         }, () => {
             showToast("Enable GPS to get directions to this shop.", "warning");
-        }, { enableHighAccuracy: true, timeout: 10000 });
+        }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
         return;
     }
 
@@ -2358,7 +2386,20 @@ async function handleOrderSubmit(e) {
     }
 
     closeModal("orderModal");
-    showToast(`Order ${orderNumber} placed successfully! Trader notified.`, "success");
+
+    // --- INSTANT TRADER NOTIFICATION ---
+    const shop = activeOrderProduct.shop;
+    const productName = activeOrderProduct.product.name;
+    const traderWa = shop.whatsapp_number || "";
+    const traderPhone = shop.phone_number || shop.whatsapp_number || "";
+
+    // 1. Open WhatsApp to trader with order details (fastest, free)
+    if (traderWa) {
+        const waMsg = `🔔 NEW ORDER ${orderNumber}\n\n📦 ${productName} x${orderQty}\n💰 GHS ${totalAmount.toFixed(2)}\n👤 ${buyerName} (${buyerPhone})\n🚚 ${deliveryType}\n${buyerNotes ? '📝 ' + buyerNotes : ''}\n\nRespond to buyer: ${buyerPhone}`;
+        window.open(`https://wa.me/${traderWa}?text=${encodeURIComponent(waMsg)}`, "_blank");
+    }
+
+    showToast(`Order ${orderNumber} placed! Trader notified via WhatsApp.`, "success");
     navigateToPage("my-orders");
     renderBuyerOrders();
 }
@@ -3148,10 +3189,12 @@ async function lookupDigitalAddress() {
 
 function handleGetDeviceLocation() {
     if ("geolocation" in navigator) {
-        document.getElementById("locationStatus").textContent = "GPS Pin: Detecting your location...";
+        document.getElementById("locationStatus").textContent = "GPS Pin: Detecting your location (high accuracy)...";
         navigator.geolocation.getCurrentPosition(async pos => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
+            // Update global location used for ranking
+            userLocation = { latitude: lat, longitude: lng };
             document.getElementById("shopLat").value = lat.toFixed(6);
             document.getElementById("shopLng").value = lng.toFixed(6);
 
@@ -3178,9 +3221,43 @@ function handleGetDeviceLocation() {
             document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${addressCode}`;
             showToast("Device location acquired! Digital address: " + addressCode, "success");
         }, err => {
-            document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
-            showToast("Could not acquire device location. Please enter your digital address manually.", "warning");
-        }, { enableHighAccuracy: true, timeout: 10000 });
+            // High-accuracy failed — retry with approximate
+            if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+                document.getElementById("locationStatus").textContent = "GPS Pin: Retrying with approximate location...";
+                navigator.geolocation.getCurrentPosition(async pos => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    userLocation = { latitude: lat, longitude: lng };
+                    document.getElementById("shopLat").value = lat.toFixed(6);
+                    document.getElementById("shopLng").value = lng.toFixed(6);
+                    let addressCode = "";
+                    try {
+                        const resp = await fetch(`https://api.ghanapostgps.com/v2/getaddress?lat=${lat}&lng=${lng}`);
+                        if (resp.ok) {
+                            const result = await resp.json();
+                            if (result?.data?.found && result?.data?.Table) {
+                                addressCode = result.data.Table[0].DigitalAddress || result.data.Table[0].address || "";
+                            }
+                        }
+                    } catch (e) {}
+                    if (!addressCode) {
+                        addressCode = "NT-" + Math.floor(lat * 1000).toString().padStart(3, "0") + "-" + Math.floor(Math.abs(lng) * 1000).toString().padStart(4, "0");
+                    }
+                    document.getElementById("shopDigitalAddress").value = addressCode;
+                    document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${addressCode} (approximate)`;
+                    showToast("Approximate location acquired: " + addressCode, "success");
+                }, () => {
+                    document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
+                    showToast("Could not acquire location. Enter your digital address manually.", "warning");
+                }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 });
+            } else if (err.code === err.PERMISSION_DENIED) {
+                document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
+                showToast("Location permission denied. Enable GPS in browser settings.", "warning");
+            } else {
+                document.getElementById("locationStatus").textContent = "GPS Pin: Not Set";
+                showToast("Could not acquire device location. Please enter your digital address manually.", "warning");
+            }
+        }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
     } else {
         showToast("GPS not available on this device. Please enter your digital address manually.", "warning");
     }
@@ -3303,7 +3380,11 @@ async function enableTraderRole() {
         } catch (err) { console.error("Error updating role:", err); }
     }
     updateUIForAuthUser();
-    showToast("Trader role enabled! Fill in your stall details below.", "success");
+    showToast("Welcome to your store! Set up your stall to start selling.", "success");
+    setTimeout(() => {
+        navigateToPage("account-trader");
+        closeDrawer();
+    }, 500);
 }
 
 // Dashboard delivery toggle - quick toggle for delivery
@@ -3361,6 +3442,8 @@ function updateUIForAuthUser() {
     if (userProfile.account_type === "trader") {
         if (upgradePrompt) upgradePrompt.style.display = "none";
         if (dashContent) dashContent.style.display = "block";
+        loadTraderStats();
+        updateTraderNotificationBadge();
     } else {
         if (upgradePrompt) upgradePrompt.style.display = "block";
         if (dashContent) dashContent.style.display = "none";
@@ -3448,6 +3531,20 @@ async function handleLogin(e) {
         const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
         closeModal("authModal");
+        // Fetch user profile to check role
+        if (sbClient && data.user) {
+            try {
+                const { data: profile } = await sbClient.from('user_profiles').select('account_type').eq('id', data.user.id).single();
+                if (profile && profile.account_type === "trader") {
+                    showToast("Welcome back to your store!", "success");
+                    setTimeout(() => {
+                        navigateToPage("account-trader");
+                        closeDrawer();
+                    }, 600);
+                    return;
+                }
+            } catch (e) { console.error("Profile fetch on login:", e); }
+        }
         showToast("Signed in successfully!", "success");
     } catch (err) {
         showToast(err.message || "Login failed", "error");
@@ -3495,7 +3592,15 @@ async function handleRegister(e) {
             });
         }
         closeModal("authModal");
-        showToast("Account created! Check your email to confirm.", "success");
+        if (role === "trader") {
+            showToast("Welcome to your store! Set up your stall details to start selling.", "success");
+            setTimeout(() => {
+                navigateToPage("account-trader");
+                closeDrawer();
+            }, 600);
+        } else {
+            showToast("Account created! Check your email to confirm.", "success");
+        }
     } catch (err) {
         showToast(err.message || "Registration failed", "error");
     } finally {
@@ -3594,6 +3699,7 @@ async function handleSaveShop(e) {
         ghana_card_photo_url: ghanaCardPhotoUrl,
         ghana_card_verified: false,
         is_active: true,
+        offers_delivery: document.getElementById("shopOffersDelivery")?.checked || false,
         updated_date: new Date().toISOString()
     };
     try {
@@ -3712,3 +3818,278 @@ async function renderFavoritesPage() {
     `).join("");
 }
 // Latest security update
+
+
+// ====================================================================
+// TRADER QUICK STATS OVERVIEW
+// ====================================================================
+async function loadTraderStats() {
+    if (!sbClient || !userShop) {
+        // Reset stats to 0
+        const ids = ['statTotalProducts', 'statPendingOrders', 'statProfileViews', 'statAvgRating'];
+        ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '0'; });
+        const ratingEl = document.getElementById('statAvgRating');
+        if (ratingEl) ratingEl.textContent = '0.0';
+        return;
+    }
+
+    try {
+        // Fetch product count
+        const { count: productCount, error: pErr } = await sbClient
+            .from('products').select('*', { count: 'exact', head: true })
+            .eq('shop_id', userShop.id);
+
+        // Fetch pending orders count
+        const { count: orderCount, error: oErr } = await sbClient
+            .from('orders').select('*', { count: 'exact', head: true })
+            .eq('shop_id', userShop.id)
+            .eq('status', 'pending');
+
+        // Profile views (from shop data if available, fallback to 0)
+        const views = userShop.view_count || userShop.profile_views || 0;
+
+        // Average rating
+        const rating = userShop.rating_avg || 0;
+
+        // Update DOM
+        const elProducts = document.getElementById('statTotalProducts');
+        const elOrders = document.getElementById('statPendingOrders');
+        const elViews = document.getElementById('statProfileViews');
+        const elRating = document.getElementById('statAvgRating');
+
+        if (elProducts) elProducts.textContent = productCount || 0;
+        if (elOrders) elOrders.textContent = orderCount || 0;
+        if (elViews) elViews.textContent = views;
+        if (elRating) elRating.textContent = (rating > 0 ? rating.toFixed(1) : '0.0');
+    } catch (err) {
+        console.error("Error loading trader stats:", err);
+    }
+}
+
+// ====================================================================
+// TRADER NOTIFICATION BADGE — live pending order count on drawer
+// ====================================================================
+async function updateTraderNotificationBadge() {
+    if (!sbClient || !userShop || userProfile.account_type !== "trader") {
+        const badge = document.getElementById("traderBadgeText");
+        if (badge) badge.textContent = "Trader Dashboard";
+        return;
+    }
+    try {
+        const { count, error } = await sbClient
+            .from('orders').select('*', { count: 'exact', head: true })
+            .eq('shop_id', userShop.id)
+            .in('status', ['placed', 'accepted']);
+        const badge = document.getElementById("traderBadgeText");
+        if (badge) {
+            if (count && count > 0) {
+                badge.innerHTML = `🔔 ${count} new order${count > 1 ? 's' : ''}`;
+                badge.style.background = '#FEF3C7';
+                badge.style.color = '#92400E';
+                badge.style.fontWeight = '700';
+            } else {
+                badge.textContent = "Trader Dashboard";
+                badge.style.background = '';
+                badge.style.color = '';
+                badge.style.fontWeight = '';
+            }
+        }
+        // Also update the orders badge inside the dashboard
+        const ordersBadge = document.getElementById('traderOrdersBadge');
+        if (ordersBadge) ordersBadge.textContent = count || 0;
+    } catch (err) {
+        console.error("Error updating trader badge:", err);
+    }
+}
+
+// Poll for new orders every 30 seconds when trader is logged in
+setInterval(() => {
+    if (sbClient && userShop && userProfile.account_type === "trader") {
+        updateTraderNotificationBadge();
+    }
+}, 30000);
+
+// ====================================================================
+// SPOTLIGHT POPUP MODAL (Ad-style, auto-dismiss, video support)
+// ====================================================================
+let spotlightPopupTimer = null;
+let spotlightPopupCountdown = 8;
+let spotlightPopupShown = false;
+
+async function showSpotlightPopup() {
+    // Only show once per session
+    if (spotlightPopupShown) return;
+    if (sessionStorage.getItem('spotlightPopupSeen')) return;
+
+    let spotlightShops = [];
+
+    if (!DEMO_MODE && sbClient) {
+        try {
+            const { data, error } = await sbClient.from('public_shops').select('*').eq('is_active', true).order('rating_avg', { ascending: false }).limit(5);
+            if (error) throw error;
+            spotlightShops = (data || []).filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
+            if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 1);
+        } catch (err) {
+            console.error("Spotlight popup fetch error:", err);
+        }
+    }
+
+    // Don't show popup if no spotlight shops
+    if (spotlightShops.length === 0) return;
+
+    const shop = spotlightShops[0];
+    spotlightPopupShown = true;
+    sessionStorage.setItem('spotlightPopupSeen', '1');
+
+    const content = document.getElementById('spotlightPopupContent');
+
+    // Check if shop has a video (motion video for ad)
+    const videoUrl = shop.cover_video_url || shop.ad_video_url || '';
+    const imageUrl = shop.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e';
+
+    let mediaHTML = '';
+    if (videoUrl) {
+        mediaHTML = `<video class="spotlight-popup-video" autoplay muted loop playsinline>
+            <source src="${escapeAttr(videoUrl)}" type="video/mp4">
+        </video>`;
+    } else {
+        mediaHTML = `<img src="${escapeAttr(imageUrl)}" class="spotlight-popup-img" alt="${escapeHtml(shop.shop_name)}" />`;
+    }
+
+    content.innerHTML = `
+        ${mediaHTML}
+        <div class="spotlight-popup-body">
+            <span class="spotlight-popup-badge">🔥 Spotlight Featured</span>
+            <h3 class="spotlight-popup-title">${escapeHtml(shop.shop_name)}</h3>
+            <p class="spotlight-popup-area">📍 ${escapeHtml(shop.market_area)} • 🇬🇭 ${escapeHtml(shop.digital_address || 'Tamale')}</p>
+            <p class="spotlight-popup-desc">${escapeHtml(shop.description || '')}</p>
+            <div class="spotlight-popup-meta">
+                <span>⭐ ${shop.rating_avg || 0} (${shop.rating_count || 0})</span>
+                <button class="spotlight-popup-btn" data-action="showShopDetail" data-shop-id="${escapeJs(shop.id)}">Visit Stall ➔</button>
+            </div>
+        </div>
+    `;
+
+    // Show the popup
+    const modal = document.getElementById('spotlightPopupModal');
+    modal.style.display = 'flex';
+
+    // Start countdown timer
+    spotlightPopupCountdown = 8;
+    document.getElementById('spotlightPopupCountdown').textContent = spotlightPopupCountdown;
+    const timerBar = document.getElementById('spotlightPopupTimerBar');
+    timerBar.style.width = '100%';
+
+    // Animate timer bar shrink
+    setTimeout(() => { timerBar.style.transition = 'width 8s linear'; timerBar.style.width = '0%'; }, 100);
+
+    spotlightPopupTimer = setInterval(() => {
+        spotlightPopupCountdown--;
+        const cdEl = document.getElementById('spotlightPopupCountdown');
+        if (cdEl) cdEl.textContent = spotlightPopupCountdown;
+        if (spotlightPopupCountdown <= 0) {
+            closeSpotlightPopup();
+        }
+    }, 1000);
+}
+
+function closeSpotlightPopup() {
+    const modal = document.getElementById('spotlightPopupModal');
+    if (modal) modal.style.display = 'none';
+    if (spotlightPopupTimer) {
+        clearInterval(spotlightPopupTimer);
+        spotlightPopupTimer = null;
+    }
+}
+
+// Wire up close button and overlay click
+document.getElementById('spotlightPopupClose')?.addEventListener('click', closeSpotlightPopup);
+document.getElementById('spotlightPopupModal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeSpotlightPopup();
+});
+
+// Click on content navigates to shop
+document.getElementById('spotlightPopupContent')?.addEventListener('click', (e) => {
+    const shopId = e.target.closest('[data-shop-id]')?.dataset.shopId;
+    if (shopId) {
+        closeSpotlightPopup();
+        showShopDetail(shopId);
+    } else {
+        const sid = document.querySelector('#spotlightPopupContent [data-shop-id]')?.dataset.shopId;
+        if (sid) { closeSpotlightPopup(); showShopDetail(sid); }
+    }
+});
+
+// ====================================================================
+// APP UPDATES & CHANGELOG
+// ====================================================================
+const APP_CHANGELOG = [
+    {
+        version: "v2.0",
+        date: "September 1, 2026",
+        changes: [
+            "Added Two-Factor Authentication (2FA) for account security",
+            "Spotlight popup with video support and auto-dismiss",
+            "Improved GPS location accuracy with fallback retry",
+            "App Updates section in settings",
+            "Branding corrected to TechMarketVulture"
+        ]
+    },
+    {
+        version: "v1.5",
+        date: "August 31, 2026",
+        changes: [
+            "Horizontal scroll layout for product cards",
+            "PWA icons fixed for mobile install",
+            "Security headers and CSP policies implemented",
+            "PWA manifest configured for Android TWA"
+        ]
+    },
+    {
+        version: "v1.0",
+        date: "August 2026",
+        changes: [
+            "Initial release of Tamale Market Finder",
+            "Product, service, hotel, eatery, and company listings",
+            "Ghana Post GPS integration",
+            "WhatsApp contact and directions to stalls"
+        ]
+    }
+];
+
+function renderAppUpdates() {
+    const container = document.getElementById('appChangelogList');
+    if (!container) return;
+
+    container.innerHTML = APP_CHANGELOG.map(entry => `
+        <div class="changelog-item">
+            <div class="changelog-version">${entry.version}</div>
+            <div class="changelog-date">${entry.date}</div>
+            <div class="changelog-changes">
+                <ul>
+                    ${entry.changes.map(c => `<li>${escapeHtml(c)}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+    `).join('');
+}
+
+document.getElementById('checkUpdatesBtn')?.addEventListener('click', () => {
+    showToast("You're on the latest version of Tamale Market Finder!", "success");
+});
+
+// Render updates when settings page loads
+const _origNavigateToPage = navigateToPage;
+navigateToPage = function(pageId) {
+    _origNavigateToPage(pageId);
+    if (pageId === 'account-settings') {
+        setTimeout(renderAppUpdates, 200);
+    }
+};
+
+// Show spotlight popup after page loads (delayed)
+setTimeout(() => {
+    if (document.getElementById('spotlightPopupModal')) {
+        showSpotlightPopup();
+    }
+}, 3000);
