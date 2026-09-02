@@ -1176,7 +1176,7 @@ function initNavigation() {
     });
 
     const searchBtn = document.getElementById("searchBtn");
-    if (searchBtn) searchBtn.addEventListener("click", searchListings);
+    if (searchBtn) searchBtn.addEventListener("click", () => { document.title = "BTN_CLICKED"; searchListings(); });
 
     const marketFilter = document.getElementById("marketFilter");
     if (marketFilter) marketFilter.addEventListener("change", searchListings);
@@ -1469,6 +1469,7 @@ async function searchListings() {
     const resultsList = document.getElementById("resultsList");
     if (resultsList) resultsList.innerHTML = '<div style="padding:10px;color:#888;">Loading listings...</div>';
     const query = document.getElementById("searchInput").value.toLowerCase().trim();
+    document.title = "DBG q=[" + query + "] cat=[" + currentCategory + "] items_before=" + items.length;
     const market = document.getElementById("marketFilter").value;
     const status = document.getElementById("statusFilter").value;
 
@@ -1543,6 +1544,8 @@ async function searchListings() {
         if (status === "in_stock") matchStatus = item.in_stock && item.stock_quantity > 0;
         if (status === "verified") matchStatus = item.verification_tier === "trusted" || item.verification_tier === "verified" || item.is_verified;
         return matchQuery && matchCategory && matchMarket && matchStatus;
+    });
+    document.title = "DBG after_filter=" + items.length + " q=[" + query + "]";
     });
 
     // Apply Ranking Score & Sort
