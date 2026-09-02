@@ -15,7 +15,7 @@ if (IS_PROD && window.console) {
     console.log = function() {};
     console.debug = function() {};
     console.warn = function() {};
-    console.error = function() {};
+    // console.error kept active for production debugging
 }
 
 const DEMO_MODE = SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL");
@@ -1183,7 +1183,7 @@ function initNavigation() {
     });
 
     const searchBtn = document.getElementById("searchBtn");
-    if (searchBtn) searchBtn.addEventListener("click", () => { document.title = "BTN CLICK"; searchListings(); });
+    if (searchBtn) searchBtn.addEventListener("click", () => { searchListings(); });
 
     const marketFilter = document.getElementById("marketFilter");
     if (marketFilter) marketFilter.addEventListener("change", searchListings);
@@ -1476,7 +1476,6 @@ async function searchListings() {
     const resultsList = document.getElementById("resultsList");
     if (resultsList) resultsList.innerHTML = '<div style="padding:10px;color:#888;">Loading listings...</div>';
     const query = document.getElementById("searchInput").value.toLowerCase().trim();
-    document.title = "DBG q=" + query + " cat=" + currentCategory;
     const market = document.getElementById("marketFilter").value;
     const status = document.getElementById("statusFilter").value;
 
@@ -3220,28 +3219,9 @@ function handleGetDeviceLocation() {
             document.getElementById("shopLat").value = lat.toFixed(6);
             document.getElementById("shopLng").value = lng.toFixed(6);
 
-            // Try to reverse geocode with Ghana Post GPS API
-            let addressCode = "";
-            try {
-                const resp = await fetch(`https://api.ghanapostgps.com/v2/getaddress?lat=${lat}&lng=${lng}`);
-                if (resp.ok) {
-                    const result = await resp.json();
-                    if (result?.data?.found && result?.data?.Table) {
-                        addressCode = result.data.Table[0].DigitalAddress || result.data.Table[0].address || "";
-                    }
-                }
-            } catch (e) {
-                console.warn("Reverse geocoding failed:", e);
-            }
-
-            if (!addressCode) {
-                // Fallback: generate a reasonable NT- prefix address
-                addressCode = "NT-" + Math.floor(lat * 1000).toString().padStart(3, "0") + "-" + Math.floor(Math.abs(lng) * 1000).toString().padStart(4, "0");
-            }
-
-            document.getElementById("shopDigitalAddress").value = addressCode;
-            document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${addressCode}`;
-            showToast("Device location acquired! Digital address: " + addressCode, "success");
+            // Ghana Post GPS has no public API — just use coordinates from device GPS
+            document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(6)}, ${lng.toFixed(6)} (device GPS)`;
+            showToast("Device GPS location set. Enter your digital address manually if you have one.", "success");
         }, err => {
             // High-accuracy failed — retry with approximate
             if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
