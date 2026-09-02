@@ -1183,7 +1183,7 @@ function initNavigation() {
     });
 
     const searchBtn = document.getElementById("searchBtn");
-    if (searchBtn) searchBtn.addEventListener("click", searchListings);
+    if (searchBtn) searchBtn.addEventListener("click", () => { document.title = "BTN CLICK"; searchListings(); });
 
     const marketFilter = document.getElementById("marketFilter");
     if (marketFilter) marketFilter.addEventListener("change", searchListings);
@@ -1476,6 +1476,7 @@ async function searchListings() {
     const resultsList = document.getElementById("resultsList");
     if (resultsList) resultsList.innerHTML = '<div style="padding:10px;color:#888;">Loading listings...</div>';
     const query = document.getElementById("searchInput").value.toLowerCase().trim();
+    document.title = "DBG q=" + query + " cat=" + currentCategory;
     const market = document.getElementById("marketFilter").value;
     const status = document.getElementById("statusFilter").value;
 

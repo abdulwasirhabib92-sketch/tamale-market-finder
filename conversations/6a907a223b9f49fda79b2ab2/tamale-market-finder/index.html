@@ -1204,23 +1204,14 @@
     </nav>
 
     <!-- App Logic Script -->
-    <script src="app.js?v=20260902fix"></script>
+    <script src="app.js?v=20260831sec"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js', { scope: '/' })
                     .then(function(reg) {
-                        reg.addEventListener('updatefound', function() {
-                            var nw = reg.installing;
-                            if (nw) {
-                                nw.addEventListener('statechange', function() {
-                                    if (nw.state === 'activated' && !navigator.serviceWorker.controller) {
-                                        window.location.reload();
-                                    }
-                                });
-                            }
-                        });
+                        console.log('SW registered:', reg.scope);
                     })
                     .catch(function(err) {
                         console.warn('SW registration failed:', err);
