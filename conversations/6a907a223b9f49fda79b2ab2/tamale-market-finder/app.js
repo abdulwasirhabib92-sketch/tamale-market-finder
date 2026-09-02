@@ -3146,43 +3146,67 @@ function updateFavoritesBadge() {
 async function lookupDigitalAddress() {
     const code = document.getElementById("shopDigitalAddress").value.toUpperCase().trim();
     if (!code) {
-        showToast("Please enter a digital address code (e.g. NT-092-0621)", "warning");
+        showToast("Enter your digital address (e.g. NT-092-0621) or use GPS", "warning");
         return;
     }
 
-    showToast("Looking up Ghana Post GPS address...", "success");
-
-    try {
-        // Use Ghana Post GPS API to geocode the digital address
-        const response = await fetch(`https://api.ghanapostgps.com/v2/getlocation?address=${encodeURIComponent(code)}`);
-        if (response.ok) {
-            const result = await response.json();
-            if (result?.data?.found && result?.data?.Table) {
-                const loc = result.data.Table[0];
-                const lat = parseFloat(loc.CenterLatitude || loc.Latitude);
-                const lng = parseFloat(loc.CenterLongitude || loc.Longitude);
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    document.getElementById("shopLat").value = lat.toFixed(6);
-                    document.getElementById("shopLng").value = lng.toFixed(6);
-                    document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${loc.Street || loc.DigitalAddress || code}`;
-                    showToast(`Location found for ${code}`, "success");
-                    return;
-                }
-            }
-        }
-        throw new Error("API did not return coordinates");
-    } catch (err) {
-        console.warn("Ghana Post GPS API failed, using approximate location:", err);
-        // Fallback: use a reasonable approximation based on the address code
-        // Tamale area is roughly around 9.40°N, 0.84°W
-        const hash = code.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-        const lat = 9.4030 + ((hash % 1000) / 1000 - 0.5) * 0.03;
-        const lng = -0.8357 + ((hash % 777) / 777 - 0.5) * 0.03;
-        document.getElementById("shopLat").value = lat.toFixed(6);
-        document.getElementById("shopLng").value = lng.toFixed(6);
-        document.getElementById("locationStatus").textContent = `GPS Pin: ${lat.toFixed(4)}, ${lng.toFixed(4)} (approximate)`;
-        showToast(`Approximate location set for ${code}. Using GPS for precise pin recommended.`, "warning");
+    // Validate Ghana Post digital address format: 2 letters + dash + 3 digits + dash + 4 digits
+    if (!/^[A-Z]{2}-\d{3}-\d{4}$/.test(code)) {
+        showToast("Invalid format. Example: NT-092-0621", "warning");
+        return;
     }
+
+    // Ghana Post GPS has no public API — open the map picker so traders can
+    // manually set their pin. No fake coordinates.
+    showToast("Enter your GPS coordinates manually or use the map picker below", "info");
+    openMapPicker();
+}
+
+// Map picker: lets traders click on a map to set their shop location
+let pickerMap = null;
+let pickerMarker = null;
+
+function openMapPicker() {
+    // Show the map picker container
+    const picker = document.getElementById("mapPickerContainer");
+    if (!picker) return;
+
+    picker.style.display = "block";
+
+    // Default center: Tamale
+    const existingLat = parseFloat(document.getElementById("shopLat").value);
+    const existingLng = parseFloat(document.getElementById("shopLng").value);
+    const centerLat = isNaN(existingLat) ? 9.4030 : existingLat;
+    const centerLng = isNaN(existingLng) ? -0.8357 : existingLng;
+
+    if (pickerMap) {
+        pickerMap.setView([centerLat, centerLng], 15);
+        if (pickerMarker) pickerMap.removeLayer(pickerMarker);
+        pickerMarker = L.marker([centerLat, centerLng]).addTo(pickerMap);
+    } else {
+        pickerMap = L.map("shopMapPicker").setView([centerLat, centerLng], 15);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "OpenStreetMap", maxZoom: 19
+        }).addTo(pickerMap);
+
+        pickerMap.on("click", (e) => {
+            if (pickerMarker) pickerMap.removeLayer(pickerMarker);
+            pickerMarker = L.marker(e.latlng).addTo(pickerMap);
+            const lat = e.latlng.lat.toFixed(6);
+            const lng = e.latlng.lng.toFixed(6);
+            document.getElementById("shopLat").value = lat;
+            document.getElementById("shopLng").value = lng;
+            document.getElementById("locationStatus").textContent = `GPS Pin: ${lat}, ${lng} (map-selected)`;
+        });
+
+        if (!isNaN(existingLat) && !isNaN(existingLng)) {
+            pickerMarker = L.marker([centerLat, centerLng]).addTo(pickerMap);
+        }
+    }
+
+    // Also show manual lat/lng inputs
+    const manualInputs = document.getElementById("manualCoordsRow");
+    if (manualInputs) manualInputs.style.display = "flex";
 }
 
 function handleGetDeviceLocation() {
@@ -3481,7 +3505,17 @@ function updateUIForAuthUser() {
             const preview = document.getElementById("ghanaCardPreview");
             const previewImg = document.getElementById("ghanaCardPreviewImg");
             if (preview) preview.style.display = "block";
-            if (previewImg) previewImg.src = userShop.ghana_card_photo_url;
+            // Ghana Card photos are in private bucket — use signed URL
+            if (userShop.ghana_card_photo_url.startsWith("ghana-cards/")) {
+                const cardPath = userShop.ghana_card_photo_url.substring("ghana-cards/".length);
+                if (sbClient) {
+                    sbClient.storage.from("ghana-cards").createSignedUrl(cardPath, 3600).then(({ data, error }) => {
+                        if (!error && data?.signedUrl && previewImg) previewImg.src = data.signedUrl;
+                    });
+                }
+            } else if (previewImg) {
+                previewImg.src = userShop.ghana_card_photo_url;
+            }
         }
     }
 
@@ -3658,18 +3692,14 @@ async function handleSaveShop(e) {
         }
         try {
             const fileExt = ghanaCardPhoto.name.split('.').pop();
-            const fileName = `ghana-cards/${currentUser.id}_${Date.now()}.${fileExt}`;
+            const fileName = `${currentUser.id}/${Date.now()}.${fileExt}`;
             const { data: uploadData, error: uploadError } = await sbClient.storage
-                .from('shop-images')
-                .upload(fileName, ghanaCardPhoto);
-            if (!uploadError) {
-                ghanaCardPhotoUrl = `${SUPABASE_URL}/storage/v1/object/public/shop-images/${fileName}`;
-                // Fallback: use Supabase client URL
-                if (!ghanaCardPhotoUrl || ghanaCardPhotoUrl.includes('undefined')) {
-                    const { data: pubData } = sbClient.storage.from('shop-images').getPublicUrl(fileName);
-                    ghanaCardPhotoUrl = pubData?.publicUrl || null;
-                }
-            }
+                .from('ghana-cards')
+                .upload(fileName, ghanaCardPhoto, { upsert: false });
+            if (uploadError) throw uploadError;
+            // Private bucket: store the path, not a public URL
+            ghanaCardPhotoUrl = `ghana-cards/${fileName}`;
+
         } catch (uploadErr) {
             console.error("Ghana Card photo upload error:", uploadErr);
             showToast("Card photo upload failed, but saving other details...", "warning");
@@ -3731,10 +3761,10 @@ async function handleSaveProduct(e) {
     if (productImageFile && productImageUrl.startsWith("data:")) {
         try {
             const fileExt = productImageFile.name.split(".").pop();
-            const fileName = `products/${currentUser.id}_${Date.now()}.${fileExt}`;
-            const { error: uploadError } = await sbClient.storage.from("shop-images").upload(fileName, productImageFile);
+            const fileName = `${currentUser.id}/products_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await sbClient.storage.from("product-images").upload(fileName, productImageFile);
             if (!uploadError) {
-                const { data: pubData } = sbClient.storage.from("shop-images").getPublicUrl(fileName);
+                const { data: pubData } = sbClient.storage.from("product-images").getPublicUrl(fileName);
                 productImageUrl = pubData?.publicUrl || "";
             }
         } catch (uploadErr) {
