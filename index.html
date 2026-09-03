@@ -10,7 +10,7 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="Tamale Market Finder — Local Shops & E-Commerce">
-    <meta property="og:description" content="Find shops, products, services, hotels and eateries in Tamale, Ghana with pinpoint map locations.">
+    <meta property="og:description" content="Find shops, products, services, hotels and eateries in your city, Ghana with pinpoint map locations.">
     <meta property="og:url" content="https://tamale-market-finder.vercel.app/">
     <meta property="og:image" content="/icons/icon-512.png">
     <meta property="og:image:width" content="512">
@@ -18,7 +18,7 @@
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Tamale Market Finder — Local Shops & E-Commerce">
-    <meta name="twitter:description" content="Find shops, products, services, hotels and eateries in Tamale, Ghana with pinpoint map locations.">
+    <meta name="twitter:description" content="Find shops, products, services, hotels and eateries in your city, Ghana with pinpoint map locations.">
     <title id="pageTitle">Tamale Market Finder — Local Shops & E-Commerce in Ghana</title>
     <link rel="stylesheet" href="styles.css?v=20260831sec">
     <!-- Leaflet for maps -->
@@ -131,7 +131,7 @@
         <section class="spotlight-section" id="spotlightSection">
             <div class="spotlight-header">
                 <span class="spotlight-badge">🔥 Spotlight Featured</span>
-                <span class="spotlight-subtitle">Top Verified Merchants & Sponsored Listings in Tamale</span>
+                <span class="spotlight-subtitle">Top Verified Merchants & Sponsored Listings in <span class="js-city-name">Tamale</span></span>
             </div>
             <div class="spotlight-carousel" id="spotlightCarousel">
                 <!-- Dynamically populated spotlight items -->
@@ -171,14 +171,8 @@
             <div class="secondary-filters">
                 <div class="filter-group">
                     <label for="marketFilter">📍 Market Area:</label>
-                    <select id="marketFilter">
-                        <option value="">All Areas in Tamale</option>
-                        <option value="Central Market">Tamale Central Market</option>
-                        <option value="Aboabo Market">Aboabo Market</option>
-                        <option value="Old Market">Old Market</option>
-                        <option value="Lamashegu">Lamashegu Market</option>
-                        <option value="Kukuo">Kukuo Market</option>
-                        <option value="Other">Other Surrounding Areas</option>
+                    <select id="marketFilter" data-market-filter>
+                        <option value="">All Areas</option>
                     </select>
                 </div>
 
@@ -209,7 +203,7 @@
             <section class="showcase-group">
                 <div class="section-title-row">
                     <h3>✨ New Arrivals</h3>
-                    <span class="section-subtitle">Recently added stalls & fresh inventory in Tamale</span>
+                    <span class="section-subtitle">Recently added stalls & fresh inventory in <span class="js-city-name">Tamale</span></span>
                 </div>
                 <div class="showcase-carousel" id="newArrivalsCarousel">
                     <!-- Cards rendered by JS -->
@@ -244,7 +238,7 @@
     <main id="page-favorites" class="page">
         <div class="page-header">
             <h2>❤️ Saved Shops & Bookmarks</h2>
-            <p>Quick access to your favorite market stalls and traders in Tamale</p>
+            <p>Quick access to your favorite market stalls and traders in <span class="js-city-name">Tamale</span></p>
         </div>
         <div id="favoritesList" class="results-grid">
             <div class="empty-state">
@@ -257,7 +251,7 @@
     <main id="page-my-orders" class="page">
         <div class="page-header">
             <h2>🛍️ My Order Reservations</h2>
-            <p>Track your express reservations & pickup status with Tamale traders</p>
+            <p>Track your express reservations & pickup status with <span class="js-city-name">Tamale</span> traders</p>
         </div>
         <div id="buyerOrdersList" class="orders-list">
             <div class="empty-state">
@@ -279,7 +273,7 @@
             <p>Tamale Market Finder ("TMF", "we", "the platform") is a digital marketplace operated by <strong>TechMarketVulture</strong> that connects buyers with local traders, service providers, hotels, eateries, and businesses in the Tamale metropolitan area and surrounding communities. TMF lists products and services, enables WhatsApp contact between buyers and sellers, provides directions to physical stall or business locations, and offers optional delivery arrangements between parties.</p>
 
             <h3 style="color: #0A5C36; margin-top: 24px;">2. Who Can Use TMF</h3>
-            <p>Anyone in or around Tamale can browse listings and contact sellers for free — no account required. To list products or services, you must register as a trader and provide accurate information about your business. You must be at least 18 years old to create a trader account. By using TMF, you confirm that all information you provide is truthful and current.</p>
+            <p>Anyone in or around <span class="js-city-name">Tamale</span> can browse listings and contact sellers for free — no account required. To list products or services, you must register as a trader and provide accurate information about your business. You must be at least 18 years old to create a trader account. By using TMF, you confirm that all information you provide is truthful and current.</p>
 
             <h3 style="color: #0A5C36; margin-top: 24px;">3. Buying on TMF</h3>
             <p>TMF facilitates contact between buyers and sellers but <strong>does not process payments, hold inventory, or guarantee delivery</strong>. All transactions — including payment, delivery, and returns — are arranged directly between you and the seller, typically through WhatsApp. TMF's "Order Now" feature sends a reservation message to the seller; it is <strong>not a guaranteed purchase</strong> until the seller confirms.</p>
@@ -368,13 +362,8 @@
 
                         <div class="form-group">
                             <label for="profPreferredMarket">Preferred Market Area</label>
-                            <select id="profPreferredMarket">
+                            <select id="profPreferredMarket" data-market-filter>
                                 <option value="">Select primary market</option>
-                                <option value="Central Market">Tamale Central Market</option>
-                                <option value="Aboabo Market">Aboabo Market</option>
-                                <option value="Lamashegu">Lamashegu</option>
-                                <option value="Kukuo">Kukuo</option>
-                                <option value="Old Market">Old Market</option>
                             </select>
                         </div>
 
@@ -475,7 +464,7 @@
                 <div id="trader-upgrade-prompt" class="card settings-card text-center" style="display: none;">
                     <div class="upgrade-icon">🏪</div>
                     <h3>Start Selling on TMF</h3>
-                    <p>List your stall, add products, receive orders, and reach buyers across Tamale — all free.</p>
+                    <p>List your stall, add products, receive orders, and reach buyers across <span class="js-city-name">Tamale</span> — all free.</p>
                     <button class="btn-primary btn-large" id="enableTraderRoleBtn" style="margin-top: 15px;">
                         Start Selling Now
                     </button>
@@ -554,14 +543,8 @@
                                 <div class="form-row-2">
                                     <div class="form-group">
                                         <label for="shopMarketArea">Market Location *</label>
-                                        <select id="shopMarketArea" required>
+                                        <select id="shopMarketArea" data-market-filter required>
                                             <option value="">Select Market Area</option>
-                                            <option value="Central Market">Tamale Central Market</option>
-                                            <option value="Aboabo Market">Aboabo Market</option>
-                                            <option value="Lamashegu">Lamashegu Market</option>
-                                            <option value="Kukuo">Kukuo Market</option>
-                                            <option value="Old Market">Old Market</option>
-                                            <option value="Other">Other Area</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
@@ -580,7 +563,7 @@
                                 <div class="card" style="background:#F0FDF4; border:1px solid #BBF7D0; padding:14px; border-radius:10px; margin-bottom:15px;">
                                     <label class="checkbox-label" style="font-size:14px; cursor:pointer;">
                                         <input type="checkbox" id="shopOffersDelivery" style="width:18px; height:18px;" />
-                                        <span><strong>🚚 I offer local delivery in Tamale</strong><br><small style="color:#666;">Buyers will see a delivery option when ordering from your stall</small></span>
+                                        <span><strong>🚚 I offer local delivery in <span class="js-city-name">Tamale</span></strong><br><small style="color:#666;">Buyers will see a delivery option when ordering from your stall</small></span>
                                     </label>
                                 </div>
 
@@ -1018,7 +1001,7 @@
         <div class="modal-content card">
             <button class="modal-close" data-close-modal="reviewModal">&times;</button>
             <h3>⭐ Leave a Verified Review</h3>
-            <p class="card-subtitle">Share your experience with this Tamale trader to help other shoppers.</p>
+            <p class="card-subtitle">Share your experience with this <span class="js-city-name">Tamale</span> trader to help other shoppers.</p>
             <form id="reviewForm">
                 <input type="hidden" id="reviewOrderId" />
                 <input type="hidden" id="reviewShopId" />

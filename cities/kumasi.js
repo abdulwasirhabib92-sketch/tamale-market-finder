@@ -18,6 +18,14 @@ const CITY_CONFIG = {
         "Bantama Market",
         "Tafo Market"
     ],
+    marketAreas: [
+        { value: "Kejetia Market", label: "Kejetia Market" },
+        { value: "Kumasi Central Market", label: "Kumasi Central Market" },
+        { value: "Asafo Market", label: "Asafo Market" },
+        { value: "Adum Market", label: "Adum Market" },
+        { value: "Bantama Market", label: "Bantama Market" },
+        { value: "Tafo Market", label: "Tafo Market" }
+    ],
     demoShops: [],
     demoProducts: [],
     demoServices: [],

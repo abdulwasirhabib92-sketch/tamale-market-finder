@@ -18,6 +18,13 @@ const CITY_CONFIG = {
         "Larabanga Market"
     ],
     // Demo/seed data for this city
+    marketAreas: [
+        { value: "Central Market", label: "Tamale Central Market" },
+        { value: "Aboabo Market", label: "Aboabo Market" },
+        { value: "Old Market", label: "Old Market" },
+        { value: "Lamashegu", label: "Lamashegu Market" },
+        { value: "Kukuo", label: "Kukuo Market" }
+    ],
     demoShops: [],
     demoProducts: [],
     demoServices: [],

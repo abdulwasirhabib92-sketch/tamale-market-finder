@@ -19,6 +19,15 @@ const CITY_CONFIG = {
         "Tema Market",
         "Kotobabi Market"
     ],
+    marketAreas: [
+        { value: "Makola Market", label: "Makola Market" },
+        { value: "Agbogbloshie Market", label: "Agbogbloshie Market" },
+        { value: "Madina Market", label: "Madina Market" },
+        { value: "Kaneshie Market", label: "Kaneshie Market" },
+        { value: "Osuleman Market", label: "Osuleman Market" },
+        { value: "Tema Market", label: "Tema Market" },
+        { value: "Kotobabi Market", label: "Kotobabi Market" }
+    ],
     demoShops: [],
     demoProducts: [],
     demoServices: [],

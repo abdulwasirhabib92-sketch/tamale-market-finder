@@ -4098,6 +4098,26 @@ setTimeout(() => {
 }, 3000);
 
 // ====================================================================
+// PER-CITY TEXT & FILTERS
+// ====================================================================
+function applyCityTexts() {
+    if (typeof CITY_CONFIG === 'undefined') return;
+    // Replace all .js-city-name spans with the current city name
+    document.querySelectorAll('.js-city-name').forEach(el => {
+        el.textContent = CITY_CONFIG.name;
+    });
+    // Populate all market filter dropdowns from the city config
+    const areas = CITY_CONFIG.marketAreas || [];
+    document.querySelectorAll('select[data-market-filter]').forEach(sel => {
+        const placeholder = sel.querySelector('option[value=""]');
+        const keep = placeholder ? placeholder.outerHTML : '<option value="">All Areas</option>';
+        sel.innerHTML = keep + areas.map(a =>
+            `<option value="${a.value}">${a.label}</option>`
+        ).join('') + '<option value="Other">Other Surrounding Areas</option>';
+    });
+}
+
+// ====================================================================
 // CITY SWITCHER LOGIC
 // ====================================================================
 function initCitySwitcher() {
@@ -4113,6 +4133,7 @@ function initCitySwitcher() {
     if (label && typeof CITY_CONFIG !== 'undefined') {
         label.textContent = CITY_CONFIG.name;
     }
+    applyCityTexts();
     if (logoTitle && typeof CITY_CONFIG !== 'undefined') {
         logoTitle.textContent = CITY_CONFIG.name + ' Market Finder';
     }
