@@ -1428,7 +1428,7 @@ async function renderShowcaseSections() {
 
     // If no products loaded (empty DB or error), show empty states
     if (products.length === 0) {
-        popularContainer.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">No products listed yet. Be the first to sell on Tamale Market Finder!</div>`;
+        popularContainer.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">No products listed yet. Be the first to sell on ${CITY_CONFIG.name} Market Finder!</div>`;
         newContainer.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">No new arrivals yet.</div>`;
         return;
     }
@@ -3361,7 +3361,7 @@ function openWhatsApp(number, itemName, shopName) {
         showToast("No WhatsApp number available for this listing.", "warning");
         return;
     }
-    const msg = encodeURIComponent(`Hello! I saw ${itemName} at ${shopName} on Tamale Market Finder and would like to make an inquiry.`);
+    const msg = encodeURIComponent(`Hello! I saw ${itemName} at ${shopName} on ${CITY_CONFIG.name} Market Finder and would like to make an inquiry.`);
     window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
 }
 
@@ -4078,7 +4078,7 @@ function renderAppUpdates() {
 }
 
 document.getElementById('checkUpdatesBtn')?.addEventListener('click', () => {
-    showToast("You're on the latest version of Tamale Market Finder!", "success");
+    showToast(`You're on the latest version of ${CITY_CONFIG.name} Market Finder!`, "success");
 });
 
 // Render updates when settings page loads
