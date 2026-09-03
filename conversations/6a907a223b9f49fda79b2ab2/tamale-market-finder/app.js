@@ -187,7 +187,7 @@ let dynamicCategories = {};
 async function fetchDynamicCategories() {
     if (DEMO_MODE || !sbClient) return;
     try {
-        const { data: shopCats, error: e1 } = await sbClient.from('public_shops').select('category').not('category', 'is', null);
+        const { data: shopCats, error: e1 } = await sbClient.from('public_shops').select('category').eq('city', CITY_CONFIG.slug).not('category', 'is', null);
         if (e1) throw e1;
         const { data: prodCats, error: e2 } = await sbClient.from('products').select('category').eq('city', CITY_CONFIG.slug).not('category', 'is', null);
         if (e2) throw e2;
@@ -1408,7 +1408,7 @@ async function renderShowcaseSections() {
             const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true).eq('city', CITY_CONFIG.slug);
             if (shopErr) throw shopErr;
             shops = shopData || [];
-            const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug).eq('in_stock', true).eq('city', CITY_CONFIG.slug);
+            const { data: prodData, error: prodErr } = await sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug).eq('in_stock', true);
             if (prodErr) throw prodErr;
             products = (prodData || []).map(p => {
                 const shop = shops.find(s => s.id === p.shop_id) || {};
@@ -2029,7 +2029,7 @@ async function openOrderModal(productId, shopId) {
         const { data: prod, error: prodErr } = await sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug).eq('id', productId).single();
         if (prodErr) throw prodErr;
         product = prod;
-        const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('id', shopId).single();
+        const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('id', shopId).eq('city', CITY_CONFIG.slug).single();
         if (shopErr) throw shopErr;
         shop = shopData || {};
     } catch (err) {
@@ -2367,7 +2367,8 @@ async function handleOrderSubmit(e) {
                 buyer_name: newOrder.buyer_name,
                 buyer_phone: newOrder.buyer_phone,
                 buyer_notes: newOrder.buyer_notes,
-                status: "placed"
+                status: "placed",
+                city: CITY_CONFIG.slug
             });
         } catch (err) { console.error("Error saving order to Supabase:", err); }
     }
@@ -2809,7 +2810,8 @@ async function handleHelpSubmit(e) {
                 request_type: type,
                 message: message,
                 status: "open",
-                created_by: currentUser?.id || null
+                created_by: currentUser?.id || null,
+                city: CITY_CONFIG.slug
             });
             if (error) throw error;
 
@@ -2841,7 +2843,7 @@ async function renderAdminPanel() {
     let reports = [];
     if (!DEMO_MODE && sbClient) {
         try {
-            const { data, error } = await sbClient.from('reports').select('*').order('created_date', { ascending: false });
+            const { data, error } = await sbClient.from('reports').select('*').eq('city', CITY_CONFIG.slug).order('created_date', { ascending: false });
             if (error) throw error;
             reports = data || [];
         } catch (err) { console.error("Error loading reports:", err); }
@@ -3069,7 +3071,7 @@ async function showShopDetailModal(shopId) {
         return;
     }
     try {
-        const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('id', shopId).single();
+        const { data: shopData, error: shopErr } = await sbClient.from('public_shops').select('*').eq('id', shopId).eq('city', CITY_CONFIG.slug).single();
         if (shopErr) throw shopErr;
         if (shopData) shop = shopData;
         // Hide delivery option if shop doesn't offer delivery

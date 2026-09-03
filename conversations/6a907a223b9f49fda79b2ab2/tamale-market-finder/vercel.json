@@ -29,7 +29,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https://djcajmglxkmhbipmweps.supabase.co https://api.supabase.com; manifest-src 'self'; worker-src 'self'; frame-src 'self' https://www.google.com; navigate-to 'self' https://wa.me https://api.whatsapp.com https://www.google.com https://maps.google.com https://maps.app.goo.gl"
+          "value": "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https://djcajmglxkmhbipmweps.supabase.co https://api.supabase.com; manifest-src 'self' blob:; worker-src 'self'; frame-src 'self' https://www.google.com; navigate-to 'self' https://wa.me https://api.whatsapp.com https://www.google.com https://maps.google.com https://maps.app.goo.gl"
         }
       ]
     }

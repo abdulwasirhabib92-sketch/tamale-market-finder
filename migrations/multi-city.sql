@@ -45,3 +45,7 @@ FROM shops
 WHERE is_active = true;
 
 GRANT SELECT ON public_shops TO anon, authenticated;
+
+-- v2 additions (post-review fixes)
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS city TEXT DEFAULT 'tamale';
+CREATE INDEX IF NOT EXISTS idx_support_tickets_city ON support_tickets(city);
