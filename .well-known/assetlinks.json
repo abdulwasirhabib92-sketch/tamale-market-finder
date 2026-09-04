@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.techmarketvulture.tamalemarketfinder",
+      "sha256_cert_fingerprints": [
+        "611f9cf511993251fa993827aa54d3af8c51e49380bef6c541354fed7280fa11"
+      ]
+    }
+  }
+]
