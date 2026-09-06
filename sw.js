@@ -1,7 +1,7 @@
 // Tamale Market Finder — Service Worker
 // Caches app shell for offline use, updates in background
 
-const CACHE_VERSION = 'tmf-mc-v2-20260903';
+const CACHE_VERSION = 'tmf-mc-v3-20260906';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -65,6 +65,21 @@ self.addEventListener('fetch', (event) => {
 
   // Skip cross-origin requests (Leaflet CDN etc) — let browser handle
   if (url.origin !== self.location.origin && !url.hostname.includes('unpkg.com') && !url.hostname.includes('jsdelivr.net')) {
+    return;
+  }
+
+  // Network-first for CDN libraries (supabase-js etc) — always get the pinned version
+  // fresh from the network; cached copy only as offline fallback
+  if (url.hostname.includes('unpkg.com') || url.hostname.includes('jsdelivr.net')) {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(request))
+    );
     return;
   }
 
