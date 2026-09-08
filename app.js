@@ -675,6 +675,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
     try { initDomainTabs(); } catch(e) { showErr("initDomainTabs", e); }
     try { initMap(); } catch(e) { showErr("initMap", e); }
+    try { renderAnnouncements().catch(e => showErr("renderAnnouncements", e)); } catch(e) { showErr("renderAnnouncements", e); }
     try { renderSpotlightCarousel().catch(e => showErr("renderSpotlightCarousel", e)); } catch(e) { showErr("renderSpotlightCarousel", e); }
     try { renderShowcaseSections().catch(e => showErr("renderShowcaseSections", e)); } catch(e) { showErr("renderShowcaseSections", e); }
     try { searchListings(); } catch(e) { showErr("searchListings", e); }
@@ -1296,6 +1297,59 @@ function debounceSearch() {
 // ====================================================================
 let spotlightIndex = 0;
 let spotlightTimer = null;
+
+// ====================================================================
+// ANNOUNCEMENTS — admin-managed notices from Supabase (public read)
+// ====================================================================
+async function renderAnnouncements() {
+    const section = document.getElementById("announcementsSection");
+    if (!section || DEMO_MODE || !sbClient || typeof CITY_CONFIG === 'undefined') return;
+
+    try {
+        const { data, error } = await sbClient.from('announcements')
+            .select('id,title,body,announcement_type,link_url')
+            .eq('is_active', true)
+            .in('city', ['all', CITY_CONFIG.slug])
+            .order('sort_order', { ascending: true })
+            .limit(5);
+        if (error) throw error;
+
+        const dismissed = JSON.parse(localStorage.getItem('tmf-ann-dismissed') || '[]');
+        const visible = (data || []).filter(a => !dismissed.includes(a.id));
+        if (visible.length === 0) { section.hidden = true; section.innerHTML = ''; return; }
+
+        const icons = { info: '📢', promo: '🎉', alert: '⚠️' };
+        section.hidden = false;
+        section.innerHTML = visible.map(a => {
+            const body = `
+                <div class="announcement-header">
+                    <span class="announcement-icon">${icons[a.announcement_type] || '📢'}</span>
+                    <strong class="announcement-title">${escapeHtml(a.title)}</strong>
+                    <button class="announcement-dismiss" data-dismiss-id="${escapeJs(a.id)}" aria-label="Dismiss announcement">&times;</button>
+                </div>
+                <p class="announcement-body">${escapeHtml(a.body)}</p>
+                ${a.link_url ? `<a class="announcement-link" href="${escapeAttr(a.link_url)}" target="_blank" rel="noopener noreferrer">Learn more ➔</a>` : ''}
+            `;
+            return `<div class="announcement-card ann-type-${escapeHtml(a.announcement_type || 'info')}" data-ann-id="${escapeJs(a.id)}">${body}</div>`;
+        }).join('');
+
+        section.querySelectorAll('[data-dismiss-id]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.dismissId;
+                const list = JSON.parse(localStorage.getItem('tmf-ann-dismissed') || '[]');
+                if (!list.includes(id)) list.push(id);
+                localStorage.setItem('tmf-ann-dismissed', JSON.stringify(list));
+                const card = section.querySelector(`[data-ann-id="${id}"]`);
+                if (card) card.remove();
+                if (!section.querySelector('.announcement-card')) { section.hidden = true; section.innerHTML = ''; }
+            });
+        });
+    } catch (err) {
+        // Table missing / network issue — hide section silently
+        section.hidden = true;
+        console.error("Announcements unavailable:", err.message);
+    }
+}
 
 async function renderSpotlightCarousel() {
     const carousel = document.getElementById("spotlightCarousel");

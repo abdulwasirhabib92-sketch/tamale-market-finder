@@ -127,6 +127,9 @@
 
     <!-- PAGE 1: EXPLORE / HOME VIEW -->
     <main id="page-home" class="page active">
+        <!-- Announcements Banner (admin-managed, from Supabase) -->
+        <section id="announcementsSection" class="announcements-section" hidden></section>
+
         <!-- Spotlight Ads Header Banner Carousel -->
         <section class="spotlight-section" id="spotlightSection">
             <div class="spotlight-header">
@@ -1229,7 +1232,7 @@
             document.write('<script src="' + cityFile + '"><\/script>');
         })();
     </script>
-    <script src="app.js?v=20260906mc"></script>
+    <script src="app.js?v=20260908mc"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
