@@ -1,7 +1,7 @@
 // Tamale Market Finder — Service Worker
 // Caches app shell for offline use, updates in background
 
-const CACHE_VERSION = 'tmf-mc-v3-20260906';
+const CACHE_VERSION = 'tmf-mc-v4-20260908';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -21,7 +21,15 @@ const APP_SHELL = [
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',
   '/icons/maskable-512.png',
-  '/cdn-checks.js'
+  '/cdn-checks.js',
+  '/vendor/supabase-js.2.109.0.min.js',
+  '/vendor/leaflet/leaflet.js',
+  '/vendor/leaflet/leaflet.css',
+  '/vendor/leaflet/images/layers.png',
+  '/vendor/leaflet/images/layers-2x.png',
+  '/vendor/leaflet/images/marker-icon.png',
+  '/vendor/leaflet/images/marker-icon-2x.png',
+  '/vendor/leaflet/images/marker-shadow.png'
 ];
 
 // Install — pre-cache app shell
@@ -64,22 +72,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Skip cross-origin requests (Leaflet CDN etc) — let browser handle
-  if (url.origin !== self.location.origin && !url.hostname.includes('unpkg.com') && !url.hostname.includes('jsdelivr.net')) {
-    return;
-  }
-
-  // Network-first for CDN libraries (supabase-js etc) — always get the pinned version
-  // fresh from the network; cached copy only as offline fallback
-  if (url.hostname.includes('unpkg.com') || url.hostname.includes('jsdelivr.net')) {
-    event.respondWith(
-      fetch(request).then((response) => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      }).catch(() => caches.match(request))
-    );
+  if (url.origin !== self.location.origin) {
     return;
   }
 

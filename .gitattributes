@@ -48,3 +48,6 @@
 # Override: PWA icons should not use LFS (Vercel can't resolve LFS pointers)
 icons/*.png !filter !diff !merge -text
 conversations/6a907a223b9f49fda79b2ab2/tamale-market-finder/icons/*.png !filter !diff !merge -text
+
+# Override: vendor libs are small and must be plain files (Vercel can't resolve LFS pointers)
+vendor/** !filter !diff !merge -text

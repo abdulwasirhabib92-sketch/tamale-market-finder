@@ -20,13 +20,13 @@
     <meta name="twitter:title" content="Tamale Market Finder — Local Shops & E-Commerce">
     <meta name="twitter:description" content="Find shops, products, services, hotels and eateries in your city, Ghana with pinpoint map locations.">
     <title id="pageTitle">Tamale Market Finder — Local Shops & E-Commerce in Ghana</title>
-    <link rel="stylesheet" href="styles.css?v=20260831sec">
+    <link rel="stylesheet" href="styles.css?v=20260908sec">
     <!-- Leaflet for maps -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
+    <script src="/vendor/leaflet/leaflet.js"></script>
     <script src="cdn-checks.js"></script>
     <!-- Supabase JS client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
+    <script src="/vendor/supabase-js.2.109.0.min.js"></script>
 
     <!-- PWA: Web App Manifest -->
     <link rel="manifest" href="/manifest.json">
@@ -1232,7 +1232,7 @@
             document.write('<script src="' + cityFile + '"><\/script>');
         })();
     </script>
-    <script src="app.js?v=20260908mc"></script>
+    <script src="app.js?v=20260908sec"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
