@@ -2414,8 +2414,9 @@ async function handleOrderSubmit(e) {
 
     // Save to Supabase if available
     if (!DEMO_MODE && sbClient) {
+        let orderSaved = true;
         try {
-            await sbClient.from('orders').insert({
+            const { error: orderError } = await sbClient.from('orders').insert({
                 order_number: orderNumber,
                 buyer_id: newOrder.buyer_id,
                 shop_id: newOrder.shop_id,
@@ -2432,11 +2433,15 @@ async function handleOrderSubmit(e) {
                 status: "placed",
                 city: CITY_CONFIG.slug
             });
-        } catch (err) { console.error("Error saving order to Supabase:", err); }
-    }
+            if (orderError) throw orderError;
+        } catch (err) {
+            console.error("Error saving order to Supabase:", err);
+            showToast("Could not place order: " + (err.message || "please try again"), "error");
+            orderSaved = false;
+        }
+        if (!orderSaved) return; // do not confirm or decrement stock on failure
 
-    // Decrement stock after successful order
-    if (!DEMO_MODE && sbClient) {
+        // Decrement stock after successful order
         try {
             const newStock = Math.max(0, availableStock - orderQty);
             await sbClient.from('products').update({

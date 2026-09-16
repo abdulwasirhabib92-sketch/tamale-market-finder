@@ -562,7 +562,7 @@ CREATE POLICY "Traders can view orders for their shop" ON orders FOR SELECT USIN
     EXISTS (SELECT 1 FROM shops WHERE shops.id = orders.shop_id AND shops.created_by = auth.uid())
 );
 DROP POLICY IF EXISTS "Buyers can insert orders" ON orders;
-CREATE POLICY "Buyers can insert orders" ON orders FOR INSERT WITH CHECK (auth.uid() = buyer_id);
+CREATE POLICY "Buyers can insert orders" ON orders FOR INSERT WITH CHECK (auth.uid() = buyer_id OR buyer_id = 'guest-user');
 -- Buyers can cancel their own orders; traders can update status for their shop orders
 DROP POLICY IF EXISTS "Buyers can cancel own orders" ON orders;
 CREATE POLICY "Buyers can cancel own orders" ON orders FOR UPDATE 
