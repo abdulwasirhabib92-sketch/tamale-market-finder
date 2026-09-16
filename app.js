@@ -710,13 +710,19 @@ function initInlineHandlers() {
     const adDuration = document.getElementById('adDuration');
     if (adDuration) adDuration.addEventListener('change', updateAdFeeDisplay);
 
-    // Express order form (dynamically generated)
-    const expressOrderForm = document.getElementById('expressOrderForm');
-    if (expressOrderForm) expressOrderForm.addEventListener('submit', handleOrderSubmit);
+    // NOTE: the express order form is regenerated inside openOrderModal via innerHTML,
+    // so a direct binding here is lost/absent. Its submit is handled by delegated
+    // 'submit' delegation (see bindEventListeners bottom + handleDelegatedSubmit).
 
     // Event delegation for dynamically generated content
     document.addEventListener('click', handleDelegatedClick);
+    document.addEventListener('submit', handleDelegatedSubmit); // submit bubbles; catches dynamically rebuilt forms
     document.addEventListener('change', handleDelegatedChange);
+}
+
+function handleDelegatedSubmit(e) {
+    const form = e.target.closest('form[data-form="orderSubmit"]');
+    if (form) handleOrderSubmit(e);
 }
 
 function handleDelegatedClick(e) {
