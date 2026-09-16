@@ -2453,14 +2453,21 @@ async function handleOrderSubmit(e) {
         }
         if (!orderSaved) return; // do not confirm or decrement stock on failure
 
-        // Decrement stock after successful order
+        // Decrement stock after successful order.
+        // SECURITY NOTE: buyers cannot UPDATE products (RLS policy blocks them),
+        // so the decrement goes through the SECURITY DEFINER function
+        // `decrement_product_stock(p_product_id, p_quantity)` which validates
+        // stock atomically server-side. Falls back gracefully if not yet installed.
         try {
-            const newStock = Math.max(0, availableStock - orderQty);
-            await sbClient.from('products').update({
-                stock_quantity: newStock,
-                in_stock: newStock > 0
-            }).eq('id', activeOrderProduct.product.id);
-        } catch (stockErr) { console.error("Stock decrement error:", stockErr); }
+            const { error: stockErr } = await sbClient.rpc('decrement_product_stock', {
+                p_product_id: activeOrderProduct.product.id,
+                p_quantity: orderQty
+            });
+            if (stockErr) throw stockErr;
+        } catch (stockErr) {
+            console.error("Stock decrement error:", stockErr);
+            showToast("Order placed — stock sync failed, trader will adjust stock.", "error");
+        }
     }
 
     closeModal("orderModal");

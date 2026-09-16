@@ -443,6 +443,83 @@ CREATE TRIGGER trg_set_order_number
     FOR EACH ROW EXECUTE FUNCTION set_order_number();
 
 
+-- 13.6 Order Insert Validation (price, stock, delivery type)
+-- Canonical version: accepts the SELLING price (discount_price when set),
+-- blocks overselling and invalid delivery types. Replaces any earlier
+-- dashboard-added validation trigger that rejected discounted orders.
+CREATE OR REPLACE FUNCTION validate_order_insert()
+RETURNS TRIGGER AS $$
+DECLARE
+    actual_price NUMERIC;
+    available     INTEGER;
+BEGIN
+    SELECT COALESCE(discount_price, price), stock_quantity
+      INTO actual_price, available
+      FROM products
+     WHERE id = NEW.product_id;
+
+    IF actual_price IS NULL THEN
+        RAISE EXCEPTION 'Product not found: %', NEW.product_id;
+    END IF;
+
+    IF NEW.unit_price <> actual_price THEN
+        RAISE EXCEPTION 'Price mismatch: submitted %, actual %', NEW.unit_price, actual_price;
+    END IF;
+
+    IF NEW.quantity IS NULL OR NEW.quantity <= 0 THEN
+        RAISE EXCEPTION 'Quantity must be at least 1';
+    END IF;
+
+    IF NEW.quantity > available THEN
+        RAISE EXCEPTION 'Not enough stock: % requested, % available', NEW.quantity, available;
+    END IF;
+
+    IF NEW.delivery_type NOT IN ('delivery', 'pickup') THEN
+        RAISE EXCEPTION 'Invalid delivery type: %', NEW.delivery_type;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_validate_order_insert ON orders;
+CREATE TRIGGER trg_validate_order_insert
+    BEFORE INSERT ON orders
+    FOR EACH ROW EXECUTE FUNCTION validate_order_insert();
+
+
+-- 13.7 Secure Stock Decrement (buyers reserve stock at order placement)
+-- Buyers cannot UPDATE products (RLS), so the app calls this RPC instead.
+-- SECURITY DEFINER lets it bypass RLS while validating stock atomically.
+CREATE OR REPLACE FUNCTION decrement_product_stock(p_product_id UUID, p_quantity INTEGER)
+RETURNS VOID AS $$
+DECLARE
+    remaining INTEGER;
+BEGIN
+    IF p_quantity IS NULL OR p_quantity <= 0 THEN
+        RAISE EXCEPTION 'Quantity must be at least 1';
+    END IF;
+
+    UPDATE products
+       SET stock_quantity = stock_quantity - p_quantity,
+           in_stock = (stock_quantity - p_quantity) > 0
+     WHERE id = p_product_id
+    RETURNING stock_quantity INTO remaining;
+
+    IF remaining IS NULL THEN
+        RAISE EXCEPTION 'Product not found: %', p_product_id;
+    END IF;
+
+    IF remaining < 0 THEN
+        RAISE EXCEPTION 'Not enough stock for product %', p_product_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION decrement_product_stock(UUID, INTEGER) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION decrement_product_stock(UUID, INTEGER) TO authenticated;
+
+
 -- ----------------------------------------------------------------------------
 -- 14. ROW LEVEL SECURITY (RLS) POLICIES
 -- ----------------------------------------------------------------------------
