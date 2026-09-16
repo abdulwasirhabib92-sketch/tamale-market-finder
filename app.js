@@ -2079,6 +2079,12 @@ function clearMapMarkers() {
 let activeOrderProduct = null;
 
 async function openOrderModal(productId, shopId) {
+    // Guests cannot place orders: buyer_id is a uuid tied to an auth account
+    if (!currentUser) {
+        showToast("Please sign in to place an order", "error");
+        openModal("authModal");
+        return;
+    }
     // Check if shop offers delivery before showing the delivery option
     let product = null;
     let shop = {};
