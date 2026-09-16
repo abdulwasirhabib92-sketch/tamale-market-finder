@@ -1,7 +1,7 @@
 // Tamale Market Finder — Service Worker
 // Caches app shell for offline use, updates in background
 
-const CACHE_VERSION = 'tmf-mc-v4-20260908';
+const CACHE_VERSION = 'tmf-mc-v5-20260916';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -76,7 +76,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for app shell and static assets
+  // Network-first for app code (app.js, city configs, styles) — must always be fresh
+  const APP_CODE = ['/app.js', '/styles.css', '/cdn-checks.js', '/cities/'];
+  if (APP_CODE.some(p => url.pathname === p || url.pathname.startsWith(p))) {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Cache-first for static assets (icons, vendor libs)
   if (APP_SHELL.includes(url.pathname) || url.pathname.match(/\.(css|js|png|jpg|svg|ico)$/)) {
     event.respondWith(
       caches.match(request).then((cached) => {
