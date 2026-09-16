@@ -2591,27 +2591,42 @@ async function renderTraderOrders() {
 }
 
 async function changeOrderStatus(orderId, newStatus) {
-    // Update demo store if present
-
-    if (order) order.status = newStatus;
+    // Load the order first: we need its current status for stock management,
+    // and it verifies the order exists before we mutate anything.
+    let order = null;
+    let oldStatus = null;
+    if (!DEMO_MODE && sbClient) {
+        try {
+            const { data, error } = await sbClient.from('orders').select('*').eq('id', orderId).single();
+            if (error) throw error;
+            order = data;
+        } catch (err) {
+            console.error("Error loading order for status change:", err);
+            showToast("Could not update order: " + (err.message || "please try again"), "error");
+            return;
+        }
+    }
+    if (order) oldStatus = order.status;
 
     // Sync to Supabase
     if (!DEMO_MODE && sbClient) {
         try {
-            await sbClient.from('orders').update({ status: newStatus }).eq('id', orderId);
-        } catch (err) { console.error("Error updating order status in Supabase:", err); }
+            const { error } = await sbClient.from('orders').update({ status: newStatus }).eq('id', orderId);
+            if (error) throw error;
+        } catch (err) {
+            console.error("Error updating order status in Supabase:", err);
+            showToast("Could not update order status: " + (err.message || "please try again"), "error");
+            return;
+        }
     }
 
-    // Stock Management: decrement on accept, restore on cancel/reject
-    if (sbClient && order.product_id) {
+    // Stock Management: stock is already reserved (decremented) when the order
+    // was placed, so only restore it when the order is rejected or cancelled.
+    if (sbClient && order && order.product_id) {
         try {
-            if (newStatus === "accepted" && oldStatus === "placed") {
-                const { data: prod } = await sbClient.from('products').select('stock_quantity').eq('id', order.product_id).single();
-                if (prod) {
-                    const newQty = Math.max(0, (prod.stock_quantity || 0) - order.quantity);
-                    await sbClient.from('products').update({ stock_quantity: newQty, in_stock: newQty > 0 }).eq('id', order.product_id);
-                }
-            } else if ((newStatus === "cancelled" || newStatus === "rejected") && (oldStatus === "accepted" || oldStatus === "ready")) {
+            const releasesStock = (newStatus === "cancelled" || newStatus === "rejected") &&
+                (oldStatus === "placed" || oldStatus === "accepted" || oldStatus === "ready");
+            if (releasesStock) {
                 const { data: prod } = await sbClient.from('products').select('stock_quantity').eq('id', order.product_id).single();
                 if (prod) {
                     const restoredQty = (prod.stock_quantity || 0) + order.quantity;
