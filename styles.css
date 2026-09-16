@@ -2438,3 +2438,63 @@ body {
 }
 
 .announcement-link:hover { text-decoration: underline; }
+
+/* ====================================================================
+   MOBILE HEADER FIT (Sep 16, 2026)
+   Fix: on narrow phones the logo + city switcher + menu button
+   exceeded the viewport width, pushing the menu button off-screen
+   and causing horizontal scroll. Shrink header pieces and keep the
+   menu button always visible.
+   ==================================================================== */
+html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+@media (max-width: 768px) {
+    .header-inner {
+        padding: 0 10px;
+        gap: 6px;
+    }
+    .logo-group {
+        gap: 6px;
+        min-width: 0;
+        flex: 0 1 auto;
+    }
+    .logo-icon {
+        font-size: 16px;
+        padding: 5px;
+        border-radius: 8px;
+    }
+    .logo-title {
+        font-size: 15px;
+        letter-spacing: -0.2px;
+    }
+    .city-switch-btn {
+        padding: 5px 8px;
+        font-size: 12px;
+    }
+    .header-actions {
+        flex-shrink: 0;
+        margin-left: auto;
+    }
+    .menu-btn {
+        padding: 5px 9px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+    .menu-btn .avatar-circle {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 360px) {
+    .logo-title {
+        font-size: 13px;
+    }
+    .logo-icon {
+        display: none;
+    }
+}
