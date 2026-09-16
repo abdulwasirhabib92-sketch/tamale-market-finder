@@ -1095,6 +1095,14 @@ function initNavigation() {
     const productForm = document.getElementById('productForm');
     if (productForm) productForm.addEventListener('submit', handleSaveProduct);
 
+    // Open product modal for adding a new product (bug fix: button had no handler)
+    const addProductBtn = document.getElementById('addProductBtn');
+    if (addProductBtn) addProductBtn.addEventListener('click', () => {
+        if (!currentUser) { showToast("Sign in first", "error"); return; }
+        if (!userShop) { showToast("Save your shop stall first", "warning"); return; }
+        openProductModalForAdd();
+    });
+
     // Close product modal
     const closeProduct = document.getElementById('closeProductModal');
     if (closeProduct) closeProduct.addEventListener('click', () => closeModal('productModal'));
@@ -3407,6 +3415,24 @@ function openModal(modalId) {
 
 function closeModal(modalId) {
     document.getElementById(modalId).classList.remove("active");
+}
+
+function openProductModalForAdd() {
+    const form = document.getElementById('productForm');
+    if (form) form.reset();
+    const pid = document.getElementById('productId');
+    if (pid) pid.value = '';
+    const title = document.getElementById('productFormTitle');
+    if (title) title.textContent = 'Add Inventory Item';
+    const imgFile = document.getElementById('productImageFile');
+    if (imgFile) imgFile.value = '';
+    const imgHidden = document.getElementById('productImage');
+    if (imgHidden) imgHidden.value = '';
+    const imgPreview = document.getElementById('productImagePreview');
+    if (imgPreview) imgPreview.style.display = 'none';
+    const cat = document.getElementById('productCategory');
+    if (cat) cat.value = '';
+    openModal('productModal');
 }
 
 function openWhatsApp(number, itemName, shopName) {
