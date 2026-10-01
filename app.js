@@ -1218,15 +1218,21 @@ function elBtnTab(btn, btnSelector, contentSelector, dataAttr) {
         document.querySelectorAll(btnSelector).forEach(b => b.classList.remove("active"));
         document.querySelectorAll(contentSelector).forEach(c => c.classList.remove("active"));
         btn.classList.add("active");
-        const targetEl = document.getElementById("acctab-" + target) ||
-                         document.getElementById("trader-sub-" + target) ||
-                         document.getElementById("admin-sub-" + target);
+        // Resolve the content panel within THIS button group's namespace.
+        // FIX: the old lookup tried "acctab-" first, so the trader subtab
+        // "orders" (Incoming Orders) wrongly activated the buyer's
+        // acctab-orders panel and traders could not see/accept orders.
+        const panelPrefix = dataAttr === "data-tradersub" ? "trader-sub-"
+                          : dataAttr === "data-adminsub" ? "admin-sub-"
+                          : "acctab-";
+        const targetEl = document.getElementById(panelPrefix + target);
         if (targetEl) targetEl.classList.add("active");
 
-        // Specific tab load triggers
-        if (target === "orders") renderTraderOrders();
-        if (target === "reviews") renderTraderReviews();
-        if (target === "ads") renderTraderAds();
+        // Specific tab load triggers (keep renders within their own group)
+        const isTraderSub = dataAttr === "data-tradersub";
+        if (isTraderSub && target === "orders") renderTraderOrders();
+        if (isTraderSub && target === "reviews") renderTraderReviews();
+        if (isTraderSub && target === "ads") renderTraderAds();
         if (target === "admin") renderAdminPanel();
     });
 }
