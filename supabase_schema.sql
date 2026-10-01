@@ -516,10 +516,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- anon needs EXECUTE so guest (not-logged-in) checkout can sync stock too;
--- the function is SECURITY DEFINER, validates quantity (1-999) and stock atomically.
-REVOKE ALL ON FUNCTION decrement_product_stock(UUID, INTEGER) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION decrement_product_stock(UUID, INTEGER) TO anon, authenticated;
+-- Ordering requires sign-in (app.js gates guest orders), so only
+-- authenticated users need EXECUTE. PUBLIC must be revoked explicitly:
+-- new functions default to PUBLIC execute, which anon inherits.
+REVOKE ALL ON FUNCTION decrement_product_stock(UUID, INTEGER) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION decrement_product_stock(UUID, INTEGER) TO authenticated;
 
 
 -- ----------------------------------------------------------------------------
