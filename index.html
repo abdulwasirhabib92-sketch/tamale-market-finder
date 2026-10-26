@@ -127,8 +127,6 @@
 
     <!-- PAGE 1: EXPLORE / HOME VIEW -->
     <main id="page-home" class="page active">
-        <!-- Announcements Banner (admin-managed, from Supabase) -->
-        <section id="announcementsSection" class="announcements-section" hidden></section>
 
         <!-- Spotlight Ads Header Banner Carousel -->
         <section class="spotlight-section" id="spotlightSection">
@@ -191,6 +189,15 @@
             </div>
         </section>
 
+
+        <!-- Trust strip: what this marketplace promises (added Lesson: homepage design pass) -->
+        <section class="trust-strip" aria-label="Why buy here">
+            <div class="trust-item"><span class="trust-icon">✅</span><span><b>Verified traders</b><small>Checked listings</small></span></div>
+            <div class="trust-item"><span class="trust-icon">💵</span><span><b>Pay on delivery</b><small>Inspect first</small></span></div>
+            <div class="trust-item"><span class="trust-icon">🕐</span><span><b>Open now</b><small>Live hours</small></span></div>
+            <div class="trust-item"><span class="trust-icon">💬</span><span><b>WhatsApp alerts</b><small>Prices in chat</small></span></div>
+        </section>
+
         <!-- E-Commerce Showcase Sections (Popular Near You & New Arrivals) -->
         <div class="showcase-sections" id="showcaseSections">
             <section class="showcase-group">
@@ -213,6 +220,9 @@
                 </div>
             </section>
         </div>
+
+        <!-- Announcements (moved below the shop grids so products lead) -->
+        <section id="announcementsSection" class="announcements-section" hidden></section>
 
         <!-- Main Results & Map Split Container -->
         <div class="results-container" id="resultsContainer">
@@ -1232,7 +1242,7 @@
             document.write('<script src="' + cityFile + '"><\/script>');
         })();
     </script>
-    <script src="app.js?v=20261001fix6"></script>
+    <script src="app.js?v=20261026a"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
