@@ -155,7 +155,7 @@
             <div class="search-bar">
                 <div class="search-input-wrapper">
                     <span class="search-icon">🔍</span>
-                    <input type="text" id="searchInput" placeholder="Search products, services, hotels, or Ghana Post address (e.g. yam, smock, NT-092)..." autocomplete="off" />
+                    <input type="text" id="searchInput" placeholder="" aria-label="Search products, services, hotels or Ghana Post address" autocomplete="off" />
                     <button type="button" id="clearSearchBtn" class="clear-btn" style="display:none;">&times;</button>
                 </div>
                 <button id="searchBtn" class="btn-primary search-submit-btn">Search</button>
@@ -193,7 +193,7 @@
         <!-- Trust strip: what this marketplace promises (added Lesson: homepage design pass) -->
         <section class="trust-strip" aria-label="Why buy here">
             <div class="trust-item"><span class="trust-icon">✅</span><span><b>Verified traders</b><small>Checked listings</small></span></div>
-            <div class="trust-item"><span class="trust-icon">💵</span><span><b>Pay on delivery</b><small>Inspect first</small></span></div>
+            
             <div class="trust-item"><span class="trust-icon">🕐</span><span><b>Open now</b><small>Live hours</small></span></div>
             <div class="trust-item"><span class="trust-icon">💬</span><span><b>WhatsApp alerts</b><small>Prices in chat</small></span></div>
         </section>
@@ -1242,7 +1242,7 @@
             document.write('<script src="' + cityFile + '"><\/script>');
         })();
     </script>
-    <script src="app.js?v=20261105menufix"></script>
+    <script src="app.js?v=20261105loc"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

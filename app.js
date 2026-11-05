@@ -1908,6 +1908,7 @@ function findMyLocation() {
         userLng = pos.coords.longitude;
         // Also update the global userLocation used for ranking "Popular Near You"
         userLocation = { latitude: userLat, longitude: userLng };
+        if (typeof tmfCacheLocation === "function") tmfCacheLocation(userLat, userLng);
 
         // Remove old user marker
         if (userLocationMarker) leafletMap.removeLayer(userLocationMarker);
@@ -1967,6 +1968,86 @@ function findMyLocation() {
             showToast("Could not get your location. Allow GPS permissions and try again.", "warning");
         }
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+}
+
+
+// ------------------------------------------------------------------
+// LOCATION: capture once, remember it, rank by distance
+// ------------------------------------------------------------------
+function tmfShowLocationBanner(message, actionLabel, onAction) {
+    if (document.getElementById('tmfLocationBanner')) return;
+    const bar = document.createElement('div');
+    bar.id = 'tmfLocationBanner';
+    bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9000;background:#0A5C36;color:#fff;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.25)';
+    bar.innerHTML = '<span style="flex:1">' + message + '</span>';
+    if (actionLabel && onAction) {
+        const b = document.createElement('button');
+        b.textContent = actionLabel;
+        b.style.cssText = 'background:#fff;color:#0A5C36;border:0;border-radius:8px;padding:6px 10px;font-weight:700;font-size:12px';
+        b.onclick = () => { bar.remove(); onAction(); };
+        bar.appendChild(b);
+    }
+    const x = document.createElement('button');
+    x.textContent = '✕';
+    x.setAttribute('aria-label', 'Dismiss');
+    x.style.cssText = 'background:transparent;border:0;color:#fff;font-size:15px;padding:2px 4px';
+    x.onclick = () => bar.remove();
+    bar.appendChild(x);
+    document.body.appendChild(bar);
+    setTimeout(() => { const el = document.getElementById('tmfLocationBanner'); if (el) el.remove(); }, 12000);
+}
+
+function tmfCacheLocation(lat, lng) {
+    try { localStorage.setItem('tmf_user_location', JSON.stringify({ lat, lng, ts: Date.now() })); } catch (e) {}
+}
+
+function tmfApplyLocation(lat, lng) {
+    userLat = lat; userLng = lng;
+    userLocation = { latitude: lat, longitude: lng };
+    if (typeof leafletMap !== 'undefined' && leafletMap) leafletMap.setView([lat, lng], 15);
+    if (typeof currentMapItems !== 'undefined' && currentMapItems) {
+        try { updateMapMarkers(currentMapItems); } catch (e) {}
+    }
+}
+
+function initUserLocation() {
+    // Use the saved position immediately so distance ranking works on first paint
+    try {
+        const cached = JSON.parse(localStorage.getItem('tmf_user_location') || 'null');
+        if (cached && cached.lat && cached.lng && (Date.now() - cached.ts) < 30 * 24 * 3600 * 1000) {
+            userLat = cached.lat; userLng = cached.lng;
+            userLocation = { latitude: cached.lat, longitude: cached.lng };
+        }
+    } catch (e) {}
+
+    if (!("geolocation" in navigator)) return;
+
+    navigator.geolocation.getCurrentPosition(pos => {
+        tmfApplyLocation(pos.coords.latitude, pos.coords.longitude);
+        tmfCacheLocation(pos.coords.latitude, pos.coords.longitude);
+    }, err => {
+        // Stay quiet if we already have a saved position; offer one gentle retry otherwise
+        const hasSaved = !!(userLat && userLng);
+        if (err.code === err.PERMISSION_DENIED) {
+            if (!hasSaved) {
+                tmfShowLocationBanner('📍 Turn on location so we can show shops near you.', 'Try again', () => {
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        tmfApplyLocation(pos.coords.latitude, pos.coords.longitude);
+                        tmfCacheLocation(pos.coords.latitude, pos.coords.longitude);
+                        showToast('Location on. Shops are now ranked by distance.', 'success');
+                    }, () => showToast('Still blocked. Allow location for this site in your browser settings.', 'warning'),
+                       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+                });
+            }
+        }
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5 * 60 * 1000 });
+}
+
+// Auto-run the location capture as soon as the app starts
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(initUserLocation, 400));
+} else {
+    setTimeout(initUserLocation, 400);
 }
 
 function drawDirectionsToShop(shopLat, shopLng, shopName) {
