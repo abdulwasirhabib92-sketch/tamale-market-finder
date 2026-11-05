@@ -782,6 +782,18 @@ function handleDelegatedClick(e) {
         case 'takeModerationAction':
             takeModerationAction(el.dataset.reportId);
             break;
+        case 'approveVerification':
+            approveVerificationShop(el.dataset.shopId);
+            break;
+        case 'rejectVerification':
+            rejectVerificationShop(el.dataset.shopId);
+            break;
+        case 'markFeePaid':
+            markVerificationFeePaid(el.dataset.shopId);
+            break;
+        case 'viewIdPhoto':
+            viewIdPhoto(el.dataset.path);
+            break;
     }
 }
 
@@ -3018,6 +3030,109 @@ async function handleHelpSubmit(e) {
     submitBtn.textContent = "Send Message";
 }
 
+
+// ============ VERIFICATION PROGRAMME (GHS 20 verification + GHS 10/month) ============
+function verifStatusLabel(s) {
+  const until = s && s.verified_until ? new Date(s.verified_until) : null;
+  if (s && s.ghana_card_verified && until && until > new Date()) return { text: 'VERIFIED - expires ' + until.toLocaleDateString(), cls: 'background:#DCFCE7;color:#16A34A' };
+  if (s && s.ghana_card_verified && until && until <= new Date()) return { text: 'EXPIRED - renewal due', cls: 'background:#FEE2E2;color:#B91C1C' };
+  if (s && s.ghana_card_number) return { text: 'PENDING REVIEW', cls: 'background:#FEF3C7;color:#92400E' };
+  return { text: 'NOT APPLIED', cls: 'background:#F1F5F9;color:#475569' };
+}
+
+function updateTraderVerificationBadge() {
+  const b = document.getElementById('traderVerBadge');
+  if (!b) return;
+  const st = verifStatusLabel(userShop || {});
+  b.textContent = st.text;
+  b.setAttribute('style', st.cls + ';padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;');
+}
+
+async function renderVerificationQueue() {
+  const box = document.getElementById('adminUsersList');
+  if (!box) return;
+  if (userProfile.account_type !== 'admin' || !sbClient) { box.innerHTML = ''; return; }
+  box.innerHTML = '<p class="form-hint">Loading verification requests...</p>';
+  try {
+    const { data, error } = await sbClient.from('shops')
+      .select('id,shop_name,owner_name,whatsapp_number,ghana_card_number,ghana_card_full_name,ghana_card_photo_url,ghana_card_verified,is_verified,verification_fee_status,verification_payment_ref,verified_until,verification_note')
+      .eq('city', CITY_CONFIG.slug)
+      .order('updated_date', { ascending: false });
+    if (error) throw error;
+    const shops = data || [];
+    if (!shops.length) { box.innerHTML = '<p class="form-hint">No stalls yet.</p>'; return; }
+
+    box.innerHTML = '<h4 style="margin:4px 0 10px;">Verification requests (GHS 20 + GHS 10/month)</h4>' + shops.map(s => {
+      const st = verifStatusLabel(s);
+      const fee = (s.verification_fee_status || 'unpaid').toUpperCase();
+      const photo = s.ghana_card_photo_url
+        ? '<button class="btn-secondary btn-sm" data-action="viewIdPhoto" data-path="' + escapeJs(s.ghana_card_photo_url) + '">View ID photo</button>'
+        : '<span class="form-hint">no photo</span>';
+      const actions = s.ghana_card_number
+        ? '<button class="btn-primary btn-sm" data-action="approveVerification" data-shop-id="' + escapeJs(s.id) + '">Approve 30 days</button>' +
+          '<button class="btn-secondary btn-sm" data-action="markFeePaid" data-shop-id="' + escapeJs(s.id) + '">Mark GHS 20 paid</button>' +
+          '<button class="btn-danger btn-sm" data-action="rejectVerification" data-shop-id="' + escapeJs(s.id) + '">Reject</button>'
+        : '<span class="form-hint">Awaiting application</span>';
+      return '<div class="report-queue-card">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;">' +
+          '<span>' + escapeHtml(s.shop_name || 'Unnamed stall') + ' - ' + escapeHtml(s.owner_name || '') + '</span>' +
+          '<span style="padding:2px 8px;border-radius:10px;' + st.cls + '">' + st.text + '</span>' +
+        '</div>' +
+        '<p style="font-size:13px;margin:8px 0;">Card: ' + escapeHtml(s.ghana_card_number || '-') +
+          ' - Name on card: ' + escapeHtml(s.ghana_card_full_name || '-') + '<br>Fee: <b>' + fee + '</b>' +
+          (s.verification_payment_ref ? ' - ref ' + escapeHtml(s.verification_payment_ref) : '') + '</p>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + photo + actions + '</div>' +
+      '</div>';
+    }).join('');
+  } catch (err) {
+    console.error('Verification queue error:', err);
+    box.innerHTML = '<p class="form-hint">Could not load verification requests.</p>';
+  }
+}
+
+async function approveVerificationShop(shopId) {
+  if (!sbClient) return;
+  try {
+    const { error } = await sbClient.rpc('approve_shop_verification', { p_shop_id: shopId, p_days: 30, p_note: null });
+    if (error) throw error;
+    showToast('Verified for 30 days.', 'success');
+    renderVerificationQueue();
+  } catch (err) { showToast(err.message || 'Could not approve', 'error'); }
+}
+
+async function rejectVerificationShop(shopId) {
+  if (!sbClient) return;
+  const note = prompt('Reason for rejection (internal note):') || 'Rejected';
+  try {
+    const { error } = await sbClient.rpc('reject_shop_verification', { p_shop_id: shopId, p_note: note });
+    if (error) throw error;
+    showToast('Application rejected.', 'success');
+    renderVerificationQueue();
+  } catch (err) { showToast(err.message || 'Could not reject', 'error'); }
+}
+
+async function markVerificationFeePaid(shopId) {
+  if (!sbClient) return;
+  const ref = prompt('Payment reference (MoMo transaction ID):');
+  if (!ref) return;
+  try {
+    const { error } = await sbClient.rpc('record_verification_fee', { p_shop_id: shopId, p_reference: ref, p_kind: 'verification' });
+    if (error) throw error;
+    showToast('GHS 20 recorded.', 'success');
+    renderVerificationQueue();
+  } catch (err) { showToast(err.message || 'Could not record payment', 'error'); }
+}
+
+async function viewIdPhoto(path) {
+  if (!sbClient || !path) return;
+  try {
+    const clean = path.indexOf('ghana-cards/') === 0 ? path.substring('ghana-cards/'.length) : path;
+    const { data, error } = await sbClient.storage.from('ghana-cards').createSignedUrl(clean, 300);
+    if (error) throw error;
+    window.open(data.signedUrl, '_blank');
+  } catch (err) { showToast('Could not open ID photo: ' + (err.message || 'unknown'), 'error'); }
+}
+
 async function renderAdminPanel() {
     const reportsList = document.getElementById("adminReportsList");
     if (!reportsList) return;
@@ -3027,6 +3142,8 @@ async function renderAdminPanel() {
         reportsList.innerHTML = `<p class="form-hint">⚠️ Admin access required.</p>`;
         return;
     }
+
+    renderVerificationQueue();
 
     let reports = [];
     if (!DEMO_MODE && sbClient) {
@@ -3647,6 +3764,7 @@ function updateUIForAuthUser() {
         if (dashContent) dashContent.style.display = "block";
         loadTraderStats();
         updateTraderNotificationBadge();
+        updateTraderVerificationBadge();
     } else {
         if (upgradePrompt) upgradePrompt.style.display = "block";
         if (dashContent) dashContent.style.display = "none";
