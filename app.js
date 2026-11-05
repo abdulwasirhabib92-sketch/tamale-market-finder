@@ -3445,6 +3445,8 @@ function toggleMobileViewMode() {
 }
 
 function toggleDrawer() {
+    // Never let the spotlight ad overlay sit on top of the menu
+    if (typeof closeSpotlightPopup === "function") closeSpotlightPopup();
     document.getElementById("menuDrawer").classList.toggle("active");
     document.getElementById("drawerBackdrop").classList.toggle("active");
 }
@@ -4048,6 +4050,9 @@ async function showSpotlightPopup() {
     // Only show once per session
     if (spotlightPopupShown) return;
     if (sessionStorage.getItem('spotlightPopupSeen')) return;
+    // Never interrupt the user: skip if the menu or any dialog is already open
+    if (document.querySelector('.menu-drawer.active')) return;
+    if (document.querySelector('.modal.active, .modal[style*="display: flex"]')) return;
 
     let spotlightShops = [];
 
@@ -4220,7 +4225,7 @@ setTimeout(() => {
     if (document.getElementById('spotlightPopupModal')) {
         showSpotlightPopup();
     }
-}, 3000);
+}, 20000);
 
 // ====================================================================
 // PER-CITY TEXT & FILTERS
