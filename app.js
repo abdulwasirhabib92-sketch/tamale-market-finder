@@ -673,6 +673,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     try { initSupabase(); } catch(e) { showErr("initSupabase", e); }
     try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
+    try { setDrawerState(false); } catch(e) { showErr("setDrawerState", e); }
     try { initDomainTabs(); } catch(e) { showErr("initDomainTabs", e); }
     try { initMap(); } catch(e) { showErr("initMap", e); }
     try { renderAnnouncements().catch(e => showErr("renderAnnouncements", e)); } catch(e) { showErr("renderAnnouncements", e); }
@@ -3717,13 +3718,39 @@ function toggleMobileViewMode() {
 function toggleDrawer() {
     // Never let the spotlight ad overlay sit on top of the menu
     if (typeof closeSpotlightPopup === "function") closeSpotlightPopup();
-    document.getElementById("menuDrawer").classList.toggle("active");
-    document.getElementById("drawerBackdrop").classList.toggle("active");
+    const drawer = document.getElementById("menuDrawer");
+    const backdrop = document.getElementById("drawerBackdrop");
+    if (!drawer) return;
+    const willOpen = !drawer.classList.contains("active");
+    setDrawerState(willOpen);
+}
+
+// Position the drawer from JS as well as CSS, so a stale or missing stylesheet
+// can never leave the menu invisible or buried under another layer.
+function setDrawerState(open) {
+    const drawer = document.getElementById("menuDrawer");
+    const backdrop = document.getElementById("drawerBackdrop");
+    if (!drawer) return;
+    drawer.classList.toggle("active", !!open);
+    drawer.style.transform = open ? "translateX(0)" : "translateX(100%)";
+    drawer.style.visibility = open ? "visible" : "hidden";
+    drawer.style.zIndex = "100000";
+    drawer.style.pointerEvents = "auto";
+    drawer.style.display = "flex";
+    if (backdrop) {
+        backdrop.classList.toggle("active", !!open);
+        backdrop.style.opacity = open ? "1" : "0";
+        backdrop.style.pointerEvents = open ? "auto" : "none";
+        backdrop.style.zIndex = "99999";
+    }
 }
 
 function closeDrawer() {
-    document.getElementById("menuDrawer").classList.remove("active");
-    document.getElementById("drawerBackdrop").classList.remove("active");
+    const drawer = document.getElementById("menuDrawer");
+    const backdrop = document.getElementById("drawerBackdrop");
+    if (typeof setDrawerState === "function") { setDrawerState(false); return; }
+    if (drawer) drawer.classList.remove("active");
+    if (backdrop) backdrop.classList.remove("active");
 }
 
 function openModal(modalId) {
