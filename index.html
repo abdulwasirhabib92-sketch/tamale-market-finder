@@ -20,7 +20,7 @@
     <meta name="twitter:title" content="Tamale Market Finder — Local Shops & E-Commerce">
     <meta name="twitter:description" content="Find shops, products, services, hotels and eateries in your city, Ghana with pinpoint map locations.">
     <title id="pageTitle">Tamale Market Finder — Local Shops & E-Commerce in Ghana</title>
-    <link rel="stylesheet" href="styles.css?v=20261106strip">
+    <link rel="stylesheet" href="styles.css?v=20261106tiers">
     <!-- Leaflet for maps -->
     <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
     <script src="/vendor/leaflet/leaflet.js"></script>
@@ -482,7 +482,7 @@
                     <button class="btn-primary btn-large" id="enableTraderRoleBtn" style="margin-top: 15px;">
                         Start Selling Now
                     </button>
-                    <p style="font-size:12px; color:#6b7280; margin-top:10px;">Just fill in your shop name, what you sell, and your WhatsApp — that's it.</p>
+                    <p style="font-size:12px; color:#6b7280; margin-top:10px;">Free to start: a stall name and your WhatsApp number is all we ask. Verification (GHS 20 + GHS 10/month) is optional and only adds the badge and ranking.</p>
                 </div>
 
                 <!-- Active Trader Dashboard -->
@@ -510,23 +510,29 @@
                                 <span id="verifStatusPill" class="badge-verification">⚪ Not verified</span>
                             </div>
 
-                            <div style="display:flex; gap:10px; margin:14px 0 10px;">
-                                <div style="flex:1; background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:10px; text-align:center;">
-                                    <div style="font-size:18px; font-weight:800; color:#166534;">GHS 20</div>
-                                    <div style="font-size:11px; color:#6B7280;">one-off ID check</div>
+                            <div style="display:flex; gap:10px; margin:14px 0 12px; flex-wrap:wrap;">
+                                <div style="flex:1; min-width:150px; background:#fff; border:1px solid #E5E7EB; border-radius:12px; padding:12px;">
+                                    <div style="font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:#6B7280; font-weight:800;">Free</div>
+                                    <div style="font-size:22px; font-weight:800; color:#111; margin:2px 0 8px;">GHS 0</div>
+                                    <div style="font-size:12px; color:#374151; line-height:1.75;">
+                                        • Stall page, no limit on listings<br>
+                                        • Buyers reach you on WhatsApp<br>
+                                        • Shown in search and on the map
+                                    </div>
                                 </div>
-                                <div style="flex:1; background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:10px; text-align:center;">
-                                    <div style="font-size:18px; font-weight:800; color:#166534;">GHS 10</div>
-                                    <div style="font-size:11px; color:#6B7280;">per month to stay verified</div>
+                                <div style="flex:1; min-width:150px; background:#fff; border:2px solid #16A34A; border-radius:12px; padding:12px; position:relative;">
+                                    <div style="position:absolute; top:-9px; left:12px; background:#16A34A; color:#fff; font-size:9.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; padding:2px 8px; border-radius:99px;">Recommended</div>
+                                    <div style="font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:#166534; font-weight:800;">Verified</div>
+                                    <div style="font-size:22px; font-weight:800; color:#111; margin:2px 0 2px;">GHS 20 <span style="font-size:11px; font-weight:600; color:#6B7280;">one-off</span></div>
+                                    <div style="font-size:11.5px; color:#166534; font-weight:700; margin-bottom:8px;">then GHS 10 per month</div>
+                                    <div style="font-size:12px; color:#374151; line-height:1.75;">
+                                        • Everything in Free<br>
+                                        • ✓ Verified badge on your stall and products<br>
+                                        • Ranks higher in search and Popular Near You<br>
+                                        • Listed under the Verified traders filter
+                                    </div>
                                 </div>
                             </div>
-
-                            <ul style="margin:0 0 12px 16px; padding:0; font-size:12px; color:var(--text-secondary); line-height:1.7;">
-                                <li>✓ Verified badge on your stall and every product</li>
-                                <li>✓ Shown in the "Verified Traders Only" filter</li>
-                                <li>✓ Eligible for spotlight placement</li>
-                                <li>✓ Buyers see that your identity was checked</li>
-                            </ul>
 
                             <div id="verifPayBox" style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:10px; margin-bottom:10px; font-size:12px; line-height:1.6;">
                                 <b>How to pay</b><br>
@@ -574,9 +580,13 @@
                         <!-- Shop Management Card -->
                         <div class="card settings-card">
                             <div class="card-header-flex">
-                                <h3 id="shopFormTitle">Market Stall Details</h3>
+                                <h3 id="shopFormTitle">Your stall details</h3>
                                 <span class="status-badge" id="shopStatusBadge">Not Configured</span>
                             </div>
+                            <p style="font-size:12.5px; color:var(--text-secondary); margin:0 0 14px; line-height:1.6;">
+                                Selling is free. You only need a <b>stall name</b> and a <b>WhatsApp number</b> to go live.
+                                Everything else is optional and can be added later.
+                            </p>
                             <form id="shopForm">
                                 <div class="form-group">
                                     <label for="shopName">Shop / Stall Name *</label>
@@ -584,8 +594,8 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="shopDescription">What do you sell? *</label>
-                                    <textarea id="shopDescription" rows="2" placeholder="e.g. White maize, millet, sorghum, local rice — wholesale and retail" required></textarea>
+                                    <label for="shopDescription">What do you sell? <span style="font-weight:400; color:#6B7280; font-size:11.5px;">optional, helps buyers find you</span></label>
+                                    <textarea id="shopDescription" rows="2" placeholder="e.g. White maize, millet, sorghum, local rice — wholesale and retail"></textarea>
                                     <div id="shopCategoryAutoDetect" style="margin-top:6px; display:none;">
                                         <span style="font-size:12px; background:#DCFCE7; color:#16A34A; padding:3px 10px; border-radius:12px; font-weight:600;">✓ Detected: <span id="shopDetectedCategory"></span></span>
                                     </div>
@@ -593,13 +603,13 @@
 
                                 <div class="form-row-2">
                                     <div class="form-group">
-                                        <label for="shopMarketArea">Market Location *</label>
-                                        <select id="shopMarketArea" data-market-filter required>
-                                            <option value="">Select Market Area</option>
+                                        <label for="shopMarketArea">Market location <span style="font-weight:400; color:#6B7280; font-size:11.5px;">optional</span></label>
+                                        <select id="shopMarketArea" data-market-filter>
+                                            <option value="Other Surrounding Areas">Not sure yet</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label for="shopWhatsapp">WhatsApp Number *</label>
+                                        <label for="shopWhatsapp">WhatsApp number * <span style="font-weight:400; color:#6B7280; font-size:11.5px;">buyers contact you here</span></label>
                                         <input type="tel" id="shopWhatsapp" placeholder="e.g. 233244123456" required />
                                         <small class="form-hint">Include country code without +</small>
                                     </div>
@@ -710,7 +720,7 @@
                                     </div>
                                 </details>
 
-                                <button type="submit" class="btn-primary" id="saveShopBtn" style="width:100%; padding:14px; font-size:16px;">Save Stall & Start Selling</button>
+                                <button type="submit" class="btn-primary" id="saveShopBtn" style="width:100%; padding:14px; font-size:16px;">Save and go live — free</button>
                             </form>
                         </div>
 
@@ -1262,12 +1272,12 @@
     <!-- App Logic Script -->
     <!-- City config — synchronously loaded based on hostname -->
     <script src="cities/registry.js"></script>
-    <script src="cities/tamale.js?v=20261106strip"></script>
-    <script src="city-loader.js?v=20261106strip"></script>
-    <script src="menu-guard.js?v=20261106strip"></script>
-    <script src="app.js?v=20261106strip"></script>
+    <script src="cities/tamale.js?v=20261106tiers"></script>
+    <script src="city-loader.js?v=20261106tiers"></script>
+    <script src="menu-guard.js?v=20261106tiers"></script>
+    <script src="app.js?v=20261106tiers"></script>
     <!-- PWA: Service Worker Registration -->
-    <script src="sw-register.js?v=20261106strip"></script>
+    <script src="sw-register.js?v=20261106tiers"></script>
 
         <!-- Spotlight Popup Modal (ad-style, auto-dismiss) -->
         <div id="spotlightPopupModal" class="spotlight-popup-overlay" style="display:none;">

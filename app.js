@@ -4135,21 +4135,29 @@ async function handleSaveShop(e) {
         }
     }
 
+    const shopNameVal = (document.getElementById("shopName")?.value || "").trim();
+    const rawWa = (document.getElementById("shopWhatsapp")?.value || "").trim();
+    if (shopNameVal.length < 2) { showToast("Add a stall name so buyers know who they are buying from.", "error"); return; }
+    const waDigits = rawWa.replace(/[^0-9]/g, "");
+    if (waDigits.length < 9) { showToast("Add your WhatsApp number, e.g. 0244123456.", "error"); return; }
+    // Normalise Ghana numbers to 233XXXXXXXXX
+    const waNormalised = waDigits.startsWith("233") ? waDigits : (waDigits.startsWith("0") ? "233" + waDigits.slice(1) : "233" + waDigits);
+
     const shopData = {
         created_by: currentUser.id,
         owner_name: userProfile.full_name,
-        shop_name: document.getElementById("shopName").value.trim(),
-        category: document.getElementById("shopCategory")?.value || detectCategory(document.getElementById("shopDescription")?.value || ""),
+        shop_name: shopNameVal,
+        category: document.getElementById("shopCategory")?.value || detectCategory(document.getElementById("shopDescription")?.value || "") || "Other",
         offers_delivery: document.getElementById("shopOffersDelivery")?.checked || false,
-        market_area: document.getElementById("shopMarketArea").value,
-        digital_address: document.getElementById("shopDigitalAddress").value.trim(),
-        address: document.getElementById("shopAddress").value.trim(),
-        phone: document.getElementById("shopPhone").value.trim(),
-        whatsapp_number: document.getElementById("shopWhatsapp").value.trim(),
+        market_area: document.getElementById("shopMarketArea")?.value || "Other Surrounding Areas",
+        digital_address: (document.getElementById("shopDigitalAddress")?.value || "").trim(),
+        address: (document.getElementById("shopAddress")?.value || "").trim(),
+        phone: (document.getElementById("shopPhone")?.value || "").trim(),
+        whatsapp_number: waNormalised,
         opening_hours: document.getElementById("shopHours")?.value?.trim() || "",
         description: document.getElementById("shopDescription")?.value?.trim() || "",
-        latitude: parseFloat(document.getElementById("shopLat").value) || null,
-        longitude: parseFloat(document.getElementById("shopLng").value) || null,
+        latitude: parseFloat(document.getElementById("shopLat")?.value) || null,
+        longitude: parseFloat(document.getElementById("shopLng")?.value) || null,
         ghana_card_number: ghanaCardNum,
         ghana_card_full_name: ghanaCardName,
         ghana_card_type: document.getElementById("ghanaCardType")?.value || "national_id",
