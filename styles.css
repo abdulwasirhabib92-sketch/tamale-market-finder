@@ -2526,3 +2526,24 @@ html, body {
 /* 6. Friendly empty state instead of a bare spinner */
 .empty-state{text-align:center;padding:28px 16px;border:1px dashed #d7dde0;border-radius:14px;background:#fff}
 .empty-state p{color:#5b6b66;font-size:13.5px;margin:10px 0 0}
+
+/* ---- Menu fallback: opens even if every script fails ---- */
+#menuDrawer:target {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 100000 !important;
+    pointer-events: auto !important;
+}
+a.menu-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}

@@ -673,6 +673,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     try { initSupabase(); } catch(e) { showErr("initSupabase", e); }
     try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
+    try { wireManualGpsInputs(); } catch(e) { showErr("wireManualGpsInputs", e); }
     try { setDrawerState(false); } catch(e) { showErr("setDrawerState", e); }
     try { initDomainTabs(); } catch(e) { showErr("initDomainTabs", e); }
     try { initMap(); } catch(e) { showErr("initMap", e); }
@@ -926,6 +927,22 @@ async function loadUserFavorites(userId) {
     } catch (err) {
         console.error("Error loading favorites:", err);
     }
+}
+
+function wireManualGpsInputs() {
+    const mla = document.getElementById("manualLat");
+    const mlo = document.getElementById("manualLng");
+    if (!mla || !mlo) return;
+    const sync = () => {
+        const lat = document.getElementById("shopLat");
+        const lng = document.getElementById("shopLng");
+        const status = document.getElementById("locationStatus");
+        if (lat) lat.value = mla.value;
+        if (lng) lng.value = mlo.value;
+        if (status) status.textContent = "GPS Pin: " + mla.value + ", " + mlo.value + " (manual)";
+    };
+    mla.addEventListener("input", sync);
+    mlo.addEventListener("input", sync);
 }
 
 function initNavigation() {
@@ -3704,14 +3721,14 @@ function toggleMobileViewMode() {
     if (mobileViewMode === "list") {
         mobileViewMode = "map";
         container.classList.add("map-active");
-        icon.textContent = "📋";
-        text.textContent = "View List";
+        if (icon) icon.textContent = "📋";
+        if (text) text.textContent = "View List";
         if (leafletMap) leafletMap.invalidateSize();
     } else {
         mobileViewMode = "list";
         container.classList.remove("map-active");
-        icon.textContent = "🗺️";
-        text.textContent = "View Map";
+        if (icon) icon.textContent = "🗺️";
+        if (text) text.textContent = "View Map";
     }
 }
 
@@ -3744,6 +3761,9 @@ function setDrawerState(open) {
         backdrop.style.opacity = open ? "1" : "0";
         backdrop.style.pointerEvents = open ? "auto" : "none";
         backdrop.style.zIndex = "99999";
+    }
+    if (!open && location.hash === "#menuDrawer") {
+        history.replaceState(null, "", location.pathname + location.search);
     }
 }
 
@@ -3928,7 +3948,7 @@ function updateUIForAuthUser() {
 
 function updateUIForGuestUser() {
     document.getElementById("drawerName").textContent = "Guest User";
-    document.getElementById("navUserName").textContent = "Account";
+    const navUN = document.getElementById("navUserName"); if (navUN) navUN.textContent = "Account";
     document.getElementById("drawerEmail").textContent = "Sign in to save shops, order & manage listings";
     const roleBadge = document.getElementById("drawerRoleBadge");
     if (roleBadge) { roleBadge.textContent = "Shopper"; roleBadge.className = "role-badge shopper"; }

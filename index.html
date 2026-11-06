@@ -62,10 +62,10 @@
                 <div class="city-dropdown" id="cityDropdown" style="display:none;"></div>
             </div>
             <div class="header-actions">
-                <button class="menu-btn" id="menuToggle" aria-label="Toggle Navigation Menu">
+                <a class="menu-btn" id="menuToggle" href="#menuDrawer" role="button" aria-label="Open Navigation Menu" aria-controls="menuDrawer">
                     <span class="avatar-circle" id="headerAvatar">👤</span>
                     <span class="hamburger-icon">☰</span>
-                </button>
+                </a>
             </div>
         </div>
     </header>
@@ -642,11 +642,11 @@
                                         <div id="manualCoordsRow" style="display:flex; gap:8px; margin-top:8px;">
                                             <div class="form-group" style="flex:1; margin:0;">
                                                 <label for="manualLat" style="font-size:12px;">Latitude</label>
-                                                <input type="number" id="manualLat" step="0.000001" placeholder="9.4030" oninput="document.getElementById('shopLat').value=this.value; document.getElementById('locationStatus').textContent='GPS Pin: '+this.value+', '+document.getElementById('manualLng').value+' (manual)'" />
+                                                <input type="number" id="manualLat" step="0.000001" placeholder="9.4030" />
                                             </div>
                                             <div class="form-group" style="flex:1; margin:0;">
                                                 <label for="manualLng" style="font-size:12px;">Longitude</label>
-                                                <input type="number" id="manualLng" step="0.000001" placeholder="-0.8357" oninput="document.getElementById('shopLng').value=this.value; document.getElementById('locationStatus').textContent='GPS Pin: '+document.getElementById('manualLat').value+', '+this.value+' (manual)'" />
+                                                <input type="number" id="manualLng" step="0.000001" placeholder="-0.8357" />
                                             </div>
                                         </div>
                                         <div id="mapPickerContainer" style="display:none; margin-top:10px;">
@@ -1280,8 +1280,8 @@
             document.write('<script src="' + cityFile + '"><\/script>');
         })();
     </script>
-    <script src="menu-guard.js?v=20261106guard"></script>
-    <script src="app.js?v=20261106guard"></script>
+    <script src="menu-guard.js?v=20261106audit"></script>
+    <script src="app.js?v=20261106audit"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
