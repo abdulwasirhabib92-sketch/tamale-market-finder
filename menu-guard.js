@@ -78,3 +78,12 @@
     } catch (ignore) {}
   });
 })();
+
+
+/* Safety net: report a missing city config loudly instead of silently killing the app. */
+window.addEventListener("load", function () {
+  if (typeof CITY_CONFIG === "undefined") {
+    var bar = document.getElementById("tmf-error-bar");
+    if (bar) bar.textContent = "App error: CITY_CONFIG missing. Please reload the page.";
+  }
+});

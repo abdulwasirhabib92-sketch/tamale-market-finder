@@ -1262,26 +1262,10 @@
     <!-- App Logic Script -->
     <!-- City config — synchronously loaded based on hostname -->
     <script src="cities/registry.js"></script>
-    <script>
-        (function() {
-            var hostname = location.hostname;
-            var cityMap = {
-                'accra-market-finder': 'cities/accra.js',
-                'kumasi-market-finder': 'cities/kumasi.js',
-                'tamale-market-finder': 'cities/tamale.js'
-            };
-            var cityFile = 'cities/tamale.js';
-            for (var prefix in cityMap) {
-                if (hostname.indexOf(prefix) !== -1) {
-                    cityFile = cityMap[prefix];
-                    break;
-                }
-            }
-            document.write('<script src="' + cityFile + '"><\/script>');
-        })();
-    </script>
-    <script src="menu-guard.js?v=20261106audit"></script>
-    <script src="app.js?v=20261106audit"></script>
+    <script src="cities/tamale.js?v=20261106cfg"></script>
+    <script src="city-loader.js?v=20261106cfg"></script>
+    <script src="menu-guard.js?v=20261106cfg"></script>
+    <script src="app.js?v=20261106cfg"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

@@ -1,7 +1,7 @@
 // Tamale Market Finder — Service Worker
 // Caches app shell for offline use, updates in background
 
-const CACHE_VERSION = '20261106audit';
+const CACHE_VERSION = '20261106cfg';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -22,6 +22,8 @@ const APP_SHELL = [
   '/icons/apple-touch-icon.png',
   '/icons/maskable-512.png',
   '/cdn-checks.js',
+  '/menu-guard.js',
+  '/city-loader.js',
   '/vendor/supabase-js.2.109.0.min.js',
   '/vendor/leaflet/leaflet.js',
   '/vendor/leaflet/leaflet.css',
