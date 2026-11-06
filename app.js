@@ -3716,6 +3716,8 @@ function toggleMobileViewMode() {
 }
 
 function toggleDrawer() {
+    // menu-guard.js owns this click (capture phase); hand over if present
+    if (typeof window.tmfToggleDrawer === "function") { window.tmfToggleDrawer(); return; }
     // Never let the spotlight ad overlay sit on top of the menu
     if (typeof closeSpotlightPopup === "function") closeSpotlightPopup();
     const drawer = document.getElementById("menuDrawer");
