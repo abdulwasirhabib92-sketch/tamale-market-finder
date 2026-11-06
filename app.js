@@ -4577,7 +4577,9 @@ function applyCityTexts() {
     const areas = CITY_CONFIG.marketAreas || [];
     document.querySelectorAll('select[data-market-filter]').forEach(sel => {
         const placeholder = sel.querySelector('option[value=""]');
-        const keep = placeholder ? placeholder.outerHTML : '<option value="">All Areas</option>';
+        let keep = placeholder ? placeholder.outerHTML : '<option value="">All Areas</option>';
+        // The stall form needs a neutral first choice, never a real market the seller did not pick
+        if (sel.id === 'shopMarketArea') keep = '<option value="Other Surrounding Areas">Not sure yet</option>';
         sel.innerHTML = keep + areas.map(a =>
             `<option value="${a.value}">${a.label}</option>`
         ).join('') + '<option value="Other">Other Surrounding Areas</option>';
