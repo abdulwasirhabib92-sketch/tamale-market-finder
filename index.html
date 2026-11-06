@@ -500,6 +500,43 @@
                             🏪 Back to Market
                         </button>
 
+                        <!-- VERIFICATION PROGRAMME CARD -->
+                        <div class="card verification-card" id="verificationCard" style="border:1px solid #BBF7D0; background:linear-gradient(180deg,#F0FDF4,#FFFFFF); margin-top:14px;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                                <div>
+                                    <h3 style="margin:0 0 4px; font-size:16px;">Get Verified</h3>
+                                    <p style="margin:0; font-size:12px; color:var(--text-secondary);">Verified traders earn buyer trust and rank above unverified stalls.</p>
+                                </div>
+                                <span id="verifStatusPill" class="badge-verification">⚪ Not verified</span>
+                            </div>
+
+                            <div style="display:flex; gap:10px; margin:14px 0 10px;">
+                                <div style="flex:1; background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:10px; text-align:center;">
+                                    <div style="font-size:18px; font-weight:800; color:#166534;">GHS 20</div>
+                                    <div style="font-size:11px; color:#6B7280;">one-off ID check</div>
+                                </div>
+                                <div style="flex:1; background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:10px; text-align:center;">
+                                    <div style="font-size:18px; font-weight:800; color:#166534;">GHS 10</div>
+                                    <div style="font-size:11px; color:#6B7280;">per month to stay verified</div>
+                                </div>
+                            </div>
+
+                            <ul style="margin:0 0 12px 16px; padding:0; font-size:12px; color:var(--text-secondary); line-height:1.7;">
+                                <li>✓ Verified badge on your stall and every product</li>
+                                <li>✓ Shown in the "Verified Traders Only" filter</li>
+                                <li>✓ Eligible for spotlight placement</li>
+                                <li>✓ Buyers see that your identity was checked</li>
+                            </ul>
+
+                            <div id="verifPayBox" style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:10px; margin-bottom:10px; font-size:12px; line-height:1.6;">
+                                <b>How to pay</b><br>
+                                <span id="verifPayText">Payment details pending.</span>
+                            </div>
+
+                            <button class="btn-primary" id="verifCtaBtn" data-action="openVerificationForm" style="width:100%;">🪪 Apply for verification</button>
+                            <p id="verifNote" style="margin:8px 0 0; font-size:11px; color:#6B7280;"></p>
+                        </div>
+
                         <!-- Trader Quick Stats Overview -->
                         <div class="trader-stats-grid" id="traderStatsGrid">
                             <div class="trader-stat-card">
@@ -633,7 +670,7 @@
                                 </details>
 
                                 <!-- Ghana Card (optional, collapsible) -->
-                                <details style="margin-bottom:15px;">
+                                <details id="ghanaCardDetails" style="margin-bottom:15px;">
                                     <summary style="cursor:pointer; font-weight:600; font-size:14px; color:var(--text-primary); padding:8px 0;">🪪 Verify with Ghana Card <span style="font-size:11px; background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:10px; margin-left:6px;">Optional — get verified badge</span></summary>
                                     <div class="card ghana-card-section" style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 16px; margin-top:8px; border-radius: 10px;">
                                         <p class="form-hint" style="margin-bottom: 12px;">Verified traders get a ✓ badge on their stall, building trust with buyers. You can do this now or come back later.</p>
@@ -1243,7 +1280,7 @@
             document.write('<script src="' + cityFile + '"><\/script>');
         })();
     </script>
-    <script src="app.js?v=20261105verif"></script>
+    <script src="app.js?v=20261106vcard"></script>
     <!-- PWA: Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

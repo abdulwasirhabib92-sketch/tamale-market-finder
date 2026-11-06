@@ -731,6 +731,9 @@ function handleDelegatedClick(e) {
     const action = el.dataset.action;
 
     switch (action) {
+        case 'openVerificationForm':
+            openVerificationForm();
+            break;
         case 'selectCategory':
             selectCategoryPill(el, el.dataset.catVal);
             break;
@@ -3133,6 +3136,75 @@ async function viewIdPhoto(path) {
   } catch (err) { showToast('Could not open ID photo: ' + (err.message || 'unknown'), 'error'); }
 }
 
+
+// ====================================================================
+// VERIFIED TRADER PROGRAMME — GHS 20 one-off + GHS 10 / month
+// ====================================================================
+const MOMO_NUMBER = "";           // set to the collection MoMo number, e.g. "0591808780"
+const MOMO_NAME = "TechMarketVulture";
+
+function verifStatusOf(shop) {
+    if (!shop) return "none";
+    if (shop.ghana_card_verified) {
+        const until = shop.verified_until ? new Date(shop.verified_until) : null;
+        if (until && until < new Date()) return "expired";
+        return "verified";
+    }
+    if (shop.ghana_card_number) return "pending";
+    return "none";
+}
+
+function renderVerificationCard() {
+    const card = document.getElementById("verificationCard");
+    if (!card) return;
+    const pill = document.getElementById("verifStatusPill");
+    const cta = document.getElementById("verifCtaBtn");
+    const note = document.getElementById("verifNote");
+    const payBox = document.getElementById("verifPayBox");
+    const payText = document.getElementById("verifPayText");
+
+    const status = verifStatusOf(userShop);
+    const untilTxt = userShop?.verified_until ? new Date(userShop.verified_until).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
+
+    if (status === "verified") {
+        pill.textContent = "✅ Verified";
+        pill.style.background = "#DCFCE7"; pill.style.color = "#166534";
+        cta.textContent = "💳 Renew — GHS 10";
+        note.textContent = `Verified until ${untilTxt}. Renew before that date to keep your badge.`;
+        payBox.style.display = "block";
+    } else if (status === "expired") {
+        pill.textContent = "⌛ Expired";
+        pill.style.background = "#FEE2E2"; pill.style.color = "#991B1B";
+        cta.textContent = "💳 Renew — GHS 10";
+        note.textContent = `Your verification expired on ${untilTxt}. Renew to restore the badge.`;
+        payBox.style.display = "block";
+    } else if (status === "pending") {
+        pill.textContent = "🕓 Pending review";
+        pill.style.background = "#FEF3C7"; pill.style.color = "#92400E";
+        cta.textContent = "✏️ Update my details";
+        note.textContent = "Your Ghana Card is on file and waiting for review. You will be notified once checked.";
+        payBox.style.display = "block";
+    } else {
+        pill.textContent = "⚪ Not verified";
+        pill.style.background = "#F3F4F6"; pill.style.color = "#6B7280";
+        cta.textContent = "🪪 Apply for verification";
+        note.textContent = "You pay GHS 20 once for the ID check, then GHS 10 monthly to keep the badge.";
+        payBox.style.display = "none";
+    }
+
+    if (payText) {
+        payText.innerHTML = MOMO_NUMBER
+            ? `Send <b>GHS 20</b> (or <b>GHS 10</b> to renew) by Mobile Money to <b>${MOMO_NUMBER}</b> (${MOMO_NAME}).<br>Use your shop name as the reference, then send the transaction ID to support so it can be approved.`
+            : `Mobile Money details will appear here. Ask TechMarketVulture for the collection number, send GHS 20 with your shop name as reference, then share the transaction ID.`;
+    }
+}
+
+function openVerificationForm() {
+    const det = document.getElementById("ghanaCardDetails");
+    if (det) { det.open = true; det.scrollIntoView({ behavior: "smooth", block: "center" }); }
+    else { showToast("Open your stall details to add Ghana Card information.", "warning"); }
+}
+
 async function renderAdminPanel() {
     const reportsList = document.getElementById("adminReportsList");
     if (!reportsList) return;
@@ -3764,6 +3836,7 @@ function updateUIForAuthUser() {
         if (dashContent) dashContent.style.display = "block";
         loadTraderStats();
         updateTraderNotificationBadge();
+        renderVerificationCard();  // verification programme
         updateTraderVerificationBadge();
     } else {
         if (upgradePrompt) upgradePrompt.style.display = "block";
