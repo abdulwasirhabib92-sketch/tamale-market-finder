@@ -1262,24 +1262,12 @@
     <!-- App Logic Script -->
     <!-- City config — synchronously loaded based on hostname -->
     <script src="cities/registry.js"></script>
-    <script src="cities/tamale.js?v=20261106cfg"></script>
-    <script src="city-loader.js?v=20261106cfg"></script>
-    <script src="menu-guard.js?v=20261106cfg"></script>
-    <script src="app.js?v=20261106cfg"></script>
+    <script src="cities/tamale.js?v=20261106fin"></script>
+    <script src="city-loader.js?v=20261106fin"></script>
+    <script src="menu-guard.js?v=20261106fin"></script>
+    <script src="app.js?v=20261106fin"></script>
     <!-- PWA: Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js', { scope: '/' })
-                    .then(function(reg) {
-                        console.log('SW registered:', reg.scope);
-                    })
-                    .catch(function(err) {
-                        console.warn('SW registration failed:', err);
-                    });
-            });
-        }
-    </script>
+    <script src="sw-register.js?v=20261106fin"></script>
 
         <!-- Spotlight Popup Modal (ad-style, auto-dismiss) -->
         <div id="spotlightPopupModal" class="spotlight-popup-overlay" style="display:none;">

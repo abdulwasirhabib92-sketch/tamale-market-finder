@@ -6,6 +6,12 @@
 // ====================================================================
 // 1. CONFIGURATION & CONSTANTS
 // ====================================================================
+// Defensive: if the city config failed to load, fall back to Tamale values instead of crashing
+// the whole app at line 9 (which silently kills every button).
+if (typeof CITY_CONFIG === "undefined") {
+    console.error("CITY_CONFIG missing at startup");
+    window.CITY_CONFIG = window.__TMF_FALLBACK_CITY || { slug: "tamale", name: "Tamale", fullName: "Tamale Market Finder", supabaseUrl: "", supabaseAnonKey: "" };
+}
 const SUPABASE_URL = CITY_CONFIG.supabaseUrl;
 const SUPABASE_ANON_KEY = CITY_CONFIG.supabaseAnonKey;
 const IS_PROD = !location.hostname.includes('localhost') && !location.hostname.includes('127.0.0.1');
