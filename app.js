@@ -668,6 +668,8 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
+const FREE_LISTING_LIMIT = 5;
+
 // ====================================================================
 // 4. APP INITIALIZATION & EVENT LISTENERS
 // ====================================================================
@@ -4192,6 +4194,20 @@ async function handleSaveProduct(e) {
     const productPrice = parseFloat(document.getElementById("productPrice").value) || 0;
     if (!productName) { showToast("Product name is required", "error"); return; }
     if (productPrice <= 0) { showToast("Price must be greater than 0", "error"); return; }
+
+    // Free stalls are capped at 5 items; verified stalls are unlimited. The database enforces
+    // this too, this check exists so the seller is told before they fill in the whole form.
+    if (!productId && !userShop.is_verified) {
+        try {
+            const { count } = await sbClient.from("products")
+                .select("id", { count: "exact", head: true })
+                .eq("shop_id", userShop.id);
+            if ((count || 0) >= FREE_LISTING_LIMIT) {
+                showToast("Free stalls can list " + FREE_LISTING_LIMIT + " items. Verify your stall (GHS 20) to list unlimited.", "warning");
+                return;
+            }
+        } catch (err) { /* fall through: the database trigger is the real gate */ }
+    }
 
     // Handle product image file upload
     let productImageUrl = document.getElementById("productImage")?.value || "";
