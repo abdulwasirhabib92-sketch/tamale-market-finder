@@ -3168,7 +3168,7 @@ async function viewIdPhoto(path) {
 // ====================================================================
 // VERIFIED TRADER PROGRAMME — GHS 20 one-off + GHS 10 / month
 // ====================================================================
-const MOMO_NUMBER = "";           // set to the collection MoMo number, e.g. "0591808780"
+const MOMO_NUMBER = "0591808780";   // TechMarketVulture collection line (MTN MoMo)
 const MOMO_NAME = "TechMarketVulture";
 
 function verifStatusOf(shop) {
@@ -3217,13 +3217,16 @@ function renderVerificationCard() {
         pill.style.background = "#F3F4F6"; pill.style.color = "#6B7280";
         cta.textContent = "🪪 Apply for verification";
         note.textContent = "You pay GHS 20 once for the ID check, then GHS 10 monthly to keep the badge.";
-        payBox.style.display = "none";
+        payBox.style.display = "block";
     }
 
     if (payText) {
         payText.innerHTML = MOMO_NUMBER
-            ? `Send <b>GHS 20</b> (or <b>GHS 10</b> to renew) by Mobile Money to <b>${MOMO_NUMBER}</b> (${MOMO_NAME}).<br>Use your shop name as the reference, then send the transaction ID to support so it can be approved.`
-            : `Mobile Money details will appear here. Ask TechMarketVulture for the collection number, send GHS 20 with your shop name as reference, then share the transaction ID.`;
+            ? `<b>Step 1.</b> Send <b>GHS 20</b> by Mobile Money to <b>${MOMO_NUMBER}</b> (${MOMO_NAME}).<br>` +
+              `<b>Step 2.</b> Use your stall name as the reference.<br>` +
+              `<b>Step 3.</b> Send the MoMo transaction ID to TechMarketVulture on WhatsApp so your badge can be approved.<br>` +
+              `<span style="color:#92400E;">Renewals: send GHS 10 monthly to the same number.</span>`
+            : `Mobile Money details will appear here.`;
     }
 }
 
