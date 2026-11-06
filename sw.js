@@ -1,7 +1,7 @@
 // Tamale Market Finder — Service Worker
 // Caches app shell for offline use, updates in background
 
-const CACHE_VERSION = '20261106vcard';
+const CACHE_VERSION = '20261106menuz';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -77,7 +77,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Network-first for app code (app.js, city configs, styles) — must always be fresh
-  const APP_CODE = ['/app.js', '/styles.css', '/cdn-checks.js', '/cities/'];
+  const APP_CODE = ['/app.js', '/styles.css', '/cdn-checks.js', '/cities/', '/index.html'];
   if (APP_CODE.some(p => url.pathname === p || url.pathname.startsWith(p))) {
     event.respondWith(
       fetch(request).then((response) => {
@@ -87,6 +87,20 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       }).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Root document — always network-first so deploys reach users immediately
+  if (url.pathname === '/') {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(request).then((c) => c || caches.match('/index.html')))
     );
     return;
   }
