@@ -3093,7 +3093,23 @@ async function renderVerificationQueue() {
     const shops = data || [];
     if (!shops.length) { box.innerHTML = '<p class="form-hint">No stalls yet.</p>'; return; }
 
-    box.innerHTML = '<h4 style="margin:4px 0 10px;">Verification requests (GHS 20 + GHS 10/month)</h4>' + shops.map(s => {
+    // Renewal watch: verified stalls expiring within 7 days, or already lapsed
+    const soon = new Date(Date.now() + 7 * 86400000);
+    const expiring = shops.filter(s => s.is_verified && s.verified_until && new Date(s.verified_until) <= soon);
+    const watch = expiring.length
+      ? '<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px;margin-bottom:12px;">' +
+          '<b style="font-size:12.5px;color:#92400E;">Renewals due soon</b>' +
+          '<div style="font-size:12px;color:#78350F;margin-top:4px;line-height:1.7;">' +
+            expiring.map(s => {
+              const d = new Date(s.verified_until);
+              const days = Math.ceil((d.getTime() - Date.now()) / 86400000);
+              const when = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+              return '• ' + escapeHtml(s.shop_name || 'Unnamed') + ' — ' + (days < 0 ? 'lapsed ' + Math.abs(days) + ' day(s) ago' : days + ' day(s) left (' + when + ')');
+            }).join('<br>') +
+          '</div></div>'
+      : '';
+
+    box.innerHTML = watch + '<h4 style="margin:4px 0 10px;">Verification requests (GHS 20 + GHS 10/month)</h4>' + shops.map(s => {
       const st = verifStatusLabel(s);
       const fee = (s.verification_fee_status || 'unpaid').toUpperCase();
       const photo = s.ghana_card_photo_url
@@ -3101,6 +3117,8 @@ async function renderVerificationQueue() {
         : '<span class="form-hint">no photo</span>';
       const actions = s.ghana_card_number
         ? '<button class="btn-primary btn-sm" data-action="approveVerification" data-shop-id="' + escapeJs(s.id) + '">Approve 30 days</button>' +
+          '</div><div style="display:flex;gap:6px;margin-top:6px;">' +
+          '<input id="payRef_' + escapeJs(s.id) + '" type="text" inputmode="text" placeholder="MoMo transaction ID" style="flex:1;padding:8px 10px;border:1px solid #E5E7EB;border-radius:8px;font-size:12px;" />' +
           '<button class="btn-secondary btn-sm" data-action="markFeePaid" data-shop-id="' + escapeJs(s.id) + '">Mark GHS 20 paid</button>' +
           '<button class="btn-danger btn-sm" data-action="rejectVerification" data-shop-id="' + escapeJs(s.id) + '">Reject</button>'
         : '<span class="form-hint">Awaiting application</span>';
@@ -3144,8 +3162,13 @@ async function rejectVerificationShop(shopId) {
 
 async function markVerificationFeePaid(shopId) {
   if (!sbClient) return;
-  const ref = prompt('Payment reference (MoMo transaction ID):');
-  if (!ref) return;
+  const input = document.getElementById('payRef_' + shopId);
+  const ref = (input ? input.value : '').trim();
+  if (ref.length < 4) {
+    showToast('Type the MoMo transaction ID first.', 'warning');
+    if (input) input.focus();
+    return;
+  }
   try {
     const { error } = await sbClient.rpc('record_verification_fee', { p_shop_id: shopId, p_reference: ref, p_kind: 'verification' });
     if (error) throw error;
@@ -3195,10 +3218,19 @@ function renderVerificationCard() {
     const untilTxt = userShop?.verified_until ? new Date(userShop.verified_until).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
 
     if (status === "verified") {
-        pill.textContent = "✅ Verified";
-        pill.style.background = "#DCFCE7"; pill.style.color = "#166534";
+        const daysLeft = userShop?.verified_until
+            ? Math.ceil((new Date(userShop.verified_until).getTime() - Date.now()) / 86400000)
+            : null;
+        const expiringSoon = daysLeft !== null && daysLeft <= 7;
+        pill.textContent = expiringSoon ? `⏳ ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "✅ Verified";
+        pill.style.background = expiringSoon ? "#FEF3C7" : "#DCFCE7";
+        pill.style.color = expiringSoon ? "#92400E" : "#166534";
         cta.textContent = "💳 Renew — GHS 10";
-        note.textContent = `Verified until ${untilTxt}. Renew before that date to keep your badge.`;
+        if (expiringSoon) {
+            note.innerHTML = `<b style="color:#92400E;">Your badge expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"} (${untilTxt}).</b><br>Send GHS 10 to keep it, then share the transaction ID so it can be marked paid.`;
+        } else {
+            note.textContent = `Verified until ${untilTxt}. Renew before that date to keep your badge.`;
+        }
         payBox.style.display = "block";
     } else if (status === "expired") {
         pill.textContent = "⌛ Expired";
