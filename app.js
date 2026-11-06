@@ -1672,7 +1672,9 @@ async function searchListings() {
     });
     items.sort((a, b) => b._rankScore - a._rankScore);
 
-    document.getElementById("resultsCount").textContent = `${items.length} ${currentDomain}s found`;
+    const DOMAIN_NOUNS = { product: ["product", "products"], service: ["service", "services"], hotel: ["hotel", "hotels"], eatery: ["eatery", "eateries"], company: ["company", "companies"] };
+    const nouns = DOMAIN_NOUNS[currentDomain] || [currentDomain, currentDomain + "s"];
+    document.getElementById("resultsCount").textContent = `${items.length} ${items.length === 1 ? nouns[0] : nouns[1]} found`;
 
     if (items.length === 0) {
         resultsList.innerHTML = `
