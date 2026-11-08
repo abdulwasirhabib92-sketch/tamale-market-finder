@@ -24,7 +24,13 @@ if (IS_PROD && window.console) {
     // console.error kept active for production debugging
 }
 
-const DEMO_MODE = SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL");
+// Demo data is for local development ONLY. It must never stand in for real listings
+// on a live site: invented merchants presented as real traders destroy buyer trust.
+const DEMO_MODE = (function () {
+  const h = (location.hostname || "").toLowerCase();
+  const isLocal = h === "localhost" || h === "127.0.0.1" || h === "" || h.endsWith(".local");
+  return isLocal && SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL");
+})();
 
 let sbClient = null;
 
@@ -747,6 +753,9 @@ function handleDelegatedClick(e) {
         case 'selectCategory':
             selectCategoryPill(el, el.dataset.catVal);
             break;
+        case 'retryListings':
+            location.reload();
+            break;
         case 'showShopDetail':
             showShopDetailModal(el.dataset.shopId);
             break;
@@ -835,7 +844,7 @@ function initSupabase() {
             // [debug log removed]
             setupAuthListener();
         } catch (err) {
-            console.warn("Supabase init failed, falling back to Demo Mode:", err);
+            console.error("Supabase init failed. Listings will show an error, not demo data:", err);
             var dbg = document.getElementById("resultsList");
             console.error("Supabase init failed:", err.message || err);
         }
@@ -1314,7 +1323,7 @@ function renderCategoryPillsForDomain(domain) {
     }
 
     // In demo mode, pull categories from demoStore
-    if (DEMO_MODE || !sbClient) {
+    if (DEMO_MODE) {
         const demoCats = new Set();
         if (domain === "product") {
             demoStore.products.forEach(p => { if (p.category) demoCats.add(p.category); });
@@ -1602,8 +1611,19 @@ async function searchListings() {
 
     let items = [];
 
-    if (DEMO_MODE || !sbClient) {
-        // Demo mode fallback
+    if (!DEMO_MODE && !sbClient) {
+        // Real connection failed: be honest, never substitute demo stock
+        document.getElementById("resultsCount").textContent = "Not connected";
+        resultsList.innerHTML = '<div class="empty-state" style="grid-column:1/-1;text-align:center;padding:36px 18px;">' +
+            '<p style="font-size:24px;margin-bottom:8px;">📡</p>' +
+            '<p style="font-weight:600;margin-bottom:4px;">We could not reach the market database</p>' +
+            '<p style="font-size:13px;color:#6B7280;margin-bottom:12px;">Listings are temporarily unavailable. Please try again.</p>' +
+            '<button class="btn-primary btn-sm" data-action="retryListings">Try again</button></div>';
+        return;
+    }
+
+    if (DEMO_MODE) {
+        // Local development only
         if (currentDomain === "product") {
             items = demoStore.products.map(p => {
                 const shop = demoStore.shops.find(s => s.id === p.shop_id) || {};
@@ -3414,7 +3434,7 @@ async function runAISecurityScan() {
                     reported_type: "product",
                     target_id: p.id,
                     reason_category: "scam_attempt",
-                    description: `[AI SCANNER DETECTED]: Suspicious keyword match in "${p.name}"`,
+                    description: `[AUTOMATED KEYWORD SCAN]: Flagged phrase in "${p.name}" - please review manually`,
                     status: "pending"
                 });
             }

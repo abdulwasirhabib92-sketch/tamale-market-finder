@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tamale-market-finder.vercel.app/sitemap.xml

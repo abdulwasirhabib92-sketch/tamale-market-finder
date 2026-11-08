@@ -21,3 +21,17 @@
 
   window.CITY_CONFIG = pick;
 })();
+
+/* Per-host canonical + social URL, so each city is indexed as its own site
+   instead of every city telling Google it is really the Tamale domain. */
+(function () {
+  try {
+    var host = (location.hostname || "").toLowerCase();
+    if (!host || host === "localhost" || host === "127.0.0.1") return;
+    var canonical = location.origin + location.pathname;
+    var link = document.querySelector('link[rel="canonical"]');
+    if (link) link.setAttribute("href", canonical);
+    var og = document.querySelector('meta[property="og:url"]');
+    if (og) og.setAttribute("content", canonical);
+  } catch (e) {}
+})();
