@@ -1,5 +1,5 @@
 // TAMALE CITY CONFIG
-const CITY_CONFIG = {
+window.__CITY_CFG_TAMALE = {
     slug: "tamale",
     name: "Tamale",
     fullName: "Tamale Market Finder",

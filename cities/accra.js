@@ -1,5 +1,5 @@
 // ACCRA CITY CONFIG
-const CITY_CONFIG = {
+window.__CITY_CFG_ACCRA = {
     slug: "accra",
     name: "Accra",
     fullName: "Accra Market Finder",

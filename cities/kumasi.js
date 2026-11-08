@@ -1,5 +1,5 @@
 // KUMASI CITY CONFIG
-const CITY_CONFIG = {
+window.__CITY_CFG_KUMASI = {
     slug: "kumasi",
     name: "Kumasi",
     fullName: "Kumasi Market Finder",
