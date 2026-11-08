@@ -1235,6 +1235,14 @@ function renderMiniProductCard(p, shop) {
 // ====================================================================
 // 6. MAIN SEARCH & FILTERING LOGIC
 // ====================================================================
+// Reject a promise that never settles, so the UI shows an error instead of a spinner
+function withTimeout(promise, ms) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Request timed out")), ms))
+    ]);
+}
+
 async function searchListings() {
     // [debug log removed]
     const resultsList = document.getElementById("resultsList");
@@ -1282,10 +1290,13 @@ async function searchListings() {
         // Fetch from Supabase
         try {
             if (currentDomain === "product") {
-                const { data: shops, error: shopErr } = await sbClient.from('public_shops').select('*').eq('is_active', true).eq('city', CITY_CONFIG.slug);
-                if (shopErr) throw shopErr;
-                const { data: products, error: prodErr } = await sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug);
-                if (prodErr) throw prodErr;
+                const [shopsRes, productsRes] = await withTimeout(Promise.all([
+                    sbClient.from('public_shops').select('*').eq('is_active', true).eq('city', CITY_CONFIG.slug),
+                    sbClient.from('products').select('*').eq('city', CITY_CONFIG.slug)
+                ]), 12000);
+                const shops = shopsRes.data, products = productsRes.data;
+                if (shopsRes.error) throw shopsRes.error;
+                if (productsRes.error) throw productsRes.error;
                 items = products.map(p => {
                     const shop = shops.find(s => s.id === p.shop_id) || {};
                     return {
@@ -1309,7 +1320,13 @@ async function searchListings() {
             }
         } catch (err) {
             console.error("Error fetching listings:", err);
-            resultsList.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>⚠️ Could not load listings: ' + escapeHtml(err.message||err) + '</p></div>';
+            var countNode = document.getElementById("resultsCount");
+            if (countNode) countNode.textContent = "Could not load";
+            resultsList.innerHTML = '<div class="empty-state" style="grid-column:1/-1;text-align:center;padding:36px 18px;">' +
+                '<p style="font-size:24px;margin-bottom:8px;">⚠️</p>' +
+                '<p style="font-weight:600;margin-bottom:4px;">Listings could not load</p>' +
+                '<p style="font-size:13px;color:#6B7280;margin-bottom:12px;">Check your connection and try again.</p>' +
+                '<button class="btn-primary btn-sm" data-action="retryListings">Try again</button></div>';
             clearMapMarkers();
             return;
         }
