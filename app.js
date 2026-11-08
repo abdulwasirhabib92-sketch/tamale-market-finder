@@ -2616,12 +2616,23 @@ async function handleOrderSubmit(e) {
     const traderPhone = shop.phone_number || shop.whatsapp_number || "";
 
     // 1. Open WhatsApp to trader with order details (fastest, free)
+    let waOpened = false;
     if (traderWa) {
         const waMsg = `🔔 NEW ORDER ${orderNumber}\n\n📦 ${productName} x${orderQty}\n💰 GHS ${totalAmount.toFixed(2)}\n👤 ${buyerName} (${buyerPhone})\n🚚 ${deliveryType}\n${buyerNotes ? '📝 ' + buyerNotes : ''}\n\nRespond to buyer: ${buyerPhone}`;
-        window.open(`https://wa.me/${traderWa}?text=${encodeURIComponent(waMsg)}`, "_blank");
+        try {
+            const w = window.open(`https://wa.me/${traderWa}?text=${encodeURIComponent(waMsg)}`, "_blank");
+            waOpened = !!(w && !w.closed);
+        } catch (err) { waOpened = false; }
     }
 
-    showToast(`Order ${orderNumber} placed! Trader notified via WhatsApp.`, "success");
+    // Never claim the trader was notified unless WhatsApp actually opened. The order is saved
+    // either way, and the buyer can always send it from My Orders.
+    showToast(
+        waOpened
+            ? `Order ${orderNumber} placed. WhatsApp is open — tap send so the trader gets it.`
+            : `Order ${orderNumber} placed. Open My Orders and tap WhatsApp to send it to the trader.`,
+        "success"
+    );
     navigateToPage("my-orders");
     renderBuyerOrders();
 }
@@ -2798,6 +2809,15 @@ async function renderBuyerOrders() {
                 const { data, error } = await sbClient.from('orders').select('*').eq('buyer_id', buyerId).eq('city', CITY_CONFIG.slug).order('created_date', { ascending: false });
                 if (error) throw error;
                 orders = data || [];
+                // attach the trader's WhatsApp so every order has a working contact button
+                const shopIds = [...new Set(orders.map(o => o.shop_id).filter(Boolean))];
+                if (shopIds.length) {
+                    const { data: shopsData } = await sbClient.from('public_shops')
+                        .select('id,shop_name,whatsapp_number').in('id', shopIds);
+                    const byId = {};
+                    (shopsData || []).forEach(s => { byId[s.id] = s; });
+                    orders.forEach(o => { o._shop = byId[o.shop_id] || null; });
+                }
             }
         } catch (err) { console.error("Error loading buyer orders:", err); }
     }
@@ -2822,6 +2842,9 @@ async function renderBuyerOrders() {
                     <div><strong>Fulfillment:</strong> ${o.delivery_type === 'pickup' ? 'Stall Pickup' : 'Local Delivery'}</div>
                 </div>
                 <div class="order-card-actions">
+                    ${(o._shop && o._shop.whatsapp_number) ? `
+                        <button class="btn-whatsapp btn-sm" data-action="openWhatsApp" data-wa-num="${escapeJs(o._shop.whatsapp_number)}" data-wa-msg="Order ${escapeJs(o.order_number)}" data-wa-shop="${escapeJs(o._shop.shop_name || '')}">💬 WhatsApp trader</button>
+                    ` : ''}
                     ${o.status === 'completed' ? `
                         <button class="btn-primary btn-sm" data-action="openReviewModal" data-order-id="${escapeJs(o.id)}" data-shop-id="${escapeJs(o.shop_id)}" data-product-id="${escapeJs(o.product_id)}">⭐ Leave Verified Review</button>
                     ` : ''}
