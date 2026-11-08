@@ -35,3 +35,15 @@
     if (og) og.setAttribute("content", canonical);
   } catch (e) {}
 })();
+
+/* Local development only: load the demo fixtures when running on localhost. */
+(function () {
+  try {
+    var h = (location.hostname || "").toLowerCase();
+    if (h === "localhost" || h === "127.0.0.1" || h.endsWith(".local")) {
+      var s = document.createElement("script");
+      s.src = "/dev-demo.js";
+      document.head.appendChild(s);
+    }
+  } catch (e) {}
+})();
