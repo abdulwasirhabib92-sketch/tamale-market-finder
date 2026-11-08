@@ -18,10 +18,10 @@ const IS_PROD = !location.hostname.includes('localhost') && !location.hostname.i
 
 // Silence console.log/debug in production to avoid leaking debug info
 if (IS_PROD && window.console) {
+    // Only chatty logs are muted. Warnings and errors stay visible: silencing them is
+    // how "Leaflet failed to load" and "Supabase failed to load" became invisible.
     console.log = function() {};
     console.debug = function() {};
-    console.warn = function() {};
-    // console.error kept active for production debugging
 }
 
 // Demo data is for local development ONLY. It must never stand in for real listings
@@ -318,9 +318,19 @@ const FREE_LISTING_LIMIT = 5;
 // ====================================================================
 document.addEventListener("DOMContentLoaded", () => {
     var dbg = document.getElementById("resultsList");
+    const startupErrors = [];
     function showErr(label, e) {
         console.error(label + " error:", e);
-        if (IS_PROD) console.error(label + " error:", e);
+        startupErrors.push(label);
+        if (startupErrors.length === 1) {
+            // surface it once, so a broken page never looks like an empty one
+            const bar = document.createElement("div");
+            bar.setAttribute("role", "alert");
+            bar.style.cssText = "position:fixed;left:10px;right:10px;bottom:12px;z-index:99999;background:#7F1D1D;color:#fff;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.5;box-shadow:0 6px 20px rgba(0,0,0,.25);";
+            bar.innerHTML = "Something failed to start (" + label + "). Pull down to refresh, or tap here to reload.";
+            bar.onclick = function () { location.reload(); };
+            document.body.appendChild(bar);
+        }
     }
     try { initSupabase(); } catch(e) { showErr("initSupabase", e); }
     try { initNavigation(); } catch(e) { showErr("initNavigation", e); }
@@ -1738,9 +1748,12 @@ function initUserLocation() {
     // Use the saved position immediately so distance ranking works on first paint
     try {
         const cached = JSON.parse(localStorage.getItem('tmf_user_location') || 'null');
-        if (cached && cached.lat && cached.lng && (Date.now() - cached.ts) < 30 * 24 * 3600 * 1000) {
+        if (cached && cached.lat && cached.lng && (Date.now() - cached.ts) < 24 * 3600 * 1000) {
             userLat = cached.lat; userLng = cached.lng;
             userLocation = { latitude: cached.lat, longitude: cached.lng };
+        } else if (cached) {
+            // expired position: forget it rather than keep tracking a past visit
+            localStorage.removeItem('tmf_user_location');
         }
     } catch (e) {}
 

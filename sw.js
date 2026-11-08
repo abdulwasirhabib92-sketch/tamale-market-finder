@@ -1,7 +1,7 @@
 // Tamale Market Finder — Service Worker
 // Caches app shell for offline use, updates in background
 
-const CACHE_VERSION = '20261108fast';
+const CACHE_VERSION = '20261108sec';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
