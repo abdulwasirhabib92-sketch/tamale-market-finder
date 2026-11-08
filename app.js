@@ -4331,7 +4331,17 @@ async function handleSignOut() {
     userProfile = { full_name: "Guest User", account_type: "shopper", verification_tier: "unverified" };
     userFavorites = new Set();
     userShop = null;
+    // Never leave the previous account's orders or stall on screen after signing out
+    ["buyerOrdersList", "accountOrdersList", "favoritesList", "resultsList"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && id !== "resultsList") el.innerHTML = '<div class="empty-state"><p>Sign in to see this.</p></div>';
+    });
+    ["adminUsersList", "adminReportsList", "adminAdsList", "traderProductsList"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = "";
+    });
     updateUIForGuestUser();
+    if (typeof searchListings === "function") { try { searchListings(); } catch (e) {} }
     showToast("Signed out of account", "success");
 }
 
