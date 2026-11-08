@@ -1420,8 +1420,8 @@ async function renderSpotlightCarousel() {
         try {
             const { data, error } = await sbClient.from('public_shops').select('*').eq('is_active', true).eq('city', CITY_CONFIG.slug).order('rating_avg', { ascending: false }).limit(3);
             if (error) throw error;
+            // Only stalls that actually paid for a placement may appear as Sponsored
             spotlightShops = (data || []).filter(s => s.ad_tier === "basic_spotlight" || s.ad_tier === "premium_top");
-            if (spotlightShops.length === 0 && data && data.length > 0) spotlightShops = data.slice(0, 2);
         } catch (err) {
             console.error("Spotlight fetch error:", err);
         }
@@ -1440,7 +1440,9 @@ async function renderSpotlightCarousel() {
     carousel.innerHTML = spotlightShops.map((s, i) => `
         <div class="spotlight-card ${i === 0 ? 'active' : ''}" data-idx="${i}" data-action="showShopDetail" data-shop-id="${escapeJs(s.id)}">
             <div class="spotlight-card-top">
-                <img src="${escapeAttr(s.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e')}" class="spotlight-img" alt="${escapeHtml(s.shop_name)}" />
+                ${s.cover_image_url
+                ? `<img src="${escapeAttr(s.cover_image_url)}" class="spotlight-img" alt="${escapeHtml(s.shop_name)}" />`
+                : `<div class="spotlight-img" style="display:flex;align-items:center;justify-content:center;background:#E8F5E9;font-size:26px;">🏪</div>`}
                 <div>
                     <h4 class="spotlight-title">${escapeHtml(s.shop_name)}</h4>
                     <span class="spotlight-area">📍 ${escapeHtml(s.market_area)} • 🇬🇭 ${escapeHtml(s.digital_address || 'Tamale')}</span>
@@ -1591,6 +1593,9 @@ async function searchListings() {
     // [debug log removed]
     const resultsList = document.getElementById("resultsList");
     if (resultsList) resultsList.innerHTML = '<div style="padding:10px;color:#888;">Loading listings...</div>';
+    // Do not show "0 items found" while the data is still arriving
+    const countEl = document.getElementById("resultsCount");
+    if (countEl) countEl.textContent = "Loading\u2026";
     const query = document.getElementById("searchInput").value.toLowerCase().trim();
     const market = document.getElementById("marketFilter").value;
     const status = document.getElementById("statusFilter").value;
@@ -1770,7 +1775,9 @@ function renderProductCard(p) {
             </div>
 
             <div class="star-rating" style="margin-bottom: 10px;">
-                <span>★★★★☆</span> <span>${p.rating_avg || 4.5} (${p.rating_count || 12})</span>
+                ${(p.rating_count || 0) > 0
+                    ? `<span>${"★".repeat(Math.round(p.rating_avg || 0))}${"☆".repeat(5 - Math.round(p.rating_avg || 0))}</span> <span>${Number(p.rating_avg || 0).toFixed(1)} (${p.rating_count})</span>`
+                    : `<span style="color:#9CA3AF; font-size:12px;">No reviews yet</span>`}
             </div>
 
             ${priceWarning}
