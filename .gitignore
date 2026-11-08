@@ -1,14 +1,11 @@
-<<<<<<< HEAD
 .agents/.env
 node_modules/
 .npm/
 __pycache__/
 .cache/
-=======
 .agents/
 *.py
 .vercel
->>>>>>> github/main
 conversations/6a907a223b9f49fda79b2ab2/TeckMarketVulture-v1.0.*
 *.apk
 conversations/*/incoming_files/

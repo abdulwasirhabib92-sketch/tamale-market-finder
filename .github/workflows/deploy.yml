@@ -23,9 +23,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Publish ONLY the web app. Never notes/, base44/, docs, schema dumps or dev files:
+      # this repository is public and its Pages site is public too.
+      - name: Build publish directory
+        run: |
+          mkdir -p _site
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'notes' --exclude 'base44' \
+                --exclude '*.md' --exclude '*.sql' --exclude 'migrations' --exclude 'dev-demo.js' \
+                --exclude '_site' ./ _site/
+          echo "--- publishing:"
+          find _site -maxdepth 1 -type f | sort
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

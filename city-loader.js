@@ -42,8 +42,20 @@
     var h = (location.hostname || "").toLowerCase();
     if (h === "localhost" || h === "127.0.0.1" || h.endsWith(".local")) {
       var s = document.createElement("script");
-      s.src = "/dev-demo.js";
+      s.src = "dev-demo.js";
       document.head.appendChild(s);
     }
   } catch (e) {}
 })();
+
+
+  // Per-host canonical + og:url so accra/kumasi are not treated as duplicates of Tamale
+  (function () {
+    try {
+      var base = location.origin + location.pathname.replace(/index\.html$/, "");
+      var link = document.querySelector('link[rel="canonical"]');
+      if (link) link.setAttribute("href", base);
+      var og = document.querySelector('meta[property="og:url"]');
+      if (og) og.setAttribute("content", base);
+    } catch (e) {}
+  })();

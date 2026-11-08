@@ -1,38 +1,38 @@
 // Tamale Market Finder — Service Worker
 // Caches app shell for offline use, updates in background
 
-const CACHE_VERSION = '20261108mod';
+const CACHE_VERSION = '20261108fix1';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 // App shell — files needed for the app to load
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/app.js',
-  '/styles.css',
-  '/manifest.json',
-  '/cities/registry.js',
-  '/cities/tamale.js',
-  '/cities/accra.js',
-  '/cities/kumasi.js',
-  '/icons/icon-192.png',
-  '/icons/icon-256.png',
-  '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png',
-  '/icons/maskable-512.png',
-  '/cdn-checks.js',
-  '/menu-guard.js',
-  '/city-loader.js',
-  '/sw-register.js',
-  '/vendor/supabase-js.2.109.0.min.js',
-  '/vendor/leaflet/leaflet.js',
-  '/vendor/leaflet/leaflet.css',
-  '/vendor/leaflet/images/layers.png',
-  '/vendor/leaflet/images/layers-2x.png',
-  '/vendor/leaflet/images/marker-icon.png',
-  '/vendor/leaflet/images/marker-icon-2x.png',
-  '/vendor/leaflet/images/marker-shadow.png'
+  './',
+  './index.html',
+  './app.js',
+  './styles.css',
+  './manifest.json',
+  './cities/registry.js',
+  './cities/tamale.js',
+  './cities/accra.js',
+  './cities/kumasi.js',
+  './icons/icon-192.png',
+  './icons/icon-256.png',
+  './icons/icon-512.png',
+  './icons/apple-touch-icon.png',
+  './icons/maskable-512.png',
+  './cdn-checks.js',
+  './menu-guard.js',
+  './city-loader.js',
+  './sw-register.js',
+  './vendor/supabase-js.2.109.0.min.js',
+  './vendor/leaflet/leaflet.js',
+  './vendor/leaflet/leaflet.css',
+  './vendor/leaflet/images/layers.png',
+  './vendor/leaflet/images/layers-2x.png',
+  './vendor/leaflet/images/marker-icon.png',
+  './vendor/leaflet/images/marker-icon-2x.png',
+  './vendor/leaflet/images/marker-shadow.png'
 ];
 
 // Install — pre-cache app shell
@@ -80,7 +80,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Network-first for app code (app.js, city configs, styles) — must always be fresh
-  const APP_CODE = ['/app.js', '/styles.css', '/cdn-checks.js', '/cities/', '/index.html'];
+  const APP_CODE = ['./app.js', './styles.css', './cdn-checks.js', './cities/', './index.html'];
   if (APP_CODE.some(p => url.pathname === p || url.pathname.startsWith(p))) {
     event.respondWith(
       fetch(request).then((response) => {
@@ -95,7 +95,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Root document — always network-first so deploys reach users immediately
-  if (url.pathname === '/') {
+  if (url.pathname === './') {
     event.respondWith(
       fetch(request).then((response) => {
         if (response.ok) {
@@ -103,7 +103,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
         }
         return response;
-      }).catch(() => caches.match(request).then((c) => c || caches.match('/index.html')))
+      }).catch(() => caches.match(request).then((c) => c || caches.match('./index.html')))
     );
     return;
   }
@@ -135,7 +135,7 @@ self.addEventListener('fetch', (event) => {
       return response;
     }).catch(() => {
       return caches.match(request).then((cached) => {
-        return cached || caches.match('/index.html');
+        return cached || caches.match('./index.html');
       });
     })
   );
