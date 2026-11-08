@@ -1307,7 +1307,10 @@ async function searchListings() {
                 const shops = shopsRes.data, products = productsRes.data;
                 if (shopsRes.error) throw shopsRes.error;
                 if (productsRes.error) throw productsRes.error;
-                items = products.map(p => {
+                // Only show products whose stall is publicly visible: a flagged or banned
+                // stall must not leak its inventory into the grid with a blank shop name
+                const visibleShopIds = new Set((shops || []).map(s => s.id));
+                items = products.filter(p => visibleShopIds.has(p.shop_id)).map(p => {
                     const shop = shops.find(s => s.id === p.shop_id) || {};
                     return {
                         ...p, item_type: "product",
